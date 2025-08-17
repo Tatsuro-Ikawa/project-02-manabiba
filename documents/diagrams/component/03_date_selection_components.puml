@@ -1,0 +1,192 @@
+@startuml
+title 日付選択機能のコンポーネント図
+
+package "Frontend Components" {
+
+    component "MyPage" as MP {
+        [handlePDCAInput]
+        [getCurrentValue]
+        [showPDCAModal state]
+        [pdcaType state]
+        [handlePDCASuccess]
+        [forceUpdate state]
+        [handleDateSelect] <<新規追加>>
+        [handleTodayClick] <<新規追加>>
+    }
+
+    component "PDCAInputModal" as PIM {
+        [handleSubmit]
+        [handleClose]
+        [value state]
+        [error state]
+        [isSubmitting state]
+        [onSuccess callback]
+    }
+
+    component "DateSelector" as DS <<新規追加>> {
+        [selectedDate display]
+        [date picker]
+        [today button]
+        [handleDateChange]
+        [handleTodayClick]
+    }
+
+    component "Calendar" as CAL <<新規追加>> {
+        [month navigation]
+        [date grid]
+        [selected date highlight]
+        [entry indicators]
+        [handleDateClick]
+    }
+
+    component "AuthGuard" as AG {
+        [認証チェック]
+        [リダイレクト処理]
+    }
+
+    component "CreatePageModal" as CPM {
+        [プロフィール作成]
+    }
+}
+
+package "Custom Hooks" {
+
+    component "usePDCA" as UPH {
+        [updatePDCA]
+        [currentPDCA state]
+        [selectedDate state]
+        [loading state]
+        [error state]
+        [getInputStatus]
+        [fetchPDCA]
+        [強制再描画ロジック]
+        [selectDate] <<既存>>
+        [goToToday] <<既存>>
+        [allEntries state] <<既存>>
+    }
+
+    component "useAuth" as UA {
+        [user state]
+        [signOut]
+    }
+
+    component "useUserProfile" as UUP {
+        [profile state]
+        [createProfile]
+    }
+
+    component "useCalendar" as UC <<新規追加>> {
+        [current month state]
+        [selected date state]
+        [entries by date]
+        [navigateMonth]
+        [getDateStatus]
+    }
+}
+
+package "Firebase Services" {
+
+    component "Firestore" as FS {
+        [updatePDCAItem]
+        [getPDCAEntry]
+        [getUserPDCAEntries]
+        [createPDCAEntry]
+        [updatePDCAEntry]
+    }
+
+    component "Authentication" as AUTH {
+        [Google Sign-In]
+        [Sign Out]
+    }
+}
+
+package "Data Models" {
+
+    component "PDCAData" as PD {
+        [uid管理]
+        [date管理]
+        [plan管理]
+        [do管理]
+        [check管理]
+        [action管理]
+        [createdAt管理]
+        [updatedAt管理]
+    }
+
+    component "UserProfile" as UP {
+        [uid管理]
+        [nickname管理]
+        [bio管理]
+        [location管理]
+        [profileCreatedAt管理]
+        [profileUpdatedAt管理]
+    }
+
+    component "DateStatus" as DST <<新規追加>> {
+        [date管理]
+        [hasEntries管理]
+        [entryCount管理]
+        [lastUpdated管理]
+    }
+}
+
+' 関係性の定義
+MP --> DS : 日付選択UI表示
+MP --> CAL : カレンダー表示
+MP --> PIM : モーダル表示/非表示
+MP --> UPH : PDCAデータ取得/更新
+MP --> UA : 認証状態取得
+MP --> UUP : プロフィール情報取得
+MP --> AG : 認証保護
+MP --> CPM : プロフィール作成
+
+DS --> MP : 日付選択イベント
+DS --> UPH : selectDate呼び出し
+CAL --> MP : 日付クリックイベント
+CAL --> UPH : selectDate呼び出し
+
+PIM --> UPH : updatePDCA呼び出し
+PIM --> MP : onClose/onSuccessコールバック
+
+UPH --> FS : Firestore操作
+UA --> AUTH : 認証操作
+UUP --> FS : プロフィール操作
+UC --> UPH : エントリデータ取得
+
+FS --> PD : PDCAData操作
+FS --> UP : UserProfile操作
+FS --> DST : DateStatus操作
+
+' データフロー
+note right of MP : ユーザーインターフェース\n状態管理
+note right of DS : 日付選択UI\n日付表示
+note right of CAL : カレンダーUI\n月間表示
+note right of UPH : ビジネスロジック\nデータ操作
+note right of UC : カレンダー状態管理\n日付ナビゲーション
+note right of FS : データ永続化\nFirebase操作
+
+/'note over MP, FS
+**新規追加機能 (2025-08-15)**
+
+**日付選択機能**:
+1. **DateSelector**: 日付ピッカーと今日ボタン
+2. **Calendar**: 月間カレンダー表示
+3. **useCalendar**: カレンダー状態管理フック
+
+**既存機能の拡張**:
+1. **MyPage**: 日付選択ハンドラー追加
+2. **usePDCA**: 既存のselectDate/goToToday活用
+3. **Firestore**: 既存のgetUserPDCAEntries活用
+
+**新しいデータフロー**:
+- ユーザーが日付を選択 → 該当日のPDCAデータ表示
+- カレンダーでエントリがある日を視覚的に表示
+- 日付変更時のデータ再取得と状態更新
+
+**UI改善点**:
+- 直感的な日付選択
+- エントリ存在の視覚的フィードバック
+- 今日への素早いアクセス
+end note
+'/
+@enduml

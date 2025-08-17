@@ -1,0 +1,113 @@
+@startuml
+title 日付選択機能のシーケンス図
+
+actor User as U
+participant "MyPage" as MP
+participant "DateSelector" as DS
+participant "Calendar" as CAL
+participant "usePDCA Hook" as UPH
+participant "useCalendar Hook" as UC
+participant "Firestore" as FS
+
+== 初期表示 ==
+U -> MP: マイページアクセス
+MP -> DS: 日付選択UI表示
+MP -> CAL: カレンダー表示
+MP -> UPH: 初期データ取得
+UPH -> FS: getUserPDCAEntries(uid)
+FS -> UPH: 全エントリデータ
+UPH -> UC: エントリデータ設定
+UC -> CAL: エントリ表示用データ提供
+MP -> U: 今日の日付でPDCA表示
+
+== 日付ピッカーでの日付選択 ==
+U -> DS: 日付ピッカー操作
+DS -> MP: handleDateSelect(date)
+MP -> UPH: selectDate(date)
+activate UPH
+UPH -> UPH: setSelectedDate(date)
+UPH -> FS: getPDCAEntry(uid, date)
+activate FS
+FS -> UPH: 該当日のPDCAデータ
+deactivate FS
+UPH -> MP: 新しいPDCAデータ
+MP -> U: 選択日のPDCA表示
+deactivate UPH
+
+== カレンダーでの日付クリック ==
+U -> CAL: 日付クリック
+CAL -> MP: handleDateClick(date)
+MP -> UPH: selectDate(date)
+activate UPH
+UPH -> UPH: setSelectedDate(date)
+UPH -> FS: getPDCAEntry(uid, date)
+activate FS
+alt エントリが存在
+    FS -> UPH: 既存のPDCAデータ
+else エントリが存在しない
+    FS -> UPH: null（新規日付）
+end
+deactivate FS
+UPH -> MP: 選択日のPDCAデータ
+MP -> U: 選択日のPDCA表示（新規または既存）
+deactivate UPH
+
+== 今日ボタンクリック ==
+U -> DS: 今日ボタンクリック
+DS -> MP: handleTodayClick()
+MP -> UPH: goToToday()
+activate UPH
+UPH -> UPH: setSelectedDate(today)
+UPH -> FS: getPDCAEntry(uid, today)
+activate FS
+FS -> UPH: 今日のPDCAデータ
+deactivate FS
+UPH -> MP: 今日のPDCAデータ
+MP -> U: 今日のPDCA表示
+deactivate UPH
+
+== カレンダー月間ナビゲーション ==
+U -> CAL: 前月/次月ボタン
+CAL -> UC: navigateMonth(direction)
+activate UC
+UC -> UC: setCurrentMonth(newMonth)
+UC -> UPH: 月間エントリデータ取得
+UPH -> FS: getUserPDCAEntries(uid)
+FS -> UPH: 全エントリデータ
+UPH -> UC: エントリデータ提供
+UC -> CAL: 月間表示データ更新
+CAL -> U: 新しい月のカレンダー表示
+deactivate UC
+
+== PDCA入力後の日付表示更新 ==
+note over U, FS: PDCA入力処理（既存フロー）
+U -> MP: PDCA入力完了
+MP -> UPH: updatePDCA(type, value)
+UPH -> FS: updatePDCAItem(uid, date, item, value)
+FS -> UPH: 更新完了
+UPH -> FS: getUserPDCAEntries(uid)
+FS -> UPH: 更新された全エントリ
+UPH -> UC: エントリデータ更新
+UC -> CAL: カレンダー表示更新
+MP -> U: 更新されたPDCA表示
+
+note over MP, FS
+**新規追加機能 (2025-08-15)**
+
+**日付選択の流れ**:
+1. **日付ピッカー**: 直接的な日付選択
+2. **カレンダー**: 視覚的な日付選択
+3. **今日ボタン**: 素早い今日へのアクセス
+
+**データ同期**:
+- 日付変更時の自動データ取得
+- カレンダー表示のリアルタイム更新
+- エントリ存在の視覚的フィードバック
+
+**ユーザー体験**:
+- 直感的な日付選択
+- 既存データの即座表示
+- 新規日付での入力準備
+end note
+
+@enduml

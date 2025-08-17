@@ -1,0 +1,147 @@
+@startuml
+title PDCAデータフロー詳細図
+
+!define RECTANGLE class
+
+package "User Interface Layer" {
+  RECTANGLE "MyPage Component" as MP {
+    +showPDCAModal: boolean
+    +pdcaType: PDCAType
+    +handlePDCAInput(type)
+    +getCurrentValue(type)
+    +handlePDCASuccess() <<2025-08-15追加>>
+    +forceUpdate: number <<2025-08-15追加>>
+  }
+  
+  RECTANGLE "PDCAInputModal Component" as PIM {
+    +value: string
+    +error: string | null
+    +isSubmitting: boolean
+    +handleSubmit()
+    +handleClose()
+    +onSuccess?: () => void <<2025-08-15追加>>
+  }
+}
+
+package "State Management Layer" {
+  RECTANGLE "usePDCA Hook" as UPH {
+    +currentPDCA: PDCAData | null
+    +selectedDate: string
+    +loading: boolean
+    +error: string | null
+    +updatePDCA(item, value)
+    +getInputStatus()
+    +fetchPDCA() <<2025-08-15追加>>
+    +強制再描画ロジック <<2025-08-15追加>>
+  }
+  
+  RECTANGLE "useAuth Hook" as UA {
+    +user: User | null
+    +loading: boolean
+    +signOut()
+  }
+}
+
+package "Data Access Layer" {
+  RECTANGLE "Firestore Service" as FS {
+    +updatePDCAItem(uid, date, item, value)
+    +getPDCAEntry(uid, date)
+    +getUserPDCAEntries(uid)
+    +createPDCAEntry(data)
+    +updatePDCAEntry(id, updates)
+  }
+}
+
+package "Data Models" {
+  RECTANGLE "PDCAData" as PD {
+    +uid: string
+    +date: string
+    +plan?: string
+    +do?: string
+    +check?: string
+    +action?: string
+    +createdAt?: Timestamp
+    +updatedAt?: Timestamp
+  }
+  
+  RECTANGLE "User" as U {
+    +uid: string
+    +email: string
+    +displayName: string
+  }
+}
+
+' データフロー定義
+MP --> PIM : props: {isOpen, type, currentValue, onClose, onSuccess}
+PIM --> UPH : updatePDCA(type, value)
+UPH --> FS : updatePDCAItem(uid, date, item, value)
+FS --> PD : データ操作
+UPH --> PD : 状態更新
+PIM --> MP : onSuccess() コールバック <<2025-08-15改善>>
+MP --> UPH : fetchPDCA() <<2025-08-15追加>>
+
+' 状態同期フロー
+note right of MP : 1. ユーザーアクション\n2. 状態更新\n3. UI再描画
+note right of UPH : 1. データ取得\n2. 状態管理\n3. 更新処理
+note right of FS : 1. Firestore操作\n2. データ永続化\n3. 結果返却
+
+' エラーハンドリング
+note bottom of PIM : バリデーションエラー\n入力値チェック
+note bottom of UPH : ネットワークエラー\nデータ取得失敗
+note bottom of FS : Firestoreエラー\nデータベース操作失敗
+
+/'note over MP, FS
+**修正履歴 (2025-08-15)**
+
+**課題**: PDCAデータ入力後の表示更新問題
+
+**技術的問題**:
+1. **React状態更新**: setCurrentPDCA()が再描画をトリガーしない
+2. **非同期処理**: Firestore更新完了前にモーダルが閉じられる
+3. **コンポーネント通信**: 子→親への状態変更通知が不完全
+
+**実装した解決策**:
+
+**1. 強制再描画メカニズム (usePDCA)**
+```typescript
+setCurrentPDCA(null); // リセット
+setTimeout(() => {
+  setCurrentPDCA(updatedPDCA); // 新データ設定
+}, 0);
+```
+
+**2. コールバック関数パターン (PDCAInputModal)**
+```typescript
+interface PDCAInputModalProps {
+  onSuccess?: () => void; // 成功時コールバック
+}
+```
+
+**3. 非同期処理同期 (PDCAInputModal)**
+```typescript
+setTimeout(() => {
+  onClose(); // モーダル閉じる遅延
+}, 100);
+```
+
+**4. データ再取得 (MyPage)**
+```typescript
+const handlePDCASuccess = async () => {
+  await fetchPDCA(); // 強制データ再取得
+  setForceUpdate(prev => prev + 1); // 強制再描画
+};
+```
+
+**改善されたデータフロー**:
+1. ユーザー入力 → バリデーション
+2. Firestore更新 → 強制再描画
+3. コールバック実行 → データ再取得
+4. 状態更新 → UI反映
+
+**デバッグ機能**:
+- 各段階でのコンソールログ出力
+- 状態変更の追跡
+- エラーハンドリングの強化
+end note
+'/
+@enduml

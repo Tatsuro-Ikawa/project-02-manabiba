@@ -1,0 +1,140 @@
+@startuml
+title PDCAデータ入力処理の詳細フロー
+
+actor User as U
+participant "MyPage" as MP
+participant "PDCAInputModal" as PIM
+participant "usePDCA Hook" as UPH
+participant "Firestore" as FS
+participant "AuthContext" as AC
+
+== 入力ボタン押下 ==
+U -> MP: PDCA入力ボタン押下
+activate MP
+MP -> MP: handlePDCAInput(type)
+MP -> MP: setPdcaType(type)
+MP -> MP: setShowPDCAModal(true)
+MP -> PIM: モーダル表示
+activate PIM
+
+== モーダル入力画面表示 ==
+PIM -> PIM: useEffectでcurrentValue設定
+PIM -> PIM: setValue(currentValue)
+PIM -> U: 入力フォーム表示
+
+== データ入力 ==
+U -> PIM: テキスト入力
+PIM -> PIM: setValue(newValue)
+PIM -> U: リアルタイム表示更新
+
+== 保存処理 ==
+U -> PIM: 保存ボタン押下
+activate PIM
+PIM -> PIM: handleSubmit(e)
+PIM -> PIM: バリデーション実行
+
+alt バリデーション成功
+    PIM -> PIM: setError(null)
+    PIM -> UPH: updatePDCA(type, value)
+    activate UPH
+    
+    UPH -> UPH: バリデーション
+    UPH -> UPH: setError(null)
+    UPH -> UPH: setLoading(true)
+    
+    UPH -> FS: updatePDCAItem(uid, date, item, value)
+    activate FS
+    FS -> FS: getPDCAEntry(uid, date)
+    alt エントリが存在
+        FS -> FS: updatePDCAEntry(id, updates)
+    else エントリが存在しない
+        FS -> FS: createPDCAEntry(newEntry)
+    end
+    FS -> UPH: 更新完了
+    deactivate FS
+    
+    UPH -> FS: getPDCAEntry(uid, date)
+    activate FS
+    FS -> UPH: updatedPDCA
+    deactivate FS
+    
+    note right of UPH: [2025-08-15] 課題解決: 強制再描画
+    UPH -> UPH: setCurrentPDCA(null)
+    UPH -> UPH: setTimeout(() => setCurrentPDCA(updatedPDCA))
+    
+    UPH -> FS: getUserPDCAEntries(uid)
+    activate FS
+    FS -> UPH: updatedEntries
+    deactivate FS
+    
+    UPH -> UPH: setAllEntries(updatedEntries)
+    UPH -> UPH: setLoading(false)
+    UPH -> PIM: 更新完了
+    deactivate UPH
+    
+    note right of PIM: [2025-08-15] 課題解決: コールバック実行
+    PIM -> PIM: onSuccess() コールバック実行
+    
+    note right of PIM: [2025-08-15] 課題解決: 非同期処理待ち
+    PIM -> PIM: setTimeout(100ms)でモーダル閉じる遅延
+    PIM -> PIM: onClose()
+    PIM -> MP: モーダル閉じる
+    deactivate PIM
+    
+    MP -> MP: setShowPDCAModal(false)
+    
+    note right of MP: [2025-08-15] 課題解決: 強制データ再取得
+    MP -> MP: handlePDCASuccess()実行
+    MP -> UPH: fetchPDCA()呼び出し
+    activate UPH
+    UPH -> FS: getPDCAEntry(uid, date)
+    FS -> UPH: 最新PDCAデータ
+    UPH -> UPH: setCurrentPDCA(最新データ)
+    UPH -> MP: データ更新完了
+    deactivate UPH
+    MP -> MP: setForceUpdate()で強制再描画
+    
+    MP -> U: 更新されたPDCA表示
+    
+else バリデーション失敗
+    PIM -> PIM: setError('内容を入力してください')
+    PIM -> U: エラーメッセージ表示
+    deactivate PIM
+end
+
+== 表示更新 ==
+MP -> UPH: currentPDCA取得
+activate UPH
+UPH -> MP: 最新のPDCAデータ
+deactivate UPH
+MP -> U: 更新されたUI表示
+
+== モーダル切替 ==
+MP -> PIM: モーダル非表示
+deactivate PIM
+deactivate MP
+
+note over U, AC
+**修正履歴 (2025-08-15)**
+
+**課題**: PDCAデータ入力後、モーダルを閉じても表示が更新されない
+
+**技術的詳細**:
+1. **React状態更新問題**: setCurrentPDCA()が再描画をトリガーしない
+2. **非同期処理タイミング**: Firestore更新完了前にモーダルが閉じられる
+3. **コンポーネント間通信**: 子→親への状態変更通知が不完全
+
+**解決策**:
+1. **強制再描画メカニズム**: nullリセット → setTimeout → 新データ設定
+2. **コールバック関数パターン**: onSuccessプロパティによる親通知
+3. **非同期処理同期**: setTimeoutによるモーダル閉じる遅延
+4. **データ再取得**: handlePDCASuccessでのfetchPDCA()実行
+5. **デバッグ機能**: 各段階でのコンソールログ出力
+
+**影響範囲**:
+- usePDCAフック: 状態管理ロジック改善
+- PDCAInputModal: コールバック機能追加
+- MyPage: 強制更新機能実装
+end note
+
+@enduml

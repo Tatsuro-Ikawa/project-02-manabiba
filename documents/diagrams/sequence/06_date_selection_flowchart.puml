@@ -1,0 +1,119 @@
+@startuml
+title 日付選択機能のフローチャート
+
+start
+
+:マイページアクセス;
+
+:日付選択UI表示;
+:カレンダー表示;
+
+:初期データ取得;
+:getUserPDCAEntries(uid);
+
+:今日の日付でPDCA表示;
+note right: 日本時間（JST）で今日の日付を取得
+
+:ユーザーの日付選択アクション;
+
+if (日付ピッカー操作?) then (yes)
+  :handleDateSelect(date);
+  :selectDate(date);
+  :formatDateToJST(date);
+  :setSelectedDate(date);
+  :getPDCAEntry(uid, date);
+  
+  if (エントリが存在?) then (yes)
+    :既存のPDCAデータ表示;
+  else (no)
+    :新規日付のPDCA表示（空の状態）;
+  endif
+  
+elseif (カレンダー日付クリック?) then (yes)
+  :handleDateClick(date);
+  :selectDate(date);
+  :formatDateToJST(date);
+  :setSelectedDate(date);
+  :getPDCAEntry(uid, date);
+  
+  if (エントリが存在?) then (yes)
+    :既存のPDCAデータ表示;
+  else (no)
+    :新規日付のPDCA表示（空の状態）;
+  endif
+  
+elseif (今日ボタンクリック?) then (yes)
+  :handleTodayClick();
+  :goToToday();
+  :getTodayJST();
+  :setSelectedDate(today);
+  :getPDCAEntry(uid, today);
+  
+  if (エントリが存在?) then (yes)
+    :今日のPDCAデータ表示;
+  else (no)
+    :今日のPDCA表示（空の状態）;
+  endif
+  
+elseif (カレンダー月間ナビゲーション?) then (yes)
+  :navigateMonth(direction);
+  :setCurrentMonth(newMonth);
+  :getUserPDCAEntries(uid);
+  :カレンダー表示更新;
+  note right: 日本時間でエントリ存在を判定
+  
+elseif (PDCA入力完了?) then (yes)
+  :updatePDCA(type, value);
+  :updatePDCAItem(uid, date, item, value);
+  :getUserPDCAEntries(uid);
+  :カレンダー表示更新;
+  note right: 日本時間でエントリ存在を判定
+  :更新されたPDCA表示;
+  
+else (no)
+  :その他のアクション;
+endif
+
+if (新しい日付選択?) then (yes)
+  :選択日のPDCAデータ表示;
+  note right: 既存データがあれば表示\nなければ空の状態で表示
+else (no)
+  :現在の表示を維持;
+endif
+
+if (ユーザーがページを離れる?) then (yes)
+  stop
+else (no)
+  :ユーザーの日付選択アクション;
+endif
+
+/'
+note over start, stop
+**新規追加機能 (2025-08-15)**
+
+**日付選択の3つの方法**:
+1. **日付ピッカー**: 直接的な日付入力
+2. **カレンダー**: 視覚的な日付選択
+3. **今日ボタン**: 素早い今日へのアクセス
+
+**データ表示の2つのパターン**:
+1. **既存データ**: 該当日にPDCAエントリが存在
+2. **新規データ**: 該当日にPDCAエントリが存在しない
+
+**リアルタイム更新**:
+- PDCA入力後のカレンダー表示更新
+- エントリ存在の視覚的フィードバック
+- 日付変更時の即座データ取得
+
+**日本時間対応 (2025-08-16)**:
+- **formatDateToJST()**: 日付を日本時間のYYYY-MM-DD形式に変換
+- **getTodayJST()**: 今日の日付を日本時間で取得
+- **isTodayJST()**: 日付が今日かどうかを日本時間で判定
+- **formatDateToJapanese()**: 日付を日本語形式で表示
+- **getMonthNameJST()**: 月名を日本語で取得
+- **UTC時間問題の解決**: toISOString()による9時間のずれを修正
+- **一貫性の確保**: すべての日付処理で日本時間を使用
+end note
+'/
+
+@enduml

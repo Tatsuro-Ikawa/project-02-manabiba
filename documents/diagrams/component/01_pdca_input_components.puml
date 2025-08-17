@@ -1,0 +1,144 @@
+@startuml
+title PDCAデータ入力処理のコンポーネント図
+
+package "Frontend Components" {
+  
+  component "MyPage" as MP {
+    [handlePDCAInput]
+    [getCurrentValue]
+    [showPDCAModal state]
+    [pdcaType state]
+    [handlePDCASuccess] <<2025-08-15追加>>
+    [forceUpdate state] <<2025-08-15追加>>
+  }
+  
+  component "PDCAInputModal" as PIM {
+    [handleSubmit]
+    [handleClose]
+    [value state]
+    [error state]
+    [isSubmitting state]
+    [onSuccess callback] <<2025-08-15追加>>
+  }
+  
+  component "AuthGuard" as AG {
+    [認証チェック]
+    [リダイレクト処理]
+  }
+  
+  component "CreatePageModal" as CPM {
+    [プロフィール作成]
+  }
+}
+
+package "Custom Hooks" {
+  
+  component "usePDCA" as UPH {
+    [updatePDCA]
+    [currentPDCA state]
+    [selectedDate state]
+    [loading state]
+    [error state]
+    [getInputStatus]
+    [fetchPDCA] <<2025-08-15追加>>
+    [強制再描画ロジック] <<2025-08-15追加>>
+  }
+  
+  component "useAuth" as UA {
+    [user state]
+    [signOut]
+  }
+  
+  component "useUserProfile" as UUP {
+    [profile state]
+    [createProfile]
+  }
+}
+
+package "Firebase Services" {
+  
+  component "Firestore" as FS {
+    [updatePDCAItem]
+    [getPDCAEntry]
+    [getUserPDCAEntries]
+    [createPDCAEntry]
+    [updatePDCAEntry]
+  }
+  
+  component "Authentication" as AUTH {
+    [Google Sign-In]
+    [Sign Out]
+  }
+}
+
+package "Data Models" {
+  
+  component "PDCAData" as PD {
+    [uid管理]
+    [date管理]
+    [plan管理]
+    [do管理]
+    [check管理]
+    [action管理]
+    [createdAt管理]
+    [updatedAt管理]
+  }
+  
+  component "UserProfile" as UP {
+    [uid管理]
+    [nickname管理]
+    [bio管理]
+    [location管理]
+    [profileCreatedAt管理]
+    [profileUpdatedAt管理]
+  }
+}
+
+' 関係性の定義
+MP --> PIM : モーダル表示/非表示
+MP --> UPH : PDCAデータ取得/更新
+MP --> UA : 認証状態取得
+MP --> UUP : プロフィール情報取得
+MP --> AG : 認証保護
+MP --> CPM : プロフィール作成
+
+PIM --> UPH : updatePDCA呼び出し
+PIM --> MP : onClose/onSuccessコールバック <<2025-08-15改善>>
+
+UPH --> FS : Firestore操作
+UA --> AUTH : 認証操作
+UUP --> FS : プロフィール操作
+
+FS --> PD : PDCAData操作
+FS --> UP : UserProfile操作
+
+' データフロー
+note right of MP : ユーザーインターフェース\n状態管理
+note right of UPH : ビジネスロジック\nデータ操作
+note right of FS : データ永続化\nFirebase操作
+
+/'note over MP, FS
+**修正履歴 (2025-08-15)**
+
+**課題**: PDCAデータ入力後の表示更新問題
+
+**追加された機能**:
+1. **MyPage**: handlePDCASuccess() - 更新完了時の処理
+2. **MyPage**: forceUpdate状態 - 強制再描画用
+3. **PDCAInputModal**: onSuccessコールバック - 親コンポーネント通知
+4. **usePDCA**: fetchPDCA() - データ再取得関数
+5. **usePDCA**: 強制再描画ロジック - 状態更新の確実性向上
+
+**改善された関係性**:
+- PIM → MP: onSuccessコールバックによる確実な状態同期
+- MP → UPH: fetchPDCA()による強制データ再取得
+- UPH内部: 強制再描画メカニズムによる状態更新の確実性
+
+**技術的改善点**:
+- 非同期処理の完了待ち
+- React状態更新の強制トリガー
+- コンポーネント間通信の強化
+- デバッグ機能の追加
+end note
+'/
+@enduml

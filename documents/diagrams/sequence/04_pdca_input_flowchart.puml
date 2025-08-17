@@ -1,0 +1,112 @@
+@startuml
+title PDCAデータ入力処理のフローチャート
+
+start
+
+:ユーザーがPDCA入力ボタンを押下;
+
+:MyPage.handlePDCAInput(type)実行;
+
+:pdcaType設定;
+:showPDCAModal = true;
+
+:PDCAInputModal表示;
+
+:useEffectでcurrentValue設定;
+:setValue(currentValue);
+
+:ユーザーがテキスト入力;
+
+:リアルタイムでvalue更新;
+
+:保存ボタン押下;
+
+:handleSubmit実行;
+
+if (value.trim()が空?) then (yes)
+  :エラーメッセージ表示;
+  :「内容を入力してください」;
+  stop
+else (no)
+  :setError(null);
+  :updatePDCA(type, value)呼び出し;
+  
+  :usePDCA.updatePDCA実行;
+  
+  if (user && selectedDate存在?) then (no)
+    :エラー: 「ユーザーまたは日付が設定されていません」;
+    stop
+  else (yes)
+    :setError(null);
+    :setLoading(true);
+    
+    :updatePDCAItem(uid, date, item, value)実行;
+    
+    :FirestoreでPDCAエントリ取得;
+    
+    if (エントリが存在?) then (yes)
+      :既存エントリを更新;
+      :updatePDCAEntry(id, updates);
+    else (no)
+      :新規エントリを作成;
+      :createPDCAEntry(newEntry);
+    endif
+    
+    :getPDCAEntry(uid, date)で最新データ取得;
+    
+    note right: [2025-08-15] 課題解決: 状態更新の強制再描画
+    :setCurrentPDCA(null)でリセット;
+    :setTimeout(() => setCurrentPDCA(updatedPDCA));
+    
+    :getUserPDCAEntries(uid)で全エントリ取得;
+    :setAllEntries(updatedEntries);
+    
+    :setLoading(false);
+    
+    note right: [2025-08-15] 課題解決: コールバック関数による状態同期
+    :onSuccess()コールバック実行;
+    
+    note right: [2025-08-15] 課題解決: 非同期処理の完了待ち
+    :setTimeout(100ms)でモーダル閉じる遅延;
+    
+    :onClose()実行;
+    :モーダルを閉じる;
+    
+    :MyPageでsetShowPDCAModal(false);
+    
+    note right: [2025-08-15] 課題解決: 強制データ再取得
+    :handlePDCASuccess()でfetchPDCA()実行;
+    :setForceUpdate()で強制再描画;
+    
+    :更新されたPDCA表示;
+    
+    note right: ユーザーに最新の\nPDCAデータが表示される
+    
+    stop
+  
+  endif
+endif
+
+/'**修正履歴 (2025-08-15)**
+
+**課題**: PDCAデータ入力後、モーダルを閉じても表示が更新されない
+
+**原因分析**:
+1. Reactの状態更新が再描画をトリガーしていない
+2. 非同期処理の完了前にモーダルが閉じられる
+3. コンポーネント間の状態同期が不完全
+
+**解決策**:
+1. **強制再描画**: setCurrentPDCA(null) → setTimeout → setCurrentPDCA(updatedPDCA)
+2. **コールバック関数**: onSuccessプロパティで親コンポーネントに通知
+3. **非同期処理待ち**: setTimeoutでモーダル閉じるタイミングを調整
+4. **データ再取得**: handlePDCASuccessでfetchPDCA()を実行
+5. **デバッグログ**: 各段階でコンソールログを追加
+
+**修正ファイル**:
+- src/hooks/usePDCA.ts: 状態更新ロジック改善
+- src/components/PDCAInputModal.tsx: コールバック機能追加
+- src/app/mypage/page.tsx: 強制更新機能追加
+'/
+
+@enduml

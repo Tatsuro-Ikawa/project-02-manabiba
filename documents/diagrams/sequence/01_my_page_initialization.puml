@@ -1,0 +1,66 @@
+@startuml
+title マイページ初期化からマイページ作成までのシーケンス図
+
+actor User as U
+participant "MyPage" as MP
+participant "AuthGuard" as AG
+participant "useUserProfile" as UP
+participant "useAuth" as UA
+participant "Firestore" as FS
+participant "CreatePageModal" as CPM
+participant "usePDCA" as PDCA
+
+== 初期化フェーズ ==
+U -> MP: マイページアクセス
+MP -> AG: 認証チェック
+AG -> UA: ユーザー情報取得
+UA -> AG: ユーザー情報返却
+
+alt 未認証の場合
+    AG -> MP: ホームページにリダイレクト
+    MP -> U: ホームページ表示
+else 認証済みの場合
+    AG -> MP: 認証OK
+    MP -> UP: プロフィール情報取得
+    UP -> FS: getUserProfile(uid)
+    FS -> UP: プロフィール情報返却
+    
+    alt プロフィールが存在しない場合
+        UP -> MP: プロフィールなし
+        MP -> U: マイページ作成画面表示
+        U -> MP: 「マイページを作成」ボタン押下
+        MP -> CPM: モーダル表示
+        U -> CPM: プロフィール情報入力
+        U -> CPM: 「作成する」ボタン押下
+        
+        == プロフィール作成フェーズ ==
+        CPM -> UP: createProfile(profileData)
+        UP -> FS: createUserProfile(profileData)
+        FS -> UP: 作成完了
+        UP -> CPM: 作成完了通知
+        CPM -> MP: onSuccess()呼び出し
+        MP -> U: ローディング画面表示（「マイページを作成中...」）
+        
+        == 完了フェーズ ==
+        MP -> U: 完了画面表示（「マイページの作成が完了しました！」）
+        U -> MP: 「マイページを表示」ボタン押下
+        MP -> U: ページ再読み込み
+        MP -> UP: プロフィール情報再取得
+        UP -> FS: getUserProfile(uid)
+        FS -> UP: プロフィール情報返却
+        UP -> MP: プロフィール存在確認
+        MP -> PDCA: PDCA情報初期化
+        PDCA -> FS: getPDCAEntry(uid, date)
+        FS -> PDCA: PDCA情報返却
+        MP -> U: マイページ表示（ユーザー情報 + PDCA日記）
+        
+    else プロフィールが存在する場合
+        UP -> MP: プロフィール存在
+        MP -> PDCA: PDCA情報初期化
+        PDCA -> FS: getPDCAEntry(uid, date)
+        FS -> PDCA: PDCA情報返却
+        MP -> U: マイページ表示（ユーザー情報 + PDCA日記）
+    end
+end
+
+@enduml
