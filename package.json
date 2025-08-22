@@ -9,7 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/crypto-js": "^4.2.2",
     "@types/react-router-dom": "^5.3.3",
+    "crypto-js": "^4.2.0",
     "firebase": "^12.0.0",
     "next": "15.4.5",
     "react": "19.1.0",
@@ -19,12 +21,15 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.4.5",
+    "jest": "^30.0.5",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.1",
     "typescript": "^5"
   }
 }

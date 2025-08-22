@@ -10,6 +10,11 @@ import { CreatePageModal } from '@/components/CreatePageModal';
 import { PDCAInputModal } from '@/components/PDCAInputModal';
 import { DateSelector } from '@/components/DateSelector';
 import { Calendar } from '@/components/Calendar';
+import { GoalManager } from '@/components/GoalManager';
+import { AIAnalysisPanel } from '@/components/AIAnalysisPanel';
+import { SubscriptionManager } from '@/components/SubscriptionManager';
+import { AuthSystemTest } from '@/components/AuthSystemTest';
+import { SubscriptionPlan } from '@/types/auth';
 
 export default function MyPage() {
   const { user, signOut } = useAuth();
@@ -97,6 +102,11 @@ export default function MyPage() {
     setProfileCreated(false);
     // 強制的に再描画を促す
     window.location.reload();
+  };
+
+  const handlePlanChange = (newPlan: SubscriptionPlan) => {
+    console.log(`プランが${newPlan}に変更されました`);
+    // TODO: 実際のプラン変更処理を実装
   };
 
   // プロフィール作成開始から一定時間後にローディング状態を解除
@@ -196,6 +206,18 @@ export default function MyPage() {
                   {profile?.bio && <p><span className="font-medium">自己紹介:</span> {profile.bio}</p>}
                   {profile?.location && <p><span className="font-medium">所在地:</span> {profile.location}</p>}
                 </div>
+              </div>
+
+              {/* Phase 0-4: サブスクリプション管理 */}
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">サブスクリプション管理</h2>
+                <SubscriptionManager onPlanChange={handlePlanChange} />
+              </div>
+
+              {/* Phase 0-4: 認証システム拡張テスト */}
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">認証システム拡張テスト</h2>
+                <AuthSystemTest />
               </div>
 
               {/* カレンダー */}
@@ -318,6 +340,21 @@ export default function MyPage() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Phase 0-3: コーチング機能 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* 目標管理 */}
+                <GoalManager onGoalUpdate={() => {
+                  // 目標更新時の処理
+                  console.log('目標が更新されました');
+                }} />
+
+                {/* AI分析 */}
+                <AIAnalysisPanel onAnalysisComplete={() => {
+                  // 分析完了時の処理
+                  console.log('AI分析が完了しました');
+                }} />
               </div>
             </>
           )}

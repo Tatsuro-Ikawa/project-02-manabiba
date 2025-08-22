@@ -1,0 +1,28 @@
+@startuml
+class User {
+  +id: Integer
+  +name: String
+  +login(): boolean
+}
+
+interface AuthService {
+  +authenticate(u: User): boolean
+}
+
+class Session {
+  +token: String
+}
+
+class OAuthService {
+  +issueToken(u: User): Session
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+User --> Session
+User ..> AuthService
+AuthService <|-- OAuthService
+@enduml
