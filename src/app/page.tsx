@@ -3,20 +3,19 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import LandingPage from '@/components/LandingPage';
+import '@/styles/landing.css';
 
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
+  // ログイン済みユーザーはマイページにリダイレクト
   useEffect(() => {
     if (!loading && user) {
       router.push('/mypage');
     }
   }, [user, loading, router]);
-
-  const handleLoginClick = () => {
-    router.push('/login');
-  };
 
   if (loading) {
     return (
@@ -26,23 +25,6 @@ export default function Home() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-      <div className="text-center p-8">
-        <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-8">
-          人生学び場
-        </h1>
-        <h2 className="text-3xl md:text-5xl font-bold text-indigo-600 mb-12">
-          こころ道場
-        </h2>
-        
-        <button
-          onClick={handleLoginClick}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-4 px-8 rounded-lg text-lg transition-colors duration-200 shadow-lg hover:shadow-xl"
-        >
-          ログイン
-        </button>
-      </div>
-    </div>
-  );
+  // 未ログインユーザーにはランディングページを表示
+  return <LandingPage />;
 }

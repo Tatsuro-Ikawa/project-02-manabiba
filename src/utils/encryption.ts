@@ -144,3 +144,35 @@ export const validateEncryptedData = (data: any): data is EncryptedData => {
     data.createdAt instanceof Date
   );
 };
+
+// 自己理解機能用の簡単な暗号化関数
+export const encrypt = async (content: string, userId: string): Promise<string> => {
+  try {
+    // ユーザーIDをキーとして使用（実際の運用ではより安全なキー管理が必要）
+    const key = CryptoJS.SHA256(userId).toString();
+    const encrypted = CryptoJS.AES.encrypt(content, key).toString();
+    return encrypted;
+  } catch (error) {
+    console.error('暗号化エラー:', error);
+    throw new Error('暗号化に失敗しました');
+  }
+};
+
+// 自己理解機能用の簡単な復号化関数
+export const decrypt = async (encryptedContent: string, userId: string): Promise<string> => {
+  try {
+    // ユーザーIDをキーとして使用（実際の運用ではより安全なキー管理が必要）
+    const key = CryptoJS.SHA256(userId).toString();
+    const decrypted = CryptoJS.AES.decrypt(encryptedContent, key);
+    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+    
+    if (!decryptedString) {
+      throw new Error('復号化されたデータが空です');
+    }
+    
+    return decryptedString;
+  } catch (error) {
+    console.error('復号化エラー:', error);
+    throw new Error('復号化に失敗しました');
+  }
+};

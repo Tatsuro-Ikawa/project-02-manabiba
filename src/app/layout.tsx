@@ -1,22 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "人生学び場 こころ道場",
-  description: "Firebase認証を使用したWebアプリケーション",
+  description: "AI×セルフマネジメント×伴走コーチングで、「なりたい自分」へ確実に歩むための場",
 };
 
 export default function RootLayout({
@@ -26,9 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={inter.className}>
         <AuthProvider>
           <SubscriptionProvider>
             {children}
