@@ -29,7 +29,7 @@ export interface SelfUnderstandingEntry {
 }
 
 // セクションタイプ
-export type SelfUnderstandingSection = 'aspirations' | 'values' | 'strengths' | 'weaknesses' | 'resource';
+export type SelfUnderstandingSection = 'aspirations' | 'problems' | 'values' | 'resource';
 
 // 自己理解データの全体構造
 export interface SelfUnderstandingData {
@@ -37,9 +37,8 @@ export interface SelfUnderstandingData {
   type: 'self-understanding';
   entries: {
     aspirations: SelfUnderstandingEntry[];
+    problems: SelfUnderstandingEntry[];
     values: SelfUnderstandingEntry[];
-    strengths: SelfUnderstandingEntry[];
-    weaknesses: SelfUnderstandingEntry[];
     resource: SelfUnderstandingEntry[];
   };
   lastUpdated: Date;
@@ -61,9 +60,8 @@ export interface SelfUnderstandingDataFirestore {
   type: 'self-understanding';
   entries: {
     aspirations: SelfUnderstandingEntryFirestore[];
+    problems: SelfUnderstandingEntryFirestore[];
     values: SelfUnderstandingEntryFirestore[];
-    strengths: SelfUnderstandingEntryFirestore[];
-    weaknesses: SelfUnderstandingEntryFirestore[];
     resource: SelfUnderstandingEntryFirestore[];
   };
   lastUpdated: any; // Firestore Timestamp

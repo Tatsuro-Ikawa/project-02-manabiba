@@ -322,7 +322,7 @@ const TailwindUIExamples: React.FC = () => {
                 <BarChart3 className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Tailwind CSS UI 事例</h1>
+                <h1 className="text-xl font-bold text-gray-900">Tailwind CSS UI 事例</h1>
                 <p className="text-gray-600">アイコン、テーブル、リストの実装例</p>
               </div>
             </div>

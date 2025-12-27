@@ -5,6 +5,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePDCA } from '@/hooks/usePDCA';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, Suspense } from 'react';
+import { ID_ATTRIBUTES, HIERARCHY_ATTRIBUTES, COMPONENT_ATTRIBUTES, RESPONSIVE_ATTRIBUTES, LAYOUT_ATTRIBUTES, createDataAttributes } from '@/constants/DataAttributesRegulation';
 import { AuthGuard } from '@/components/AuthGuard';
 import { CreatePageModal } from '@/components/CreatePageModal';
 import { PDCAInputModal } from '@/components/PDCAInputModal';
@@ -17,6 +18,13 @@ import { AuthSystemTest } from '@/components/AuthSystemTest';
 import SelfUnderstanding from '@/components/SelfUnderstanding';
 import GoalSetting from '@/components/GoalSetting';
 import PDCAExtension from '@/components/PDCAExtension';
+import Header from '@/components/Header';
+import Home from '@/components/Home';
+import Sidebar from '@/components/Sidebar';
+import RightSidebar from '@/components/RightSidebar';
+import VideoZoomToggle from '@/components/VideoZoomToggle';
+import SupportSlideBar from '@/components/SupportSlideBar';
+import { useProgress } from '@/hooks/useProgress';
 import { SubscriptionPlan } from '@/types/auth';
 
 function MyPageContent() {
@@ -41,15 +49,46 @@ function MyPageContent() {
   const [isCreating, setIsCreating] = useState(false);
   const [profileCreated, setProfileCreated] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'self-understanding' | 'goals' | 'pdca-analysis' | 'reflection'>('self-understanding');
+  const [activeTab, setActiveTab] = useState<'home' | 'dashboard' | 'self-understanding' | 'goals' | 'pdca-analysis' | 'reflection' | 'list-up' | 'theme-selection'>('home');
+  const [selectedCourse, setSelectedCourse] = useState<string>('');
+  const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(false);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState<boolean>(false);
+  const [currentStep, setCurrentStep] = useState<'list-up' | 'theme-selection'>('list-up');
+  const [videoZoomOpen, setVideoZoomOpen] = useState<boolean>(false);
+  const [supportSlideBarOpen, setSupportSlideBarOpen] = useState<boolean>(false);
+  
+  // 進捗状況の取得
+  const { progress, loading: progressLoading } = useProgress();
 
   // URLパラメータからタブを設定
   useEffect(() => {
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['dashboard', 'self-understanding', 'goals', 'pdca-analysis', 'reflection'].includes(tabParam)) {
+    if (tabParam && ['home', 'dashboard', 'self-understanding', 'goals', 'pdca-analysis', 'reflection', 'list-up', 'theme-selection'].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [searchParams]);
+
+  // 進捗状況に基づく初期化
+  useEffect(() => {
+    if (!progressLoading && progress.selectedCourse) {
+      setSelectedCourse(progress.selectedCourse);
+      
+      // 進捗に応じて適切なタブに遷移
+      if (progress.currentStep === 'theme-selection') {
+        setActiveTab('theme-selection');
+        setCurrentStep('theme-selection');
+      } else if (progress.start) {
+        setActiveTab('list-up');
+        setCurrentStep('list-up');
+      } else if (progress.goals) {
+        setActiveTab('goals');
+      } else if (progress.plan) {
+        setActiveTab('pdca-analysis');
+      } else if (progress.reflection) {
+        setActiveTab('reflection');
+      }
+    }
+  }, [progress, progressLoading]);
 
   const handleSignOut = async () => {
     try {
@@ -59,6 +98,24 @@ function MyPageContent() {
       console.error('ログアウトエラー:', error);
       alert('ログアウトに失敗しました。');
     }
+  };
+
+  const handleToggleSidebar = () => {
+    setSidebarExpanded(prev => !prev);
+  };
+
+  const handleToggleRightSidebar = () => {
+    // スマホ（～md）: SupportSlideBarを使用
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSupportSlideBarOpen(prev => !prev);
+    } else {
+      // タブレット以上: RightSidebarを使用
+      setRightSidebarOpen(prev => !prev);
+    }
+  };
+
+  const handleToggleVideoZoom = () => {
+    setVideoZoomOpen(prev => !prev);
   };
 
   const handleBackToHome = () => {
@@ -139,6 +196,7 @@ function MyPageContent() {
   }, [currentPDCA]);
 
   const tabs = [
+    { id: 'home', label: 'ホーム', icon: '🏠' },
     { id: 'dashboard', label: 'ダッシュボード', icon: '📊' },
     { id: 'self-understanding', label: '自分を知る', icon: '🧠' },
     { id: 'goals', label: '目標を定める', icon: '🎯' },
@@ -146,92 +204,179 @@ function MyPageContent() {
     { id: 'reflection', label: '振り返る', icon: '🔄' }
   ];
 
+  const handleCourseSelect = (course: string) => {
+    setSelectedCourse(course);
+    if (course === 'aspiration' || course === 'problem-solving') {
+      setActiveTab('list-up');
+    } else {
+      setActiveTab('dashboard');
+    }
+  };
+
+  const getCourseDisplayName = (course: string) => {
+    switch (course) {
+      case 'self-understanding':
+        return '自分を深く知りたい';
+      case 'aspiration':
+        return '願いを実現したい';
+      case 'problem-solving':
+        return '課題を解決したい';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* ヘッダー */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">自己理解・目標達成ツール</h1>
-            <button
-              onClick={handleSignOut}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
-            >
-              ログアウト
-            </button>
-          </div>
-        </div>
-      </div>
+      <Header 
+        onSignOut={handleSignOut} 
+        selectedCourse={getCourseDisplayName(selectedCourse)} 
+        onToggleSidebar={handleToggleSidebar}
+        onToggleRightSidebar={handleToggleRightSidebar}
+        onToggleVideoZoom={handleToggleVideoZoom}
+        user={user}
+      />
 
-      {/* メインコンテンツ */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {profileLoading ? (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <div className="text-center">読み込み中...</div>
-          </div>
-        ) : isCreating ? (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-              <h2 className="text-xl font-semibold mb-2">マイページを作成中...</h2>
-              <p className="text-gray-600">しばらくお待ちください</p>
+      {/* メインレイアウト（ヘッダー固定のため pt-[45px]） */}
+      <div className="flex pt-[45px]">
+        {/* 左サイドバー（タブレット以上で常時表示） */}
+        <div className="hidden md:block">
+          <Sidebar 
+            activeTab={activeTab} 
+            onTabChange={(tab) => {
+              setActiveTab(tab as any);
+              // サブメニューのクリック処理
+              if (tab === 'list-up') {
+                setCurrentStep('list-up');
+              } else if (tab === 'theme-selection') {
+                setCurrentStep('theme-selection');
+              }
+            }}
+            selectedCourse={selectedCourse}
+            expanded={false}
+            onClose={() => setSidebarExpanded(false)}
+          />
+        </div>
+
+        {/* スマホ用ハンバーガーメニュー */}
+        {sidebarExpanded && (
+          <Sidebar 
+            activeTab={activeTab} 
+            onTabChange={(tab) => {
+              setActiveTab(tab as any);
+              if (tab === 'list-up') {
+                setCurrentStep('list-up');
+              } else if (tab === 'theme-selection') {
+                setCurrentStep('theme-selection');
+              }
+              setSidebarExpanded(false);
+            }}
+            selectedCourse={selectedCourse}
+            expanded={true}
+            onClose={() => setSidebarExpanded(false)}
+          />
+        )}
+
+        {/* 動画/Zoomエリア（スマホ/タブレットのみ） */}
+        <div className="lg:hidden">
+          <VideoZoomToggle
+            isOpen={videoZoomOpen}
+            onClose={() => setVideoZoomOpen(false)}
+            layout="work-area"
+          />
+        </div>
+
+        {/* メインコンテンツ */}
+        <div 
+          {...createDataAttributes({
+            'data-id': ID_ATTRIBUTES.MAIN_CONTENT_WRAPPER,
+            'data-hierarchy': HIERARCHY_ATTRIBUTES.APP_WORKSPACE,
+            'data-component': 'main-content-wrapper',
+            'data-responsive': RESPONSIVE_ATTRIBUTES.ALL_DEVICES,
+            'data-layout': LAYOUT_ATTRIBUTES.FLEX_CONTAINER
+          })}
+          className={`flex-1 p-3 md:p-6 md:ml-20 transition-all duration-300 mx-auto w-full ${
+            rightSidebarOpen 
+              ? 'lg:mr-80 xl:mr-80' 
+              : videoZoomOpen 
+                ? 'lg:mr-80 xl:mr-80'
+                : ''
+          } ${videoZoomOpen ? 'pt-[80px] md:pt-[125px] lg:pt-6' : ''}`} 
+          style={{ maxWidth: '900px' }}
+        >
+          {profileLoading ? (
+            <div className="bg-white rounded-lg shadow-lg p-3 mb-3">
+              <div className="text-center">読み込み中...</div>
             </div>
-          </div>
-        ) : profileCreated ? (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <div className="text-center">
-              <div className="text-green-600 text-6xl mb-4">✓</div>
-              <h2 className="text-xl font-semibold mb-2">マイページの作成が完了しました！</h2>
-              <p className="text-gray-600 mb-4">マイページを表示してPDCA日記を始めましょう</p>
-              <button
-                onClick={handleShowMyPage}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
-              >
-                マイページを表示
-              </button>
-            </div>
-          </div>
-        ) : !profileExists ? (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-4">マイページが作成されていません</h2>
-              <p className="text-gray-600 mb-4">マイページを作成してPDCA日記を始めましょう</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
-              >
-                マイページを作成
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* タブナビゲーション */}
-            <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
-              <div className="flex flex-wrap gap-2">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => 
-                      setActiveTab(tab.id as any)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${
-                      activeTab === tab.id
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    {tab.label}
-                  </button>
-                ))}
+          ) : isCreating ? (
+            <div className="bg-white rounded-lg shadow-lg p-3 mb-3">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                <h2 className="text-xl font-semibold mb-2">マイページを作成中...</h2>
+                <p className="text-gray-600">しばらくお待ちください</p>
               </div>
             </div>
+          ) : profileCreated ? (
+            <div className="bg-white rounded-lg shadow-lg p-3 mb-3">
+              <div className="text-center">
+                <div className="text-green-600 text-6xl mb-4">✓</div>
+                <h2 className="text-xl font-semibold mb-2">マイページの作成が完了しました！</h2>
+                <p className="text-gray-600 mb-4">マイページを表示してPDCA日記を始めましょう</p>
+                <button
+                  onClick={handleShowMyPage}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  マイページを表示
+                </button>
+              </div>
+            </div>
+          ) : !profileExists ? (
+            <div className="bg-white rounded-lg shadow-lg p-3 mb-3">
+              <div className="text-center">
+                <h2 className="text-xl font-semibold mb-4">マイページが作成されていません</h2>
+                <p className="text-gray-600 mb-4">マイページを作成してPDCA日記を始めましょう</p>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+                >
+                  マイページを作成
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* タブナビゲーション（サイドバーがあるので非表示） */}
+              {/* <div className="bg-white rounded-lg shadow-lg p-4 mb-3">
+                <div className="flex flex-wrap gap-2">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => 
+                        setActiveTab(tab.id as any)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2 ${
+                        activeTab === tab.id
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div> */}
+
+            {/* ホーム */}
+            {activeTab === 'home' && (
+              <Home onCourseSelect={handleCourseSelect} />
+            )}
 
             {/* ダッシュボード */}
             {activeTab === 'dashboard' && (
               <>
                 {/* ユーザー情報 */}
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="bg-white rounded-lg shadow-lg p-3 mb-3">
                   <h2 className="text-xl font-semibold text-gray-800 mb-4">ユーザー情報</h2>
                   <div className="space-y-2">
                     <p><span className="font-medium">こんにちは、</span>{profile?.nickname}さん</p>
@@ -241,13 +386,13 @@ function MyPageContent() {
                 </div>
 
                 {/* サブスクリプション管理 */}
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="bg-white rounded-lg shadow-lg p-3 mb-3">
                   <h2 className="text-xl font-semibold text-gray-800 mb-4">サブスクリプション管理</h2>
                   <SubscriptionManager onPlanChange={handlePlanChange} />
                 </div>
 
                 {/* 認証システム拡張テスト */}
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="bg-white rounded-lg shadow-lg p-3 mb-3">
                   <h2 className="text-xl font-semibold text-gray-800 mb-4">認証システム拡張テスト</h2>
                   <AuthSystemTest />
                 </div>
@@ -267,8 +412,8 @@ function MyPageContent() {
                 />
 
                 {/* PDCA日記 */}
-                <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="bg-white rounded-lg shadow-lg p-3 mb-3">
+                  <div className="flex justify-between items-center mb-3">
                     <h2 className="text-xl font-semibold text-gray-800">PDCA日記</h2>
                   </div>
 
@@ -375,7 +520,7 @@ function MyPageContent() {
                 </div>
 
                 {/* コーチング機能 */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                   <GoalManager onGoalUpdate={() => {
                     console.log('目標が更新されました');
                   }} />
@@ -389,12 +534,53 @@ function MyPageContent() {
 
             {/* 自己理解 */}
             {activeTab === 'self-understanding' && (
-              <SelfUnderstanding />
+              <SelfUnderstanding 
+                currentStep={currentStep}
+                userType={selectedCourse === 'aspiration' ? 'aspiration' : 'problem'}
+                onThemeSelectionComplete={() => {
+                  console.log('テーマ選択完了 - 目標設定タブに遷移します');
+                  setActiveTab('goals');
+                }}
+              />
+            )}
+
+            {/* リストアップ */}
+            {activeTab === 'list-up' && (
+              <SelfUnderstanding 
+                currentStep="list-up"
+                userType={selectedCourse === 'aspiration' ? 'aspiration' : 'problem'}
+                onThemeSelectionComplete={() => {
+                  console.log('テーマ選択完了 - 目標設定タブに遷移します');
+                  setActiveTab('goals');
+                }}
+              />
+            )}
+
+            {/* テーマ選択 */}
+            {activeTab === 'theme-selection' && (
+              <SelfUnderstanding 
+                currentStep="theme-selection"
+                userType={selectedCourse === 'aspiration' ? 'aspiration' : 'problem'}
+                onThemeSelectionComplete={() => {
+                  console.log('テーマ選択完了 - 目標設定タブに遷移します');
+                  setActiveTab('goals');
+                }}
+              />
             )}
 
             {/* 目標設定 */}
             {activeTab === 'goals' && (
-              <GoalSetting />
+              <GoalSetting 
+                onBack={() => {
+                  console.log('目標設定から戻る - テーマ選択画面に遷移します');
+                  setActiveTab('theme-selection');
+                }}
+                onComplete={() => {
+                  console.log('目標設定完了 - 次のステップに進みます');
+                  // 必要に応じて次のタブに遷移（例：計画タブ）
+                  // setActiveTab('pdca-analysis');
+                }}
+              />
             )}
 
                          {/* PDCA分析 */}
@@ -410,36 +596,55 @@ function MyPageContent() {
                </div>
              )}
 
-            {/* アクションボタン */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">アクション</h2>
-              <div className="space-y-3">
-                <button
-                  onClick={handleBackToHome}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
-                >
-                  ホームに戻る
-                </button>
+              {/* アクションボタン */}
+              <div className="bg-white rounded-lg shadow-lg p-6">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">アクション</h2>
+                <div className="space-y-3">
+                  <button
+                    onClick={handleBackToHome}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200"
+                  >
+                    ホームに戻る
+                  </button>
+                </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
 
-        {/* モーダル */}
-        <CreatePageModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            handleCreateStart();
-          }}
+          {/* モーダル */}
+          <CreatePageModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={() => {
+              handleCreateStart();
+            }}
+          />
+
+          <PDCAInputModal
+            isOpen={showPDCAModal}
+            onClose={() => setShowPDCAModal(false)}
+            onSuccess={handlePDCASuccess}
+            type={pdcaType}
+            currentValue={getCurrentValue(pdcaType)}
+          />
+        </div>
+
+        {/* 右サイドバー（タブレット以上） */}
+        <RightSidebar
+          isOpen={rightSidebarOpen}
+          onClose={() => setRightSidebarOpen(false)}
+          currentStep={currentStep}
+          userType={selectedCourse === 'aspiration' ? 'aspiration' : selectedCourse === 'problem-solving' ? 'problem' : 'aspiration'}
+          videoZoomOpen={videoZoomOpen}
+          onVideoZoomClose={() => setVideoZoomOpen(false)}
         />
 
-        <PDCAInputModal
-          isOpen={showPDCAModal}
-          onClose={() => setShowPDCAModal(false)}
-          onSuccess={handlePDCASuccess}
-          type={pdcaType}
-          currentValue={getCurrentValue(pdcaType)}
+        {/* スマホ用サポートスライドバー */}
+        <SupportSlideBar
+          isOpen={supportSlideBarOpen}
+          onClose={() => setSupportSlideBarOpen(false)}
+          currentStep={currentStep}
+          userType={selectedCourse === 'aspiration' ? 'aspiration' : selectedCourse === 'problem-solving' ? 'problem' : 'aspiration'}
         />
       </div>
     </div>

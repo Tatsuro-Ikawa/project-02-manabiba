@@ -84,7 +84,7 @@ export default function EncryptionTestPage() {
 
   return (
     <div className="container mx-auto p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-gray-900">暗号化機能テスト</h1>
+      <h1 className="text-xl font-bold mb-8 text-gray-900">暗号化機能テスト</h1>
       
       <div className="space-y-8">
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">

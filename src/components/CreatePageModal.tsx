@@ -71,7 +71,7 @@ export const CreatePageModal: React.FC<CreatePageModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold mb-4">マイページ作成</h2>
+        <h2 className="text-xl font-bold mb-4">マイページ作成</h2>
         <p className="text-gray-600 mb-6">
           マイページを作成するために、基本的な情報を入力してください。
         </p>

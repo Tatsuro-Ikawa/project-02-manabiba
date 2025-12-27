@@ -176,3 +176,34 @@ export const decrypt = async (encryptedContent: string, userId: string): Promise
     throw new Error('復号化に失敗しました');
   }
 };
+
+// テーマ選択データ用の暗号化関数
+export const encryptThemeData = async (data: any, userId: string): Promise<string> => {
+  try {
+    const key = CryptoJS.SHA256(userId).toString();
+    const dataString = JSON.stringify(data);
+    const encrypted = CryptoJS.AES.encrypt(dataString, key).toString();
+    return encrypted;
+  } catch (error) {
+    console.error('テーマデータ暗号化エラー:', error);
+    throw new Error('テーマデータの暗号化に失敗しました');
+  }
+};
+
+// テーマ選択データ用の復号化関数
+export const decryptThemeData = async (encryptedContent: string, userId: string): Promise<any> => {
+  try {
+    const key = CryptoJS.SHA256(userId).toString();
+    const decrypted = CryptoJS.AES.decrypt(encryptedContent, key);
+    const decryptedString = decrypted.toString(CryptoJS.enc.Utf8);
+    
+    if (!decryptedString) {
+      throw new Error('復号化されたデータが空です');
+    }
+    
+    return JSON.parse(decryptedString);
+  } catch (error) {
+    console.error('テーマデータ復号化エラー:', error);
+    throw new Error('テーマデータの復号化に失敗しました');
+  }
+};

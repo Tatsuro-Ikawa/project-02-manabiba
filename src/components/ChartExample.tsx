@@ -56,7 +56,7 @@ const ChartExample: React.FC = () => {
   return (
     <div className="p-6">
       <div className="space-y-8">
-        <h1 className="text-3xl font-bold text-center text-blue-600 mb-8">
+        <h1 className="text-xl font-bold text-center text-blue-600 mb-8">
           チャート機能デモ
         </h1>
 

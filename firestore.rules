@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ヘルパー関数: 認証済みユーザーのチェック
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // ヘルパー関数: 自分のデータかチェック
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ユーザープロファイル
+    match /users/{userId} {
+      // 読み取り: 自分のプロファイルのみ
+      allow read: if isOwner(userId);
+      
+      // 作成: 自分のプロファイルのみ
+      allow create: if isOwner(userId);
+      
+      // 更新: 自分のプロファイルのみ
+      allow update: if isOwner(userId);
+      
+      // 削除: 自分のプロファイルのみ
+      allow delete: if isOwner(userId);
+      
+      // SMART目標（サブコレクション）
+      match /smart-goals/{goalId} {
+        // 読み取り: 自分の目標のみ
+        allow read: if isOwner(userId);
+        
+        // 作成: 自分の目標のみ
+        allow create: if isOwner(userId) && 
+          request.resource.data.uid == userId;
+        
+        // 更新: 自分の目標のみ
+        allow update: if isOwner(userId) && 
+          resource.data.uid == userId;
+        
+        // 削除: 自分の目標のみ
+        allow delete: if isOwner(userId) && 
+          resource.data.uid == userId;
+      }
+    }
+    
+    // PDCAエントリ
+    match /pdca_entries/{entryId} {
+      // 読み取り: 自分のエントリのみ
+      allow read: if isAuthenticated() && 
+        resource.data.uid == request.auth.uid;
+      
+      // 作成: 自分のエントリのみ
+      allow create: if isAuthenticated() && 
+        request.resource.data.uid == request.auth.uid;
+      
+      // 更新: 自分のエントリのみ
+      allow update: if isAuthenticated() && 
+        resource.data.uid == request.auth.uid;
+      
+      // 削除: 自分のエントリのみ
+      allow delete: if isAuthenticated() && 
+        resource.data.uid == request.auth.uid;
+    }
+    
+    // PDCA集約データ
+    match /pdca_aggregations/{aggregationId} {
+      // 読み取り: 自分の集約データのみ
+      allow read: if isAuthenticated() && 
+        resource.data.uid == request.auth.uid;
+      
+      // 作成: 自分の集約データのみ
+      allow create: if isAuthenticated() && 
+        request.resource.data.uid == request.auth.uid;
+      
+      // 更新: 自分の集約データのみ
+      allow update: if isAuthenticated() && 
+        resource.data.uid == request.auth.uid;
+      
+      // 削除: 自分の集約データのみ
+      allow delete: if isAuthenticated() && 
+        resource.data.uid == request.auth.uid;
+    }
+    
+    // コーチングセッション
+    match /coaching_sessions/{sessionId} {
+      // 読み取り: 自分のセッションのみ
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // 作成: 自分のセッションのみ
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // 更新: 自分のセッションのみ
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // 削除: 自分のセッションのみ
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // 目標（goalsコレクション）
+    match /goals/{goalId} {
+      // 読み取り: 自分の目標のみ
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // 作成: 自分の目標のみ
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // 更新: 自分の目標のみ
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // 削除: 自分の目標のみ
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // AI分析
+    match /ai_analyses/{analysisId} {
+      // 読み取り: 自分の分析のみ
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // 作成: 自分の分析のみ
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // 更新: 自分の分析のみ
+      allow update: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // 削除: 自分の分析のみ
+      allow delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // コーチング設定
+    match /coaching_settings/{userId} {
+      // 読み取り: 自分の設定のみ
+      allow read: if isOwner(userId);
+      
+      // 作成: 自分の設定のみ
+      allow create: if isOwner(userId) && 
+        request.resource.data.userId == userId;
+      
+      // 更新: 自分の設定のみ
+      allow update: if isOwner(userId) && 
+        resource.data.userId == userId;
+      
+      // 削除: 自分の設定のみ
+      allow delete: if isOwner(userId);
+    }
+  }
+}
+
