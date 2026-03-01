@@ -1,0 +1,433 @@
+/**
+ * 人生学び場 こころ道場 - プロトタイプ共通スタイル
+ * DESIGN_SYSTEM.md 準拠（7日間プログラムチラシカラー）
+ * 用途: インタラクティブプロトタイプ（HTML/CSS/JS）
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+
+:root {
+  /* プライマリ（ダークグリーン） */
+  --color-primary: #42613B;
+  --color-primary-dark: #2D4A28;
+  --color-primary-light: #558B2F;
+  /* セカンダリ（ライトグリーン） */
+  --color-secondary: #EAF2E4;
+  --color-secondary-dark: #C8D9C0;
+  --color-secondary-light: #F5F9F2;
+  /* セマンティック */
+  --color-success: #558B2F;
+  --color-warning: #FF9800;
+  --color-error: #F44336;
+  --color-info: #2196F3;
+  /* テキスト */
+  --color-text-primary: #3E2723;
+  --color-text-secondary: #5D4037;
+  --color-text-disabled: #A1887F;
+  --color-text-on-green: #FFFFFF;
+  /* 背景 */
+  --color-background: #EAF2E4;
+  --color-background-secondary: #F5F9F2;
+  --color-background-accent: #C8D9C0;
+  /* ボーダー */
+  --color-border: #C8D9C0;
+  --color-border-accent: #42613B;
+  /* アクセント */
+  --color-accent-gold: #D9B44A;
+  /* スペーシング */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+  /* タイポグラフィ */
+  --font-family-jp: 'Noto Sans JP', sans-serif;
+  --font-size-h1: 2.5rem;
+  --font-size-h2: 2rem;
+  --font-size-h3: 1.5rem;
+  --font-size-h4: 1.25rem;
+  --font-size-body: 1rem;
+  --font-size-body-small: 0.875rem;
+  --font-size-caption: 0.75rem;
+  /* レイアウト */
+  --container-max: 1200px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  overflow-y: auto;
+  height: auto;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family-jp);
+  font-size: var(--font-size-body);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  overflow-y: auto;
+  height: auto;
+  min-height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  opacity: 0.98;
+}
+
+/* ヘッダー（グリーン背景） */
+.proto-header {
+  background: var(--color-primary);
+  color: var(--color-text-on-green);
+  padding: var(--spacing-md) var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.proto-header h1 {
+  margin: 0;
+  font-size: var(--font-size-h3);
+  font-weight: 700;
+}
+
+.proto-header nav {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.proto-header a {
+  color: var(--color-text-on-green);
+  text-decoration: none;
+  font-weight: 500;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease;
+}
+
+.proto-header a:hover {
+  background: var(--color-primary-dark);
+}
+
+/* コンテナ */
+.proto-container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+}
+
+/* セクション */
+.proto-section {
+  margin-bottom: var(--spacing-xxl);
+}
+
+.proto-section h2 {
+  margin: 0 0 var(--spacing-lg);
+  font-size: var(--font-size-h2);
+  color: var(--color-text-primary);
+}
+
+/* カード */
+.proto-card {
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-card);
+  margin-bottom: var(--spacing-lg);
+}
+
+.proto-card h3 {
+  margin: 0 0 var(--spacing-md);
+  font-size: var(--font-size-h3);
+  color: var(--color-text-primary);
+}
+
+/* ボタン */
+.proto-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  font-family: var(--font-family-jp);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  text-align: center;
+  text-decoration: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.proto-btn-primary {
+  background: var(--color-primary);
+  color: var(--color-text-on-green);
+}
+
+.proto-btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.proto-btn-secondary {
+  background: var(--color-background-accent);
+  color: var(--color-text-primary);
+}
+
+.proto-btn-secondary:hover {
+  background: var(--color-secondary-dark);
+}
+
+/* タブ */
+.proto-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.proto-tab {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: transparent;
+  border: none;
+  font-family: var(--font-family-jp);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.proto-tab:hover {
+  color: var(--color-primary);
+}
+
+.proto-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+/* バッジ */
+.proto-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  border-radius: var(--radius-lg);
+}
+
+.proto-badge-primary {
+  background: var(--color-primary);
+  color: var(--color-text-on-green);
+}
+
+.proto-badge-gold {
+  background: var(--color-accent-gold);
+  color: var(--color-text-primary);
+}
+
+/* フッター */
+.proto-footer {
+  background: var(--color-primary);
+  color: var(--color-text-on-green);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-xxl);
+  text-align: center;
+  font-size: var(--font-size-body-small);
+}
+
+.proto-footer a {
+  color: var(--color-text-on-green);
+}
+
+/* 入力フィールド（プロトタイプ用） */
+.proto-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 12px 16px;
+  font-family: var(--font-family-jp);
+  font-size: var(--font-size-body);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.proto-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.proto-label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* モック用のプレースホルダー */
+.proto-mock-note {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin-top: var(--spacing-sm);
+}
+
+/* ========================================
+   レスポンシブデザイン（Media Queries）
+   ======================================== */
+
+/* ブレークポイント定義 */
+/* Mobile: < 768px */
+/* Tablet: 768px - 1024px */
+/* Desktop: > 1024px */
+
+/* ========================================
+   Mobile（< 768px）
+   ======================================== */
+@media (max-width: 767px) {
+  /* コンテナのパディング調整 */
+  .proto-container {
+    padding: var(--spacing-md);
+  }
+
+  /* ヘッダーの調整 */
+  .proto-header {
+    padding: var(--spacing-md);
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .proto-header h1 {
+    font-size: var(--font-size-h4);
+    width: 100%;
+  }
+
+  .proto-header nav {
+    width: 100%;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    display: none; /* デフォルトでは非表示（ハンバーガーメニュー用） */
+  }
+
+  .proto-header nav.active {
+    display: flex; /* アクティブ時は表示 */
+  }
+
+  /* ハンバーガーメニューボタン（必要に応じて各プロトタイプで追加） */
+  .hamburger-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-sm);
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+  }
+
+  .hamburger-menu span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--color-text-on-green);
+    transition: all 0.3s ease;
+  }
+
+  /* フォントサイズの調整 */
+  :root {
+    --font-size-h1: 2rem;
+    --font-size-h2: 1.75rem;
+    --font-size-h3: 1.5rem;
+    --font-size-h4: 1.25rem;
+  }
+
+  /* ボタンの調整 */
+  .proto-btn {
+    width: 100%;
+    padding: 12px 16px;
+  }
+
+  /* タブの調整 */
+  .proto-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .proto-tab {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-body-small);
+    white-space: nowrap;
+  }
+
+  /* カードの調整 */
+  .proto-card {
+    padding: var(--spacing-md);
+  }
+
+  /* フッターの調整 */
+  .proto-footer {
+    padding: var(--spacing-md);
+    font-size: var(--font-size-caption);
+  }
+}
+
+/* ========================================
+   Tablet（768px - 1024px）
+   ======================================== */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* コンテナのパディング調整 */
+  .proto-container {
+    padding: var(--spacing-lg);
+  }
+
+  /* ヘッダーの調整 */
+  .proto-header {
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  .proto-header h1 {
+    font-size: var(--font-size-h3);
+  }
+
+  /* フォントサイズの調整 */
+  :root {
+    --font-size-h1: 2.25rem;
+    --font-size-h2: 1.875rem;
+  }
+}
+
+/* ========================================
+   Desktop（> 1024px）
+   ======================================== */
+@media (min-width: 1025px) {
+  /* コンテナの最大幅を設定 */
+  .proto-container {
+    max-width: var(--container-max);
+    padding: var(--spacing-lg);
+  }
+
+  /* ハンバーガーメニューは非表示 */
+  .hamburger-menu {
+    display: none;
+  }
+
+  /* ヘッダーのナビゲーションは常に表示 */
+  .proto-header nav {
+    display: flex;
+  }
+}

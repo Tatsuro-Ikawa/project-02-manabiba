@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>マイページ - 人生学び場 こころ道場（プロトタイプ）</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    .mypage-hero {
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-xl) var(--spacing-lg);
+    }
+    .mypage-hero .proto-badge { margin-left: var(--spacing-md); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--spacing-lg); }
+    .nav-link { color: inherit; text-decoration: none; }
+    .nav-link:hover { text-decoration: underline; }
+
+    /* ハンバーガーメニューボタン */
+    .hamburger-menu {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: var(--spacing-sm);
+      position: absolute;
+      top: var(--spacing-md);
+      right: var(--spacing-md);
+    }
+
+    .hamburger-menu span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--color-text-on-green);
+      transition: all 0.3s ease;
+    }
+
+    /* レスポンシブデザイン（Media Queries） */
+    /* Mobile（< 768px） */
+    @media (max-width: 767px) {
+      /* マイページヒーロー */
+      .mypage-hero {
+        padding: var(--spacing-md);
+      }
+      .mypage-hero h2 {
+        font-size: var(--font-size-h3);
+      }
+
+      /* グリッドレイアウト */
+      .grid-2 {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+
+      /* タブの調整 */
+      .proto-tabs {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+      }
+      .proto-tab {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-body-small);
+        white-space: nowrap;
+        min-width: auto;
+      }
+
+      /* カードの調整 */
+      .proto-card {
+        padding: var(--spacing-md);
+      }
+
+      /* ヘッダーのハンバーガーメニュー */
+      .proto-header {
+        position: relative;
+      }
+      .hamburger-menu {
+        display: flex;
+      }
+      .proto-header nav {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--color-primary-dark);
+        flex-direction: column;
+        padding: var(--spacing-md);
+        z-index: 1000;
+        display: none;
+      }
+      .proto-header nav.active {
+        display: flex;
+      }
+    }
+
+    /* Tablet（768px - 1024px） */
+    @media (min-width: 768px) and (max-width: 1024px) {
+      /* グリッドレイアウト */
+      .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Desktop（> 1024px） */
+    @media (min-width: 1025px) {
+      /* ハンバーガーメニューは非表示 */
+      .hamburger-menu {
+        display: none;
+      }
+
+      /* ヘッダーのナビゲーションは常に表示 */
+      .proto-header nav {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-header">
+    <h1>人生学び場　～こころ道場～</h1>
+    <button class="hamburger-menu" aria-label="メニュー" onclick="toggleNav()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="header-nav">
+      <a href="prototype_SCREEN-000_homepage_v1.1.html?logged_in=true">ホームへ</a>
+      <a href="prototype_SCREEN-001_landing_v1.0.html">トップ</a>
+      <a href="prototype_SCREEN-002_login_v1.0.html">ログアウト（デモ）</a>
+    </nav>
+  </header>
+
+  <section class="mypage-hero">
+    <div class="proto-container">
+      <h2 style="margin:0;">マイページ</h2>
+      <p style="margin: var(--spacing-sm) 0 0;">進捗に応じて、自己理解 → テーマ選択 → 目標設定 → PDCA へ</p>
+      <span class="proto-badge proto-badge-gold">定員15名 先着順（モック）</span>
+    </div>
+  </section>
+
+  <div class="proto-container" style="padding-top: var(--spacing-xl);">
+    <div class="proto-tabs" role="tablist">
+      <button type="button" class="proto-tab active" data-tab="home" role="tab">ホーム</button>
+      <button type="button" class="proto-tab" data-tab="self" role="tab">自己理解</button>
+      <button type="button" class="proto-tab" data-tab="theme" role="tab">テーマ選択</button>
+      <button type="button" class="proto-tab" data-tab="goal" role="tab">目標設定</button>
+      <button type="button" class="proto-tab" data-tab="pdca" role="tab">PDCA分析</button>
+      <button type="button" class="proto-tab" data-tab="reflection" role="tab">振り返り</button>
+    </div>
+
+    <div id="panel-home" class="tab-panel active">
+      <section class="proto-section">
+        <h2>ホーム</h2>
+        <div class="grid-2">
+          <div class="proto-card">
+            <h3>自己理解</h3>
+            <p>願望・課題・価値観・リソースを整理します。</p>
+            <a href="#" class="nav-link" style="color: var(--color-primary);">自己理解へ →</a>
+          </div>
+          <div class="proto-card">
+            <h3>テーマ選択</h3>
+            <p>願望実現型 / 課題解決型からテーマを選びます。</p>
+            <a href="#" class="nav-link" style="color: var(--color-primary);">テーマ選択へ →</a>
+          </div>
+          <div class="proto-card">
+            <h3>目標設定</h3>
+            <p>SMART・Be-Do-Have で目標を設定します。</p>
+            <a href="#" class="nav-link" style="color: var(--color-primary);">目標設定へ →</a>
+          </div>
+          <div class="proto-card">
+            <h3>PDCA分析</h3>
+            <p>Plan → Do → Check → Action のサイクルを回します。</p>
+            <a href="#" class="nav-link" style="color: var(--color-primary);">PDCAへ →</a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="panel-self" class="tab-panel">
+      <section class="proto-section">
+        <h2>自己理解ワーク</h2>
+        <div class="proto-card">
+          <h3>願望・課題・価値観・リソース</h3>
+          <p>Q&amp;A形式で入力。本番では Firestore に暗号化保存。</p>
+          <p class="proto-mock-note">プロトタイプ: 入力UIは未実装。別画面で詳細化予定。</p>
+        </div>
+      </section>
+    </div>
+
+    <div id="panel-theme" class="tab-panel">
+      <section class="proto-section">
+        <h2>テーマ選択</h2>
+        <div class="proto-card">
+          <h3>願望実現型 / 課題解決型</h3>
+          <p>リストアップ → 評価 → テーマ選択。本番では満足度判定あり。</p>
+          <p class="proto-mock-note">プロトタイプ: 選択UIは未実装。</p>
+        </div>
+      </section>
+    </div>
+
+    <div id="panel-goal" class="tab-panel">
+      <section class="proto-section">
+        <h2>目標設定</h2>
+        <div class="proto-card">
+          <h3>SMART・Be-Do-Have</h3>
+          <p>具体的・測定可能・関連性・期限。本番では2秒 debounce で自動保存。</p>
+          <p class="proto-mock-note">プロトタイプ: 入力フォームは未実装。</p>
+        </div>
+      </section>
+    </div>
+
+    <div id="panel-pdca" class="tab-panel">
+      <section class="proto-section">
+        <h2>PDCA分析</h2>
+        <div class="proto-card">
+          <h3>カレンダー + モーダル</h3>
+          <p>日付クリックで Plan / Do / Check / Action 入力。本番ではカレンダー連携。</p>
+          <p class="proto-mock-note">プロトタイプ: カレンダー・モーダルは未実装。</p>
+        </div>
+      </section>
+    </div>
+
+    <div id="panel-reflection" class="tab-panel">
+      <section class="proto-section">
+        <h2>振り返り</h2>
+        <div class="proto-card">
+          <h3>チャート・リスト</h3>
+          <p>過去のPDCAを可視化。本番では Recharts 等を利用予定。</p>
+          <p class="proto-mock-note">プロトタイプ: チャートは未実装。</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="proto-footer">
+    <p>人生学び場　～こころ道場～　プロトタイプ v1.0（SCREEN-003）</p>
+  </footer>
+
+  <script>
+    // タブ切り替え機能
+    (function () {
+      var tabs = document.querySelectorAll('.proto-tab');
+      var panels = document.querySelectorAll('.tab-panel');
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () {
+          var id = 'panel-' + t.getAttribute('data-tab');
+          tabs.forEach(function (x) { x.classList.remove('active'); });
+          panels.forEach(function (p) { p.classList.remove('active'); });
+          t.classList.add('active');
+          var panel = document.getElementById(id);
+          if (panel) panel.classList.add('active');
+        });
+      });
+    })();
+
+    // ハンバーガーメニューの開閉
+    function toggleNav() {
+      const nav = document.getElementById('header-nav');
+      nav.classList.toggle('active');
+    }
+
+    // ナビゲーションリンククリック時にメニューを閉じる（モバイル用）
+    document.querySelectorAll('#header-nav a').forEach(link => {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 767) {
+          document.getElementById('header-nav').classList.remove('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

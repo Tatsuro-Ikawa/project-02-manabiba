@@ -1,0 +1,60 @@
+/**
+ * 人生学び場 こころ道場 - デザイントークン（DESIGN_SYSTEM / プロトタイプ共通準拠）
+ * ホーム・トライアル画面で使用
+ */
+:root {
+  /* プライマリ（ダークグリーン） */
+  --color-primary: #42613B;
+  --color-primary-dark: #2D4A28;
+  --color-primary-light: #558B2F;
+  /* セカンダリ（ライトグリーン） */
+  --color-secondary: #EAF2E4;
+  --color-secondary-dark: #C8D9C0;
+  --color-secondary-light: #F5F9F2;
+  /* セマンティック */
+  --color-success: #558B2F;
+  --color-warning: #FF9800;
+  --color-error: #F44336;
+  --color-info: #2196F3;
+  /* テキスト */
+  --color-text-primary: #3E2723;
+  --color-text-secondary: #5D4037;
+  --color-text-disabled: #A1887F;
+  --color-text-on-green: #FFFFFF;
+  /* 背景 */
+  --color-background: #EAF2E4;
+  --color-background-secondary: #F5F9F2;
+  --color-background-accent: #C8D9C0;
+  /* ボーダー */
+  --color-border: #C8D9C0;
+  --color-border-accent: #42613B;
+  --color-accent-gold: #D9B44A;
+  /* スペーシング */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+  /* タイポグラフィ（layout で next/font Noto Sans JP の variable を body に付与） */
+  --font-family-jp: var(--font-noto-sans-jp), 'Noto Sans JP', sans-serif;
+  --font-size-h1: 2.5rem;
+  --font-size-h2: 2rem;
+  --font-size-h3: 1.5rem;
+  --font-size-h4: 1.25rem;
+  --font-size-body: 1rem;
+  --font-size-body-small: 0.875rem;
+  --font-size-caption: 0.75rem;
+  /* レイアウト */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+  /* コンテンツ幅（要件定義・UI/UX設計書で確定） */
+  --content-left-max-width: 1026px;
+  --main-content-max-width: 1300px;
+  --sidebar-width: 80px;
+  --header-height: 60px;
+}

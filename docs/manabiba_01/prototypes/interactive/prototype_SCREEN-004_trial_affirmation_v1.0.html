@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>28日間 こころのトライアル プログラム - アファメーション（プロトタイプ）</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .main-wrapper {
+      display: flex;
+      flex: 1;
+      margin-top: 60px;
+      min-width: 0;
+      padding-left: 80px;
+      flex-direction: column;
+    }
+
+    /* ヘッダー */
+    .proto-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+      height: 60px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .proto-header h1 {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      margin: 0;
+      font-size: var(--font-size-h4);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-background-secondary);
+      border: 2px solid var(--color-text-on-green);
+      cursor: pointer;
+      object-fit: cover;
+    }
+
+    /* 左サイドバー */
+    .left-sidebar {
+      width: 80px;
+      background: var(--color-primary);
+      padding: var(--spacing-lg) 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-md);
+      position: fixed;
+      left: 0;
+      top: 60px;
+      bottom: 0;
+      overflow-y: auto;
+      z-index: 999;
+    }
+
+    .sidebar-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm);
+      background: transparent;
+      border: none;
+      color: var(--color-text-on-green);
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: var(--font-size-caption);
+    }
+
+    .sidebar-btn:hover,
+    .sidebar-btn.active {
+      background: var(--color-primary-dark);
+    }
+
+    .sidebar-btn-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      border: 2px solid var(--color-text-on-green);
+      border-radius: var(--radius-sm);
+    }
+
+    .sidebar-btn.active .sidebar-btn-icon {
+      background: var(--color-text-on-green);
+      color: var(--color-primary);
+    }
+
+    /* メインエリア（メニューバー + コンテンツ） */
+    .trial-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-lg);
+      background: var(--color-background);
+      min-width: 0;
+      max-width: 1026px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ヘッダー直下メニューバー（アファメーション・朝・晩・週・月） */
+    .trial-menu-bar {
+      display: flex;
+      background: var(--color-background-secondary);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-xs);
+      margin-bottom: var(--spacing-lg);
+      border: 1px solid var(--color-border);
+      flex-wrap: wrap;
+      gap: var(--spacing-xs);
+    }
+
+    .trial-menu-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: none;
+      background: transparent;
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .trial-menu-item:hover {
+      background: var(--color-background-accent);
+      color: var(--color-primary);
+    }
+
+    .trial-menu-item.active {
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+    }
+
+    .trial-menu-item .menu-icon {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .trial-menu-item .menu-text {
+      white-space: nowrap;
+    }
+
+    /* モバイル: アイコンのみ */
+    @media (max-width: 767px) {
+      .trial-menu-item .menu-text {
+        display: none;
+      }
+    }
+
+    /* アファメーションサブコンテナ */
+    .affirmation-container {
+      background: var(--color-background-secondary);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: var(--spacing-xl);
+      flex: 1;
+      min-width: 0;
+    }
+
+    .affirmation-container h2 {
+      margin: 0 0 var(--spacing-lg) 0;
+      font-size: var(--font-size-h3);
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+
+    /* サブコンテナ内メニュー（ファイル・編集・保存・履歴） */
+    .affirmation-sub-menu {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--color-border);
+      margin-bottom: var(--spacing-xl);
+      flex-wrap: wrap;
+    }
+
+    .affirmation-sub-tab {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      background: transparent;
+      border: none;
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .affirmation-sub-tab:hover {
+      color: var(--color-primary);
+    }
+
+    .affirmation-sub-tab.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+      background: rgba(66, 97, 59, 0.08);
+    }
+
+    .affirmation-sub-tab:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* アファメーション表示エリア */
+    .affirmation-body {
+      color: var(--color-text-primary);
+      font-size: var(--font-size-body);
+      line-height: 1.8;
+    }
+
+    .affirmation-body .block {
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .affirmation-body .block-title {
+      font-weight: 700;
+      margin-bottom: var(--spacing-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .affirmation-body .block-title::before {
+      content: "■";
+      color: var(--color-text-primary);
+    }
+
+    .affirmation-body .block p {
+      margin: 0 0 var(--spacing-sm) 0;
+    }
+
+    .affirmation-body .inline-input-wrap {
+      display: inline;
+    }
+
+    .affirmation-body .inline-input {
+      border: none;
+      border-bottom: 1px solid var(--color-text-primary);
+      background: transparent;
+      font-family: inherit;
+      font-size: inherit;
+      padding: 0 0.2em;
+      min-width: 200px;
+      max-width: 100%;
+    }
+
+    .affirmation-body .inline-input:focus {
+      outline: none;
+      border-bottom-color: var(--color-primary);
+    }
+
+    /* 作成済み表示時の下線テキスト */
+    .affirmation-body .underlined {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    /* 編集可能フィールド（作成済み＋編集モード） */
+    .affirmation-body .editable {
+      border-bottom: 1px solid var(--color-border);
+      padding: 0 0.1em;
+      min-height: 1.4em;
+    }
+
+    /* ハンバーガー・サイドバー開閉（モバイル） */
+    .sidebar-toggle-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      margin: 0;
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: var(--radius-md);
+      color: var(--color-text-on-green);
+      cursor: pointer;
+      font-size: 1.5rem;
+      line-height: 1;
+      transition: background 0.2s;
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .sidebar-toggle-btn span { display: block; font-size: 1.5rem; line-height: 1; }
+    .sidebar-toggle-btn:hover { background: rgba(255, 255, 255, 0.3); }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 998;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .sidebar-overlay.active { display: block; opacity: 1; }
+
+    @media (max-width: 768px) {
+      .main-wrapper { padding-left: 0; }
+      .sidebar-toggle-btn { display: flex; }
+      .left-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+      .left-sidebar.active { transform: translateX(0); }
+      .proto-header h1 {
+        font-size: 0.9rem;
+        left: 80px;
+        right: 80px;
+        width: auto;
+        margin: 0;
+        transform: none;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .trial-menu-item .menu-text { display: none; }
+      .affirmation-container { padding: var(--spacing-md); }
+      .affirmation-body .inline-input { min-width: 120px; }
+    }
+
+    /* 状態: 未作成 / 作成済み の切替 */
+    .affirmation-view-create,
+    .affirmation-view-created { display: none; }
+    .affirmation-view-create.is-active,
+    .affirmation-view-created.is-active { display: block; }
+
+    .trial-footer {
+      background: var(--color-primary-dark);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-md) var(--spacing-lg);
+      text-align: center;
+      font-size: var(--font-size-body-small);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-header">
+    <div class="header-left">
+      <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="メニューを開く" aria-expanded="false" onclick="toggleSidebar()" title="メニュー">
+        <span aria-hidden="true">☰</span>
+      </button>
+    </div>
+    <h1>28日間　こころのトライアル　プログラム</h1>
+    <div class="header-right">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23EAF2E4'/%3E%3Ccircle cx='20' cy='16' r='6' fill='%2342613B'/%3E%3Cpath d='M8 32 Q8 26 20 26 Q32 26 32 32' fill='%2342613B'/%3E%3C/svg%3E" alt="ユーザーアバター" class="user-avatar" onclick="window.location.href='prototype_SCREEN-003_mypage_v1.0.html'">
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
+  <div class="main-wrapper">
+    <aside class="left-sidebar">
+      <a href="prototype_SCREEN-000_homepage_v1.1.html?logged_in=true" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🏠</div>
+        <span>ホーム</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🌱</div>
+        <span>スタート</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🎯</div>
+        <span>ゴール</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">📊</div>
+        <span>記録</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">📝</div>
+        <span>反省</span>
+      </a>
+      <a href="prototype_SCREEN-003_mypage_v1.1.html" class="sidebar-btn">
+        <div class="sidebar-btn-icon">👤</div>
+        <span>マイページ</span>
+      </a>
+    </aside>
+
+    <div class="trial-main">
+      <!-- メニューバー: アファメーション・朝・晩・週・月（4種類） -->
+      <nav class="trial-menu-bar" aria-label="トライアルメニュー">
+        <a href="#" class="trial-menu-item active" aria-current="page">
+          <span class="menu-icon" aria-hidden="true">📜</span>
+          <span class="menu-text">アファメーション</span>
+        </a>
+        <a href="prototype_SCREEN-005_trial_morning_evening_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">🌅</span>
+          <span class="menu-text">朝・晩</span>
+        </a>
+        <a href="prototype_SCREEN-006_trial_weekly_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">📅</span>
+          <span class="menu-text">週</span>
+        </a>
+        <a href="prototype_SCREEN-007_trial_monthly_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">🗓️</span>
+          <span class="menu-text">月</span>
+        </a>
+      </nav>
+
+      <!-- アファメーションサブコンテナ -->
+      <section class="affirmation-container">
+        <h2>行動宣言（アファメーション）</h2>
+
+        <div class="affirmation-sub-menu">
+          <button type="button" class="affirmation-sub-tab" id="tab-file" onclick="switchSubTab('file')">ファイル</button>
+          <button type="button" class="affirmation-sub-tab active" id="tab-edit" onclick="switchSubTab('edit')">編集</button>
+          <button type="button" class="affirmation-sub-tab" id="tab-save" onclick="switchSubTab('save')" disabled>保存</button>
+          <button type="button" class="affirmation-sub-tab" id="tab-history" onclick="switchSubTab('history')">履歴</button>
+        </div>
+
+        <!-- 【未作成】作成用プロファイル -->
+        <div class="affirmation-view-create is-active affirmation-body" id="view-create">
+          <div class="block">
+            <div class="block-title">1年後の自分（未来宣言）</div>
+            <p>私は、<span class="inline-input-wrap"><input type="text" class="inline-input" placeholder="＿＿＿＿＿＿＿＿＿＿＿＿＿＿" aria-label="期限"></span>までに</p>
+            <p><span class="inline-input-wrap"><input type="text" class="inline-input" placeholder="＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿" aria-label="状態"></span>な状態になっている。</p>
+            <p>そして、<span class="inline-input-wrap"><input type="text" class="inline-input" placeholder="＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿" aria-label="達成内容"></span>を達成している。</p>
+          </div>
+          <div class="block">
+            <div class="block-title">行動の宣言（Do）</div>
+            <p>私は、この状態を実現するために、</p>
+            <p><span class="inline-input-wrap"><input type="text" class="inline-input" placeholder="＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿" aria-label="行動"></span>。</p>
+          </div>
+          <div class="block">
+            <div class="block-title">あり方の宣言（Be）</div>
+            <p>なぜなら、私は、</p>
+            <p><span class="inline-input-wrap"><input type="text" class="inline-input" placeholder="＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿" aria-label="あり方"></span>。</p>
+          </div>
+          <div class="block">
+            <div class="block-title">心のブレーキへの対処（反論の言葉）</div>
+            <p>行動しようとしたとき、ネガティブな思考や迷いが浮かんだら、</p>
+            <p>私は自分にこう声をかける。</p>
+            <p><span class="inline-input-wrap"><input type="text" class="inline-input" placeholder="＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿" aria-label="反論の言葉"></span>。</p>
+          </div>
+          <div class="block">
+            <div class="block-title">鎖を断ち切るフレーズ（最終宣言）</div>
+            <p>なぜなら、私は、</p>
+            <p><span class="inline-input-wrap"><input type="text" class="inline-input" placeholder="＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿" aria-label="最終宣言"></span>。</p>
+          </div>
+        </div>
+
+        <!-- 【作成済み】アファメーションテキスト表示 -->
+        <div class="affirmation-view-created affirmation-body" id="view-created">
+          <div class="block">
+            <div class="block-title">1年後の自分（未来宣言）</div>
+            <p>私は、2026年末までに、</p>
+            <p><span class="underlined editable" id="e1" contenteditable="false">100名のサブスクユーザーの契約を得ている</span></p>
+            <p>そして、<span class="underlined editable" id="e2" contenteditable="false">毎月15万円の売り上げを達成している。</span></p>
+          </div>
+          <div class="block">
+            <div class="block-title">行動の宣言（Do）</div>
+            <p>私は、この状態を実現するために、</p>
+            <p><span class="underlined editable" id="e3" contenteditable="false">毎週1テーマの情報発信（動画・記事）を作成する。</span></p>
+          </div>
+          <div class="block">
+            <div class="block-title">あり方の宣言（Be）</div>
+            <p>なぜなら、私は、<span class="underlined editable" id="e4" contenteditable="false">より多くの人に、より良い影響を与える人間だからだ。</span></p>
+          </div>
+          <div class="block">
+            <div class="block-title">心のブレーキへの対処（反論の言葉）</div>
+            <p>行動しようとしたとき、ネガティブな思考や迷いが浮かんだら、</p>
+            <p>私は自分にこう声をかける。</p>
+            <p>「<span class="underlined editable" id="e5" contenteditable="false">すぐに成果がでなくても、必ず必要とする人を見つけられるからだ。</span>」</p>
+          </div>
+          <div class="block">
+            <div class="block-title">鎖を断ち切るフレーズ（最終宣言）</div>
+            <p>なぜなら、私は、</p>
+            <p><span class="underlined editable" id="e6" contenteditable="false">生かされた存在であり、その役割を果たすことができるはずだからだ。</span></p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="trial-footer">ビズアイテム</footer>
+
+  <script>
+    // 表示状態: 'create' = 未作成, 'created' = 作成済み
+    var affirmationState = 'create';
+    var editMode = false;
+
+    function switchSubTab(tab) {
+      var tabs = ['file','edit','save','history'];
+      tabs.forEach(function(t) {
+        var el = document.getElementById('tab-' + t);
+        if (el) el.classList.toggle('active', t === tab);
+      });
+
+      if (tab === 'file') {
+        // ファイル: 未作成→作成済みの切替（プロトタイプ用：作成済みサンプルを表示）
+        if (affirmationState === 'create') {
+          affirmationState = 'created';
+          document.getElementById('view-create').classList.remove('is-active');
+          document.getElementById('view-created').classList.add('is-active');
+          document.getElementById('tab-edit').disabled = false;
+          document.getElementById('tab-edit').classList.add('active');
+          document.getElementById('tab-save').disabled = true;
+          document.getElementById('tab-file').classList.remove('active');
+          setEditable(true); // 作成済み表示時は編集タブをアクティブで編集可能に
+        }
+      } else if (tab === 'edit' && affirmationState === 'created') {
+        editMode = true;
+        document.getElementById('tab-save').disabled = false;
+        setEditable(true);
+      } else if (tab === 'save' && affirmationState === 'created') {
+        editMode = false;
+        document.getElementById('tab-save').disabled = true;
+        document.getElementById('tab-edit').classList.add('active');
+        document.getElementById('tab-save').classList.remove('active');
+        setEditable(false);
+      } else if (tab === 'history') {
+        // 履歴はプロトタイプでは未実装
+      }
+    }
+
+    function setEditable(on) {
+      var el = document.querySelectorAll('#view-created [contenteditable]');
+      el.forEach(function(e) { e.setAttribute('contenteditable', on ? 'true' : 'false'); });
+    }
+
+    function toggleSidebar() {
+      var sidebar = document.querySelector('.left-sidebar');
+      var overlay = document.getElementById('sidebar-overlay');
+      var btn = document.getElementById('sidebar-toggle-btn');
+      var isOpen = sidebar.classList.toggle('active');
+      overlay.classList.toggle('active', isOpen);
+      if (btn) {
+        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        btn.setAttribute('aria-label', isOpen ? 'メニューを閉じる' : 'メニューを開く');
+      }
+    }
+
+    function closeSidebar() {
+      var sidebar = document.querySelector('.left-sidebar');
+      var overlay = document.getElementById('sidebar-overlay');
+      var btn = document.getElementById('sidebar-toggle-btn');
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'メニューを開く');
+      }
+    }
+
+    document.querySelectorAll('.left-sidebar .sidebar-btn').forEach(function(link) {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 768) closeSidebar();
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>28日間 こころのトライアル - 週（プロトタイプ）</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .main-wrapper {
+      display: flex;
+      flex: 1;
+      margin-top: 60px;
+      min-width: 0;
+      padding-left: 80px;
+      flex-direction: column;
+    }
+
+    .proto-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+      height: 60px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .proto-header h1 {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      margin: 0;
+      font-size: var(--font-size-h4);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .header-left { display: flex; align-items: center; position: relative; }
+    .header-right { display: flex; align-items: center; }
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-background-secondary);
+      border: 2px solid var(--color-text-on-green);
+      cursor: pointer;
+      object-fit: cover;
+    }
+
+    .left-sidebar {
+      width: 80px;
+      background: var(--color-primary);
+      padding: var(--spacing-lg) 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-md);
+      position: fixed;
+      left: 0;
+      top: 60px;
+      bottom: 0;
+      overflow-y: auto;
+      z-index: 999;
+    }
+    .sidebar-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm);
+      background: transparent;
+      border: none;
+      color: var(--color-text-on-green);
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: var(--font-size-caption);
+    }
+    .sidebar-btn:hover, .sidebar-btn.active { background: var(--color-primary-dark); }
+    .sidebar-btn-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      border: 2px solid var(--color-text-on-green);
+      border-radius: var(--radius-sm);
+    }
+    .sidebar-btn.active .sidebar-btn-icon {
+      background: var(--color-text-on-green);
+      color: var(--color-primary);
+    }
+
+    .trial-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-lg);
+      background: var(--color-background);
+      min-width: 0;
+      max-width: 1026px;
+      width: 100%;
+      margin: 0 auto;
+      min-height: 0;
+    }
+
+    .trial-menu-bar {
+      display: flex;
+      background: var(--color-background-secondary);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-xs);
+      margin-bottom: var(--spacing-lg);
+      border: 1px solid var(--color-border);
+      flex-wrap: wrap;
+      gap: var(--spacing-xs);
+    }
+    .trial-menu-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: none;
+      background: transparent;
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      transition: background 0.2s, color 0.2s;
+    }
+    .trial-menu-item:hover {
+      background: var(--color-background-accent);
+      color: var(--color-primary);
+    }
+    .trial-menu-item.active {
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+    }
+    .trial-menu-item .menu-icon { font-size: 1.25rem; flex-shrink: 0; }
+    .trial-menu-item .menu-text { white-space: nowrap; }
+
+    /* 週ナビ（日付表示） */
+    .week-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+      flex-shrink: 0;
+    }
+    .week-nav-btn {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-background-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-primary);
+      font-size: 1.25rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .week-nav-btn:hover { background: var(--color-background-accent); }
+    .week-nav-label {
+      font-size: var(--font-size-h4);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      min-width: 260px;
+      text-align: center;
+    }
+
+    /* メインコンテナ */
+    .weekly-container {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      background: var(--color-background-secondary);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: var(--spacing-xl);
+    }
+
+    .weekly-section {
+      margin-bottom: var(--spacing-xxl);
+    }
+    .weekly-section:last-child { margin-bottom: 0; }
+    .weekly-section h3 {
+      margin: 0 0 var(--spacing-lg) 0;
+      font-size: var(--font-size-h3);
+      font-weight: 700;
+      color: var(--color-primary);
+      padding-bottom: var(--spacing-sm);
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    .form-row {
+      margin-bottom: var(--spacing-lg);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+    }
+    .form-row .label-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      font-weight: 500;
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-xs);
+    }
+    .edit-icon-btn {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-primary);
+      cursor: pointer;
+      font-size: 1rem;
+      flex-shrink: 0;
+      transition: background 0.2s, color 0.2s;
+    }
+    .edit-icon-btn:hover {
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+    }
+
+    .textarea-display {
+      width: 100%;
+      min-height: 60px;
+      padding: var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-background);
+      color: var(--color-text-primary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .textarea-display.empty { color: var(--color-text-disabled); }
+
+    .satisfaction-display {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      font-weight: 500;
+      color: var(--color-text-primary);
+    }
+
+    /* 行動の結果：7日グリッド */
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: var(--spacing-xs);
+      margin-top: var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .result-cell {
+      background: var(--color-background);
+      padding: var(--spacing-sm);
+      text-align: center;
+      border-right: 1px solid var(--color-border);
+      min-height: 70px;
+    }
+    .result-cell:last-child { border-right: none; }
+    .result-cell-date {
+      font-size: var(--font-size-caption);
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: 2px;
+    }
+    .result-cell-dow {
+      font-size: var(--font-size-caption);
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-xs);
+    }
+    .result-cell-symbols {
+      display: flex;
+      justify-content: center;
+      gap: 2px;
+      flex-wrap: wrap;
+    }
+    .result-cell-symbols a {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      text-align: center;
+      font-size: 1rem;
+      color: var(--color-primary);
+      text-decoration: none;
+      border-radius: var(--radius-sm);
+      transition: background 0.2s;
+    }
+    .result-cell-symbols a:hover {
+      background: var(--color-background-accent);
+    }
+    .result-cell-symbols .symbol-o { color: var(--color-success); }
+    .result-cell-symbols .symbol-delta { color: var(--color-warning); }
+    .result-cell-symbols .symbol-x { color: var(--color-error); }
+    .result-cell-symbols .symbol-none { color: var(--color-text-disabled); }
+
+    @media (max-width: 767px) {
+      .result-grid {
+        grid-template-columns: repeat(7, 1fr);
+        font-size: var(--font-size-caption);
+      }
+      .result-cell { padding: var(--spacing-xs); min-height: 56px; }
+      .result-cell-symbols a { width: 18px; height: 18px; line-height: 18px; font-size: 0.75rem; }
+    }
+
+    /* AIレポートボタン */
+    .ai-report-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-lg);
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: var(--spacing-sm);
+    }
+    .ai-report-btn:hover { background: var(--color-primary-dark); }
+
+    /* モーダル */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: var(--spacing-lg);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--color-background-secondary);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-hover);
+      padding: var(--spacing-xl);
+      max-width: 560px;
+      width: 100%;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-box h4 {
+      margin: 0 0 var(--spacing-md) 0;
+      font-size: var(--font-size-h4);
+      color: var(--color-text-primary);
+    }
+    .modal-box .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: var(--spacing-lg);
+    }
+    .modal-box textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: var(--spacing-md);
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      resize: vertical;
+      margin-bottom: var(--spacing-md);
+      box-sizing: border-box;
+    }
+    .modal-box textarea:focus { outline: none; border-color: var(--color-primary); }
+    .modal-actions {
+      display: flex;
+      gap: var(--spacing-md);
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .modal-actions button {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .modal-actions .btn-cancel {
+      background: var(--color-background-accent);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-primary);
+    }
+    .modal-actions .btn-ok {
+      background: var(--color-primary);
+      border: none;
+      color: var(--color-text-on-green);
+    }
+    .modal-actions .btn-ok:hover { background: var(--color-primary-dark); }
+    .modal-actions .btn-cancel:hover { background: var(--color-secondary-dark); }
+    .modal-actions .btn-apply-item {
+      background: var(--color-primary-light);
+      border: none;
+      color: var(--color-text-on-green);
+    }
+    .modal-actions .btn-apply-item:hover { background: var(--color-primary); }
+
+    .sidebar-toggle-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      margin: 0;
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: var(--radius-md);
+      color: var(--color-text-on-green);
+      cursor: pointer;
+      font-size: 1.5rem;
+      line-height: 1;
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .sidebar-toggle-btn span { display: block; font-size: 1.5rem; line-height: 1; }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 998;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .sidebar-overlay.active { display: block; opacity: 1; }
+
+    .trial-footer {
+      background: var(--color-primary-dark);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-md) var(--spacing-lg);
+      text-align: center;
+      font-size: var(--font-size-body-small);
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      .main-wrapper { padding-left: 0; }
+      .sidebar-toggle-btn { display: flex; }
+      .left-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+      .left-sidebar.active { transform: translateX(0); }
+      .proto-header h1 {
+        font-size: 0.9rem;
+        left: 80px;
+        right: 80px;
+        width: auto;
+        transform: none;
+        text-align: center;
+      }
+      .week-nav-label { min-width: 200px; font-size: var(--font-size-body); }
+    }
+    @media (max-width: 767px) {
+      .trial-menu-item .menu-text { display: none; }
+      .weekly-container { padding: var(--spacing-md); }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-header">
+    <div class="header-left">
+      <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="メニューを開く" aria-expanded="false" onclick="toggleSidebar()" title="メニュー">
+        <span aria-hidden="true">☰</span>
+      </button>
+    </div>
+    <h1>28日間　こころのトライアル　プログラム</h1>
+    <div class="header-right">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23EAF2E4'/%3E%3Ccircle cx='20' cy='16' r='6' fill='%2342613B'/%3E%3Cpath d='M8 32 Q8 26 20 26 Q32 26 32 32' fill='%2342613B'/%3E%3C/svg%3E" alt="ユーザーアバター" class="user-avatar" onclick="window.location.href='prototype_SCREEN-003_mypage_v1.0.html'">
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
+  <div class="main-wrapper">
+    <aside class="left-sidebar">
+      <a href="prototype_SCREEN-000_homepage_v1.1.html?logged_in=true" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🏠</div>
+        <span>ホーム</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🌱</div>
+        <span>スタート</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🎯</div>
+        <span>ゴール</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">📊</div>
+        <span>記録</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">📝</div>
+        <span>反省</span>
+      </a>
+      <a href="prototype_SCREEN-003_mypage_v1.0.html" class="sidebar-btn">
+        <div class="sidebar-btn-icon">👤</div>
+        <span>マイページ</span>
+      </a>
+    </aside>
+
+    <div class="trial-main">
+      <nav class="trial-menu-bar" aria-label="トライアルメニュー">
+        <a href="prototype_SCREEN-004_trial_affirmation_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">📜</span>
+          <span class="menu-text">アファメーション</span>
+        </a>
+        <a href="prototype_SCREEN-005_trial_morning_evening_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">🌅</span>
+          <span class="menu-text">朝・晩</span>
+        </a>
+        <span class="trial-menu-item active" aria-current="page">
+          <span class="menu-icon" aria-hidden="true">📅</span>
+          <span class="menu-text">週</span>
+        </span>
+        <a href="prototype_SCREEN-007_trial_monthly_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">🗓️</span>
+          <span class="menu-text">月</span>
+        </a>
+      </nav>
+
+      <div class="week-nav">
+        <button type="button" class="week-nav-btn" id="week-prev" aria-label="前の週">◁</button>
+        <span class="week-nav-label" id="week-label">3月9日 ～ 3月15日</span>
+        <button type="button" class="week-nav-btn" id="week-next" aria-label="次の週">▷</button>
+      </div>
+
+      <div class="weekly-container">
+        <!-- 今週の行動目標 -->
+        <section class="weekly-section">
+          <h3>今週の行動目標</h3>
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>目標</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('今週の行動目標', 'weekly-goal')">✎</button>
+            </div>
+            <div class="textarea-display empty" id="display-weekly-goal" onclick="openEditModal('今週の行動目標', 'weekly-goal')">クリックまたは編集アイコンで入力（前週に「来週の行動目標」を入力している場合はここに表示されます）</div>
+          </div>
+        </section>
+
+        <!-- 行動の結果（7日グリッド） -->
+        <section class="weekly-section">
+          <h3>行動の結果</h3>
+          <p class="form-row" style="margin-bottom: 0;">各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩画面へ移動します。</p>
+          <div class="result-grid" id="result-grid">
+            <!-- JSで7日分のセルを生成 -->
+          </div>
+        </section>
+
+        <!-- 今週の振り返り -->
+        <section class="weekly-section">
+          <h3>今週の振り返り</h3>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>行動の成果</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('行動の成果', 'weekly-result')">✎</button>
+            </div>
+            <div class="textarea-display empty" id="display-weekly-result" onclick="openEditModal('行動の成果', 'weekly-result')">クリックまたは編集アイコンで入力</div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>満足度（今週の朝・晩の平均）</span>
+            </div>
+            <div class="satisfaction-display">
+              <span id="display-satisfaction-avg">—</span> 点/10点
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>行動時の思考・感情</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('行動時の思考・感情', 'weekly-emotion')">✎</button>
+            </div>
+            <div class="textarea-display empty" id="display-weekly-emotion" onclick="openEditModal('行動時の思考・感情', 'weekly-emotion')">クリックまたは編集アイコンで入力</div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>今週の気づき・感動・成長</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('今週の気づき・感動・成長', 'weekly-insight')">✎</button>
+            </div>
+            <div class="textarea-display empty" id="display-weekly-insight" onclick="openEditModal('今週の気づき・感動・成長', 'weekly-insight')">クリックまたは編集アイコンで入力</div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>今週の改善まとめ</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('今週の改善まとめ', 'weekly-improve')">✎</button>
+            </div>
+            <div class="textarea-display empty" id="display-weekly-improve" onclick="openEditModal('今週の改善まとめ', 'weekly-improve')">クリックまたは編集アイコンで入力</div>
+          </div>
+
+          <button type="button" class="ai-report-btn" onclick="openAiReportModal()">
+            <span aria-hidden="true">🤖</span> AIレポートを表示
+          </button>
+        </section>
+
+        <!-- 来週の行動目標 -->
+        <section class="weekly-section">
+          <h3>来週の行動目標</h3>
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>来週の目標（今週の目標と同一データで表示）</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('来週の行動目標', 'next-week-goal')">✎</button>
+            </div>
+            <div class="textarea-display empty" id="display-next-week-goal" onclick="openEditModal('来週の行動目標', 'next-week-goal')">クリックまたは編集アイコンで入力。週を進めるとここに表示されます。</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <footer class="trial-footer">ビズアイテム</footer>
+
+  <!-- 編集モーダル -->
+  <div class="modal-overlay" id="edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+    <div class="modal-box">
+      <h4 id="edit-modal-title">編集</h4>
+      <textarea id="edit-modal-textarea" rows="5"></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeEditModal()">キャンセル</button>
+        <button type="button" class="btn-ok" onclick="saveEditModal()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 上書き確認モーダル -->
+  <div class="modal-overlay" id="overwrite-modal" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <h4>確認</h4>
+      <p class="modal-body">今週の行動目標はすでに入力されています。上書きしますか？</p>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeOverwriteModal(false)">キャンセル</button>
+        <button type="button" class="btn-ok" onclick="closeOverwriteModal(true)">上書きする</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AIレポートモーダル -->
+  <div class="modal-overlay" id="ai-report-modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
+    <div class="modal-box" style="max-width: 640px;">
+      <h4 id="ai-modal-title">AIレポート</h4>
+      <div class="modal-body" id="ai-report-body">
+        <p>（AIによる振り返りレポートがここに表示されます。一括反映または各項目で個別に反映できます。）</p>
+        <div id="ai-report-suggestions"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeAiReportModal()">閉じる</button>
+        <button type="button" class="btn-apply-item" onclick="applyAiReportAll()">一括で反映</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 週の開始を月曜とする
+    var weekStartOffset = 1;
+    var currentWeekStart = getWeekStart(new Date(2026, 2, 9));
+    var editTargetId = null;
+    var dataStore = {};
+    var dailyResults = {}; // { 'YYYY-MM-DD': { morning: 'o'|'delta'|'x'|'', evening: 'o'|'delta'|'x'|'' } }
+    var satisfactionByDay = {}; // { 'YYYY-MM-DD': number }
+
+    function getWeekStart(d) {
+      var date = new Date(d);
+      var day = date.getDay();
+      var diff = (day === 0 ? -6 : 1) - day;
+      date.setDate(date.getDate() + diff);
+      return date;
+    }
+
+    function formatWeekLabel(start) {
+      var end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      return (start.getMonth() + 1) + '月' + start.getDate() + '日 ～ ' + (end.getMonth() + 1) + '月' + end.getDate() + '日';
+    }
+
+    function dateKey(d) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function getWeekDates() {
+      var dates = [];
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(currentWeekStart);
+        d.setDate(d.getDate() + i);
+        dates.push(d);
+      }
+      return dates;
+    }
+
+    function updateWeekLabel() {
+      document.getElementById('week-label').textContent = formatWeekLabel(currentWeekStart);
+    }
+
+    function changeWeek(delta) {
+      if (delta > 0) {
+        var nextGoal = (dataStore['next-week-goal'] || '').trim();
+        if (nextGoal) {
+          dataStore['weekly-goal'] = nextGoal;
+          var disp = document.getElementById('display-weekly-goal');
+          if (disp) { disp.textContent = nextGoal; disp.classList.remove('empty'); }
+        }
+      }
+      currentWeekStart.setDate(currentWeekStart.getDate() + delta * 7);
+      updateWeekLabel();
+      renderResultGrid();
+      updateSatisfactionAvg();
+    }
+
+    function renderResultGrid() {
+      var grid = document.getElementById('result-grid');
+      var dates = getWeekDates();
+      var dowLabels = ['月', '火', '水', '木', '金', '土', '日'];
+      grid.innerHTML = '';
+      dates.forEach(function(d) {
+        var key = dateKey(d);
+        var res = dailyResults[key] || { morning: '', evening: '' };
+        var sat = satisfactionByDay[key];
+        var morningSym = res.morning === 'done' ? '〇' : res.morning === 'partial' ? '△' : res.morning === 'none' ? '×' : '—';
+        var eveningSym = res.evening === 'done' ? '〇' : res.evening === 'partial' ? '△' : res.evening === 'none' ? '×' : '—';
+        var morningClass = res.morning === 'done' ? 'symbol-o' : res.morning === 'partial' ? 'symbol-delta' : res.morning === 'none' ? 'symbol-x' : 'symbol-none';
+        var eveningClass = res.evening === 'done' ? 'symbol-o' : res.evening === 'partial' ? 'symbol-delta' : res.evening === 'none' ? 'symbol-x' : 'symbol-none';
+        var url = 'prototype_SCREEN-005_trial_morning_evening_v1.0.html?date=' + key;
+        var cell = document.createElement('div');
+        cell.className = 'result-cell';
+        cell.innerHTML =
+          '<div class="result-cell-date">' + (d.getMonth() + 1) + '/' + d.getDate() + '</div>' +
+          '<div class="result-cell-dow">' + dowLabels[d.getDay() === 0 ? 6 : d.getDay() - 1] + '</div>' +
+          '<div class="result-cell-symbols">' +
+          '<a href="' + url + '" class="' + morningClass + '" title="朝">' + morningSym + '</a>' +
+          '<a href="' + url + '" class="' + eveningClass + '" title="晩">' + eveningSym + '</a>' +
+          '</div>';
+        grid.appendChild(cell);
+      });
+    }
+
+    function updateSatisfactionAvg() {
+      var dates = getWeekDates();
+      var sum = 0, count = 0;
+      dates.forEach(function(d) {
+        var v = satisfactionByDay[dateKey(d)];
+        if (v !== undefined && v !== '') { sum += Number(v); count++; }
+      });
+      var el = document.getElementById('display-satisfaction-avg');
+      if (count > 0) el.textContent = (Math.round(sum / count * 10) / 10).toFixed(1);
+      else el.textContent = '—';
+    }
+
+    // プロトタイプ用：サンプルデータ（任意）
+    function initSampleData() {
+      var d = new Date(currentWeekStart);
+      for (var i = 0; i < 7; i++) {
+        var key = dateKey(d);
+        if (i < 3) dailyResults[key] = { morning: 'done', evening: i % 2 === 0 ? 'done' : 'partial' };
+        else if (i < 5) dailyResults[key] = { morning: 'partial', evening: 'done' };
+        else dailyResults[key] = { morning: '', evening: '' };
+        satisfactionByDay[key] = 7 + i;
+        d.setDate(d.getDate() + 1);
+      }
+    }
+
+    function openEditModal(title, fieldId) {
+      var isWeeklyGoal = (fieldId === 'weekly-goal');
+      var existing = (dataStore['weekly-goal'] || '').trim();
+      if (isWeeklyGoal && existing) {
+        window._pendingEdit = { title: title, fieldId: fieldId };
+        document.getElementById('overwrite-modal').classList.add('active');
+        return;
+      }
+      doOpenEditModal(title, fieldId);
+    }
+
+    function doOpenEditModal(title, fieldId) {
+      editTargetId = fieldId;
+      document.getElementById('edit-modal-title').textContent = title;
+      var val = dataStore[fieldId] || '';
+      if (fieldId === 'next-week-goal') val = val || dataStore['weekly-goal'] || '';
+      document.getElementById('edit-modal-textarea').value = val;
+      document.getElementById('edit-modal').classList.add('active');
+      document.getElementById('edit-modal-textarea').focus();
+    }
+
+    function closeOverwriteModal(overwrite) {
+      document.getElementById('overwrite-modal').classList.remove('active');
+      var pending = window._pendingEdit;
+      window._pendingEdit = null;
+      if (overwrite && pending) doOpenEditModal(pending.title, pending.fieldId);
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.remove('active');
+      editTargetId = null;
+    }
+
+    function saveEditModal() {
+      if (!editTargetId) return;
+      var value = document.getElementById('edit-modal-textarea').value.trim();
+      dataStore[editTargetId] = value;
+      if (editTargetId === 'weekly-goal') dataStore['next-week-goal'] = value;
+      if (editTargetId === 'next-week-goal') dataStore['weekly-goal'] = value;
+      var displayIds = editTargetId === 'weekly-goal' || editTargetId === 'next-week-goal'
+        ? ['weekly-goal', 'next-week-goal'] : [editTargetId];
+      displayIds.forEach(function(id) {
+        var display = document.getElementById('display-' + id);
+        if (display) {
+          display.textContent = value || (id === 'weekly-goal' ? 'クリックまたは編集アイコンで入力（前週に「来週の行動目標」を入力している場合はここに表示されます）' : 'クリックまたは編集アイコンで入力。週を進めるとここに表示されます。');
+          display.classList.toggle('empty', !value);
+        }
+      });
+      closeEditModal();
+    }
+
+    function openAiReportModal() {
+      var report = '【AIレポート（プロトタイプ）】\n今週の振り返りをもとにしたサンプルレポートです。\n・行動の成果: 継続した記録が習慣化の一助になっています。\n・思考・感情: ポジティブな日が多かったです。\n・気づき・成長: 小さな一歩の積み重ねを意識できました。\n・改善まとめ: 来週は時間帯を固定するとさらに続けやすくなります。';
+      document.getElementById('ai-report-body').innerHTML = '<pre style="white-space: pre-wrap; margin: 0; font-size: var(--font-size-body-small);">' + report + '</pre>';
+      document.getElementById('ai-report-modal').classList.add('active');
+    }
+
+    function closeAiReportModal() {
+      document.getElementById('ai-report-modal').classList.remove('active');
+    }
+
+    function applyAiReportAll() {
+      dataStore['weekly-result'] = '継続した記録が習慣化の一助になっています。';
+      dataStore['weekly-emotion'] = 'ポジティブな日が多かったです。';
+      dataStore['weekly-insight'] = '小さな一歩の積み重ねを意識できました。';
+      dataStore['weekly-improve'] = '来週は時間帯を固定するとさらに続けやすくなります。';
+      ['weekly-result', 'weekly-emotion', 'weekly-insight', 'weekly-improve'].forEach(function(id) {
+        var display = document.getElementById('display-' + id);
+        if (display) {
+          display.textContent = dataStore[id];
+          display.classList.remove('empty');
+        }
+      });
+      closeAiReportModal();
+    }
+
+    document.getElementById('week-prev').addEventListener('click', function() { changeWeek(-1); });
+    document.getElementById('week-next').addEventListener('click', function() { changeWeek(1); });
+
+    document.getElementById('edit-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeEditModal();
+    });
+    document.getElementById('edit-modal-textarea').addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeEditModal();
+    });
+    document.getElementById('overwrite-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeOverwriteModal(false);
+    });
+    document.getElementById('ai-report-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeAiReportModal();
+    });
+
+    function toggleSidebar() {
+      var sidebar = document.querySelector('.left-sidebar');
+      var overlay = document.getElementById('sidebar-overlay');
+      var btn = document.getElementById('sidebar-toggle-btn');
+      var isOpen = sidebar.classList.toggle('active');
+      overlay.classList.toggle('active', isOpen);
+      if (btn) {
+        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        btn.setAttribute('aria-label', isOpen ? 'メニューを閉じる' : 'メニューを開く');
+      }
+    }
+    function closeSidebar() {
+      var sidebar = document.querySelector('.left-sidebar');
+      var overlay = document.getElementById('sidebar-overlay');
+      var btn = document.getElementById('sidebar-toggle-btn');
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'メニューを開く');
+      }
+    }
+    document.querySelectorAll('.left-sidebar .sidebar-btn').forEach(function(link) {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 768) closeSidebar();
+      });
+    });
+
+    updateWeekLabel();
+    initSampleData();
+    renderResultGrid();
+    updateSatisfactionAvg();
+
+    var nextDisplay = document.getElementById('display-next-week-goal');
+    if (nextDisplay && dataStore['next-week-goal']) {
+      nextDisplay.textContent = dataStore['next-week-goal'];
+      nextDisplay.classList.remove('empty');
+    }
+  </script>
+</body>
+</html>

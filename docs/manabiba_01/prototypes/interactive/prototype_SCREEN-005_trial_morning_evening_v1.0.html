@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>28日間 こころのトライアル - 朝・晩の活動（プロトタイプ）</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .main-wrapper {
+      display: flex;
+      flex: 1;
+      margin-top: 60px;
+      min-width: 0;
+      padding-left: 80px;
+      flex-direction: column;
+    }
+
+    .proto-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+      height: 60px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .proto-header h1 {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      margin: 0;
+      font-size: var(--font-size-h4);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .header-left { display: flex; align-items: center; position: relative; }
+    .header-right { display: flex; align-items: center; }
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-background-secondary);
+      border: 2px solid var(--color-text-on-green);
+      cursor: pointer;
+      object-fit: cover;
+    }
+
+    .left-sidebar {
+      width: 80px;
+      background: var(--color-primary);
+      padding: var(--spacing-lg) 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-md);
+      position: fixed;
+      left: 0;
+      top: 60px;
+      bottom: 0;
+      overflow-y: auto;
+      z-index: 999;
+    }
+    .sidebar-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm);
+      background: transparent;
+      border: none;
+      color: var(--color-text-on-green);
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: var(--font-size-caption);
+    }
+    .sidebar-btn:hover, .sidebar-btn.active { background: var(--color-primary-dark); }
+    .sidebar-btn-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      border: 2px solid var(--color-text-on-green);
+      border-radius: var(--radius-sm);
+    }
+    .sidebar-btn.active .sidebar-btn-icon {
+      background: var(--color-text-on-green);
+      color: var(--color-primary);
+    }
+
+    .trial-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-lg);
+      background: var(--color-background);
+      min-width: 0;
+      max-width: 1026px;
+      width: 100%;
+      margin: 0 auto;
+      min-height: 0;
+    }
+
+    .trial-menu-bar {
+      display: flex;
+      background: var(--color-background-secondary);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-xs);
+      margin-bottom: var(--spacing-lg);
+      border: 1px solid var(--color-border);
+      flex-wrap: wrap;
+      gap: var(--spacing-xs);
+    }
+    .trial-menu-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      border: none;
+      background: transparent;
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      transition: background 0.2s, color 0.2s;
+    }
+    .trial-menu-item:hover {
+      background: var(--color-background-accent);
+      color: var(--color-primary);
+    }
+    .trial-menu-item.active {
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+    }
+    .trial-menu-item .menu-icon { font-size: 1.25rem; flex-shrink: 0; }
+    .trial-menu-item .menu-text { white-space: nowrap; }
+
+    /* 日付表示 */
+    .date-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+      flex-shrink: 0;
+    }
+    .date-nav-btn {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-background-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-primary);
+      font-size: 1.25rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .date-nav-btn:hover { background: var(--color-background-accent); }
+    .date-nav-label {
+      font-size: var(--font-size-h4);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      min-width: 240px;
+      text-align: center;
+    }
+
+    /* メインコンテナ（縦スクロール） */
+    .morning-evening-container {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      background: var(--color-background-secondary);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: var(--spacing-xl);
+    }
+
+    .action-sub-section {
+      margin-bottom: var(--spacing-xxl);
+    }
+    .action-sub-section:last-child { margin-bottom: 0; }
+    .action-sub-section h3 {
+      margin: 0 0 var(--spacing-lg) 0;
+      font-size: var(--font-size-h3);
+      font-weight: 700;
+      color: var(--color-primary);
+      padding-bottom: var(--spacing-sm);
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    .form-row {
+      margin-bottom: var(--spacing-lg);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: var(--spacing-sm);
+    }
+    .form-row label, .form-row .label-wrap {
+      font-weight: 500;
+      color: var(--color-text-primary);
+      margin-bottom: var(--spacing-xs);
+    }
+    .form-row .label-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .edit-icon-btn {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      color: var(--color-primary);
+      cursor: pointer;
+      font-size: 1rem;
+      flex-shrink: 0;
+      transition: background 0.2s, color 0.2s;
+    }
+    .edit-icon-btn:hover {
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+    }
+
+    .checkbox-group, .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-md);
+      align-items: center;
+    }
+    .checkbox-group label, .radio-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      cursor: pointer;
+      font-weight: 400;
+    }
+    .link-btn {
+      display: inline-block;
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: var(--font-size-body-small);
+      transition: background 0.2s;
+    }
+    .link-btn:hover { background: var(--color-primary-dark); }
+
+    .textarea-wrap {
+      width: 100%;
+      min-height: 80px;
+      resize: vertical;
+    }
+    .textarea-wrap textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: var(--spacing-md);
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .textarea-wrap textarea:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+    .textarea-display {
+      width: 100%;
+      min-height: 60px;
+      padding: var(--spacing-md);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-background);
+      color: var(--color-text-primary);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .textarea-display.empty { color: var(--color-text-disabled); }
+
+    .satisfaction-input {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+    .satisfaction-input input {
+      width: 60px;
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: var(--font-size-body);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+    .satisfaction-input input:focus { outline: none; border-color: var(--color-primary); }
+
+    /* モーダル */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: var(--spacing-lg);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--color-background-secondary);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-hover);
+      padding: var(--spacing-xl);
+      max-width: 560px;
+      width: 100%;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-box h4 {
+      margin: 0 0 var(--spacing-md) 0;
+      font-size: var(--font-size-h4);
+      color: var(--color-text-primary);
+    }
+    .modal-box textarea {
+      flex: 1;
+      min-height: 120px;
+      padding: var(--spacing-md);
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      resize: vertical;
+      margin-bottom: var(--spacing-lg);
+    }
+    .modal-box textarea:focus { outline: none; border-color: var(--color-primary); }
+    .modal-actions {
+      display: flex;
+      gap: var(--spacing-md);
+      justify-content: flex-end;
+    }
+    .modal-actions button {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .modal-actions .btn-cancel {
+      background: var(--color-background-accent);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-primary);
+    }
+    .modal-actions .btn-ok {
+      background: var(--color-primary);
+      border: none;
+      color: var(--color-text-on-green);
+    }
+    .modal-actions .btn-ok:hover { background: var(--color-primary-dark); }
+    .modal-actions .btn-cancel:hover { background: var(--color-secondary-dark); }
+
+    .sidebar-toggle-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      margin: 0;
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: var(--radius-md);
+      color: var(--color-text-on-green);
+      cursor: pointer;
+      font-size: 1.5rem;
+      line-height: 1;
+      position: absolute;
+      left: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .sidebar-toggle-btn span { display: block; font-size: 1.5rem; line-height: 1; }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 998;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .sidebar-overlay.active { display: block; opacity: 1; }
+
+    .trial-footer {
+      background: var(--color-primary-dark);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-md) var(--spacing-lg);
+      text-align: center;
+      font-size: var(--font-size-body-small);
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      .main-wrapper { padding-left: 0; }
+      .sidebar-toggle-btn { display: flex; }
+      .left-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+      .left-sidebar.active { transform: translateX(0); }
+      .proto-header h1 {
+        font-size: 0.9rem;
+        left: 80px;
+        right: 80px;
+        width: auto;
+        transform: none;
+        text-align: center;
+      }
+      .date-nav-label { min-width: 180px; font-size: var(--font-size-body); }
+    }
+    @media (max-width: 767px) {
+      .trial-menu-item .menu-text { display: none; }
+      .morning-evening-container { padding: var(--spacing-md); }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-header">
+    <div class="header-left">
+      <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="メニューを開く" aria-expanded="false" onclick="toggleSidebar()" title="メニュー">
+        <span aria-hidden="true">☰</span>
+      </button>
+    </div>
+    <h1>28日間　こころのトライアル　プログラム</h1>
+    <div class="header-right">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23EAF2E4'/%3E%3Ccircle cx='20' cy='16' r='6' fill='%2342613B'/%3E%3Cpath d='M8 32 Q8 26 20 26 Q32 26 32 32' fill='%2342613B'/%3E%3C/svg%3E" alt="ユーザーアバター" class="user-avatar" onclick="window.location.href='prototype_SCREEN-003_mypage_v1.0.html'">
+    </div>
+  </header>
+
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
+  <div class="main-wrapper">
+    <aside class="left-sidebar">
+      <a href="prototype_SCREEN-000_homepage_v1.1.html?logged_in=true" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🏠</div>
+        <span>ホーム</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🌱</div>
+        <span>スタート</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🎯</div>
+        <span>ゴール</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">📊</div>
+        <span>記録</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">📝</div>
+        <span>反省</span>
+      </a>
+      <a href="prototype_SCREEN-003_mypage_v1.0.html" class="sidebar-btn">
+        <div class="sidebar-btn-icon">👤</div>
+        <span>マイページ</span>
+      </a>
+    </aside>
+
+    <div class="trial-main">
+      <nav class="trial-menu-bar" aria-label="トライアルメニュー">
+        <a href="prototype_SCREEN-004_trial_affirmation_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">📜</span>
+          <span class="menu-text">アファメーション</span>
+        </a>
+        <span class="trial-menu-item active" aria-current="page">
+          <span class="menu-icon" aria-hidden="true">🌅</span>
+          <span class="menu-text">朝・晩</span>
+        </span>
+        <a href="prototype_SCREEN-006_trial_weekly_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">📅</span>
+          <span class="menu-text">週</span>
+        </a>
+        <a href="prototype_SCREEN-007_trial_monthly_v1.0.html" class="trial-menu-item">
+          <span class="menu-icon" aria-hidden="true">🗓️</span>
+          <span class="menu-text">月</span>
+        </a>
+      </nav>
+
+      <div class="date-nav">
+        <button type="button" class="date-nav-btn" id="date-prev" aria-label="前の日">◁</button>
+        <span class="date-nav-label" id="date-label">3月10日 朝・晩のアクション</span>
+        <button type="button" class="date-nav-btn" id="date-next" aria-label="次の日">▷</button>
+      </div>
+
+      <div class="morning-evening-container">
+        <!-- 朝のアクション -->
+        <section class="action-sub-section">
+          <h3>朝のアクション</h3>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>アファメーションの宣言</span>
+            </div>
+            <div class="checkbox-group">
+              <label><input type="checkbox" name="affirmation_done" id="affirmation-done"> 完了</label>
+              <label><input type="checkbox" name="affirmation_undone" id="affirmation-undone"> 未完</label>
+            </div>
+            <a href="prototype_SCREEN-004_trial_affirmation_v1.0.html" class="link-btn">アファメーションへ→</a>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>今日の行動</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('今日の行動', 'today-action')">✎</button>
+            </div>
+            <div class="textarea-wrap" style="width:100%;">
+              <div class="textarea-display empty" id="display-today-action" onclick="openEditModal('今日の行動', 'today-action')">クリックまたは編集アイコンで入力</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>今日の行動のイメージング</span>
+            </div>
+            <div class="checkbox-group">
+              <label><input type="checkbox" id="imaging-done"> 完了</label>
+            </div>
+          </div>
+        </section>
+
+        <!-- 晩のアクション -->
+        <section class="action-sub-section">
+          <h3>晩のアクション</h3>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>今日の行動目標の実行</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集">✎</button>
+            </div>
+            <div class="radio-group">
+              <label><input type="radio" name="execution" value="done"> 実行できた</label>
+              <label><input type="radio" name="execution" value="partial"> 一部できた</label>
+              <label><input type="radio" name="execution" value="none"> できなかった</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>行動の成果</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('行動の成果', 'result-action')">✎</button>
+            </div>
+            <div class="textarea-wrap" style="width:100%;">
+              <div class="textarea-display empty" id="display-result-action" onclick="openEditModal('行動の成果', 'result-action')">クリックまたは編集アイコンで入力</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>満足度</span>
+            </div>
+            <div class="satisfaction-input">
+              <input type="number" id="satisfaction" min="0" max="10" step="1" placeholder="0" aria-label="満足度">
+              <span>点/10点</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>行動時の感情・思考</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('行動時の感情・思考', 'emotion')">✎</button>
+            </div>
+            <div class="textarea-wrap" style="width:100%;">
+              <div class="textarea-display empty" id="display-emotion" onclick="openEditModal('行動時の感情・思考', 'emotion')">クリックまたは編集アイコンで入力</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>こころのブレーキの作動</span>
+            </div>
+            <div class="radio-group">
+              <label><input type="radio" name="brake" value="yes"> あった</label>
+              <label><input type="radio" name="brake" value="partial"> 一部あった</label>
+              <label><input type="radio" name="brake" value="no"> なかった</label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>その時の反論の言葉</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('その時の反論の言葉', 'rebuttal')">✎</button>
+            </div>
+            <div class="textarea-wrap" style="width:100%;">
+              <div class="textarea-display empty" id="display-rebuttal" onclick="openEditModal('その時の反論の言葉', 'rebuttal')">クリックまたは編集アイコンで入力</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>今日の気づき・感動・成長</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('今日の気づき・感動・成長', 'insight')">✎</button>
+            </div>
+            <div class="textarea-wrap" style="width:100%;">
+              <div class="textarea-display empty" id="display-insight" onclick="openEditModal('今日の気づき・感動・成長', 'insight')">クリックまたは編集アイコンで入力</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>今日の自分への一言</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('今日の自分への一言', 'message-self')">✎</button>
+            </div>
+            <div class="textarea-wrap" style="width:100%;">
+              <div class="textarea-display empty" id="display-message-self" onclick="openEditModal('今日の自分への一言', 'message-self')">クリックまたは編集アイコンで入力</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="label-wrap">
+              <span>その他</span>
+              <button type="button" class="edit-icon-btn" aria-label="編集" onclick="openEditModal('その他', 'other')">✎</button>
+            </div>
+            <div class="textarea-wrap" style="width:100%;">
+              <div class="textarea-display empty" id="display-other" onclick="openEditModal('その他', 'other')">クリックまたは編集アイコンで入力</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <footer class="trial-footer">ビズアイテム</footer>
+
+  <!-- 編集モーダル -->
+  <div class="modal-overlay" id="edit-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box">
+      <h4 id="modal-title">編集</h4>
+      <textarea id="modal-textarea" rows="5"></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closeEditModal()">キャンセル</button>
+        <button type="button" class="btn-ok" onclick="saveEditModal()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var currentDate = new Date(2026, 2, 10);
+    var editTargetId = null;
+    var dataStore = {};
+
+    function formatDateLabel(d) {
+      var m = d.getMonth() + 1;
+      var day = d.getDate();
+      return m + '月' + day + '日 朝・晩のアクション';
+    }
+
+    function updateDateLabel() {
+      document.getElementById('date-label').textContent = formatDateLabel(currentDate);
+    }
+
+    function changeDate(delta) {
+      currentDate.setDate(currentDate.getDate() + delta);
+      updateDateLabel();
+    }
+
+    document.getElementById('date-prev').addEventListener('click', function() { changeDate(-1); });
+    document.getElementById('date-next').addEventListener('click', function() { changeDate(1); });
+    updateDateLabel();
+
+    function openEditModal(title, fieldId) {
+      editTargetId = fieldId;
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-textarea').value = dataStore[fieldId] || '';
+      document.getElementById('edit-modal').classList.add('active');
+      document.getElementById('modal-textarea').focus();
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.remove('active');
+      editTargetId = null;
+    }
+
+    function saveEditModal() {
+      if (!editTargetId) return;
+      var value = document.getElementById('modal-textarea').value.trim();
+      dataStore[editTargetId] = value;
+      var display = document.getElementById('display-' + editTargetId);
+      if (display) {
+        display.textContent = value || 'クリックまたは編集アイコンで入力';
+        display.classList.toggle('empty', !value);
+      }
+      closeEditModal();
+    }
+
+    document.getElementById('edit-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeEditModal();
+    });
+    document.getElementById('modal-textarea').addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeEditModal();
+    });
+
+    function toggleSidebar() {
+      var sidebar = document.querySelector('.left-sidebar');
+      var overlay = document.getElementById('sidebar-overlay');
+      var btn = document.getElementById('sidebar-toggle-btn');
+      var isOpen = sidebar.classList.toggle('active');
+      overlay.classList.toggle('active', isOpen);
+      if (btn) {
+        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        btn.setAttribute('aria-label', isOpen ? 'メニューを閉じる' : 'メニューを開く');
+      }
+    }
+    function closeSidebar() {
+      var sidebar = document.querySelector('.left-sidebar');
+      var overlay = document.getElementById('sidebar-overlay');
+      var btn = document.getElementById('sidebar-toggle-btn');
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'メニューを開く');
+      }
+    }
+    document.querySelectorAll('.left-sidebar .sidebar-btn').forEach(function(link) {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 768) closeSidebar();
+      });
+    });
+  </script>
+</body>
+</html>

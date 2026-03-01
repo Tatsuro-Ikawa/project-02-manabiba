@@ -1,8 +1,11 @@
 @import "tailwindcss";
+@import "../styles/prototype-tokens.css";
+@import "../styles/home-trial.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* プロトタイプの color-secondary（#EAF2E4）を全体のベース背景に使用 */
+  --background: var(--color-secondary);
+  --foreground: var(--color-text-primary);
 }
 
 /* @theme inline {
@@ -12,12 +15,7 @@
   --font-mono: var(--font-geist-mono);
 } */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ベースは常に白背景（システムのダークモードには追随しない） */
 
 /* グローバルタイポグラフィー設定 */
 body {
@@ -46,13 +44,13 @@ p {
 
 /* リンクのデフォルト設定 */
 a {
-  color: #2563eb;
+  color: var(--color-primary);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 a:hover {
-  color: #1d4ed8;
+  color: var(--color-primary-dark);
   text-decoration: underline;
 }
 

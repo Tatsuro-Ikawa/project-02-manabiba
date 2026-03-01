@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>人生学び場 こころ道場 - ホームページ（プロトタイプ）</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    /* レイアウト構造（横スクロールなし・4段階ブレークポイント） */
+    /* ※ flex-wrap: nowrap で共通CSSの flex-wrap: wrap を上書き（折り返し防止） */
+    body {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    .main-wrapper {
+      display: flex;
+      justify-content: center; /* 中央寄せ */
+      flex: 1;
+      margin-top: 60px; /* ヘッダーの高さ分 */
+      min-width: 0; /* 子要素の縮小を許可 */
+      padding-left: 80px; /* 左ツールバーの幅分を補正 */
+    }
+
+    /* ヘッダー（固定、上部） */
+    .proto-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      /* 左端からの距離は padding-left で調整（ハンバーガーメニュー位置） */
+      padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+      height: 60px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .proto-header h1 {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      margin: 0;
+      font-size: var(--font-size-h4);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      /* サイドバー（80px）の中央（40px）にハンバーガーメニューを配置 */
+      position: relative;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+    }
+
+    .hamburger-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: var(--spacing-sm);
+    }
+
+    .hamburger-menu span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--color-text-on-green);
+      transition: all 0.3s ease;
+    }
+
+    .login-btn {
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: #fff;
+      color: var(--color-text-primary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: var(--font-size-body-small);
+      transition: background 0.2s;
+    }
+
+    .login-btn:hover {
+      background: var(--color-background-secondary);
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--color-background-secondary);
+      border: 2px solid var(--color-text-on-green);
+      cursor: pointer;
+      object-fit: cover;
+    }
+
+    /* 左メニューバー（固定） */
+    .left-sidebar {
+      width: 80px;
+      background: var(--color-primary);
+      padding: var(--spacing-lg) 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-md);
+      position: fixed;
+      left: 0;
+      top: 60px;
+      bottom: 0;
+      overflow-y: auto;
+      z-index: 999;
+    }
+
+    .sidebar-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm);
+      background: transparent;
+      border: none;
+      color: var(--color-text-on-green);
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      font-size: var(--font-size-caption);
+    }
+
+    .sidebar-btn:hover,
+    .sidebar-btn.active {
+      background: var(--color-primary-dark);
+    }
+
+    .sidebar-btn-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      border: 2px solid var(--color-text-on-green);
+      border-radius: var(--radius-sm);
+    }
+
+    .sidebar-btn.active .sidebar-btn-icon {
+      background: var(--color-text-on-green);
+      color: var(--color-primary);
+    }
+
+    /* メインコンテンツエリア（>1440px: 最大1300px・センタリング） */
+    .main-content {
+      padding: var(--spacing-lg);
+      background: var(--color-background);
+      min-height: calc(100vh - 60px);
+      max-width: 1300px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    /* バナーセクション */
+    .banner-section {
+      background: var(--color-background-secondary);
+      padding: var(--spacing-xl) var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .banner-message {
+      font-size: var(--font-size-h2);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      text-align: center;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .banner-buttons {
+      display: flex;
+      gap: var(--spacing-md);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .banner-btn {
+      padding: var(--spacing-md) var(--spacing-xl);
+      border-radius: var(--radius-md);
+      border: none;
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .banner-btn.active {
+      background: var(--color-primary-light);
+      color: var(--color-text-on-green);
+    }
+
+    .banner-btn.inactive {
+      background: var(--color-background-accent);
+      color: var(--color-text-disabled);
+      cursor: not-allowed;
+    }
+
+    /* コンテンツグリッド（2カラム: メイン＋右250px） */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 250px;
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .content-left {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+      min-width: 0; /* グリッド内での縮小を許可 */
+    }
+
+    .content-right {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+    }
+
+    /* セクション共通スタイル */
+    .content-section {
+      background: var(--color-background-secondary);
+      padding: var(--spacing-lg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      min-width: 0; /* 親要素の縮小に追従 */
+    }
+
+    .section-title {
+      font-size: var(--font-size-h3);
+      font-weight: 700;
+      color: var(--color-primary);
+      margin: 0 0 var(--spacing-md) 0;
+      padding-bottom: var(--spacing-sm);
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    /* 最新動画（カルーセル） */
+    .video-carousel {
+      position: relative;
+      min-width: 0; /* 親要素の縮小に追従 */
+    }
+
+    .video-carousel-container {
+      display: flex;
+      gap: var(--spacing-md);
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      min-width: 0; /* 親要素の縮小に追従 */
+    }
+
+    .video-carousel-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    .video-item {
+      min-width: 240px; /* 最小幅を少し小さく */
+      flex-shrink: 0; /* カルーセル内で縮小しない */
+      background: var(--color-background);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .video-thumbnail {
+      width: 100%;
+      height: 160px;
+      background: var(--color-background-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-caption);
+    }
+
+    .video-title {
+      padding: var(--spacing-md);
+      font-weight: 500;
+      color: var(--color-text-primary);
+      font-size: var(--font-size-body-small);
+    }
+
+    .carousel-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+      z-index: 10;
+    }
+
+    .carousel-nav:hover {
+      opacity: 1;
+    }
+
+    .carousel-nav.prev {
+      left: -20px;
+    }
+
+    .carousel-nav.next {
+      right: -20px;
+    }
+
+    /* 本日の一番（ログイン後のみ） */
+    .today-best {
+      background: var(--color-background-secondary);
+      padding: var(--spacing-lg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .today-best-image {
+      width: 100%;
+      height: 200px;
+      background: var(--color-background-accent);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-caption);
+    }
+
+    .today-best-label {
+      font-weight: 500;
+      color: var(--color-primary);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .today-best-text {
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-body-small);
+    }
+
+    /* 昨日までの積重ね（ログイン後のみ） */
+    .accumulation {
+      background: var(--color-background-secondary);
+      padding: var(--spacing-lg);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .calendar-preview {
+      width: 100%;
+      height: 200px;
+      background: var(--color-background);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-caption);
+    }
+
+    .accumulation-label {
+      font-weight: 500;
+      color: var(--color-primary);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .accumulation-text {
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-body-small);
+    }
+
+    /* 最新記事 */
+    .article-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .article-item {
+      display: flex;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md) 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .article-item:last-child {
+      border-bottom: none;
+    }
+
+    .article-thumbnail {
+      width: 60px;
+      height: 60px;
+      border-radius: var(--radius-sm);
+      background: var(--color-background-accent);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-caption);
+    }
+
+    .article-content {
+      flex: 1;
+    }
+
+    .article-summary {
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-body-small);
+      margin: var(--spacing-xs) 0;
+    }
+
+    .article-meta {
+      color: var(--color-text-disabled);
+      font-size: var(--font-size-caption);
+      margin-top: var(--spacing-xs);
+    }
+
+    /* 参考リンク */
+    .reference-links {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .reference-category {
+      margin-bottom: var(--spacing-md);
+    }
+
+    .reference-category:last-child {
+      margin-bottom: 0;
+    }
+
+    .reference-category-title {
+      font-weight: 500;
+      color: var(--color-primary);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .reference-link-item {
+      padding: var(--spacing-xs) 0;
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-body-small);
+    }
+
+    .reference-link-item::before {
+      content: "• ";
+      color: var(--color-primary);
+      margin-right: var(--spacing-xs);
+    }
+
+    /* SNSリンク */
+    .sns-links {
+      display: flex;
+      gap: var(--spacing-md);
+      align-items: center;
+    }
+
+    .sns-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      text-decoration: none;
+      transition: transform 0.2s;
+    }
+
+    .sns-icon:hover {
+      transform: scale(1.1);
+    }
+
+    .sns-icon.facebook { background: #1877F2; color: #fff; }
+    .sns-icon.instagram { background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); color: #fff; }
+    .sns-icon.twitter { background: #000; color: #fff; }
+    .sns-icon.youtube { background: #FF0000; color: #fff; }
+
+    /* 広告エリア */
+    .ad-area {
+      min-height: 300px;
+      background: var(--color-background-accent);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-caption);
+    }
+
+    /* フッター */
+    .homepage-footer {
+      background: var(--color-primary-dark);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-lg);
+      margin-top: var(--spacing-xxl);
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: var(--spacing-lg);
+      flex-wrap: wrap;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .footer-links a {
+      color: var(--color-text-on-green);
+      text-decoration: none;
+      font-size: var(--font-size-body-small);
+      opacity: 0.9;
+      transition: opacity 0.2s;
+    }
+
+    .footer-links a:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+
+    /* グローバルナビゲーションメニュー（ハンバーガーメニュー） */
+    .global-nav {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      width: 250px;
+      height: calc(100vh - 60px);
+      background: var(--color-primary-dark);
+      color: var(--color-text-on-green);
+      padding: var(--spacing-lg);
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      z-index: 1001;
+      overflow-y: auto;
+    }
+
+    .global-nav.active {
+      transform: translateX(0);
+    }
+
+    .global-nav ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .global-nav li {
+      margin-bottom: var(--spacing-md);
+    }
+
+    .global-nav a {
+      color: var(--color-text-on-green);
+      text-decoration: none;
+      font-size: var(--font-size-body);
+      display: block;
+      padding: var(--spacing-sm);
+      border-radius: var(--radius-sm);
+      transition: background 0.2s;
+    }
+
+    .global-nav a:hover {
+      background: var(--color-primary);
+    }
+
+    .nav-overlay {
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+      z-index: 1000;
+    }
+
+    .nav-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* ========================================
+       レスポンシブ対応（4段階・横スクロールなし）
+       >1440px / 1024-1440px / 768-1024px / <768px
+       ======================================== */
+
+    /* 1024px以下: 2カラム→1カラム */
+    @media (max-width: 1024px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+      .content-right {
+        order: 1;
+      }
+    }
+
+    /* 1025px以上: 2カラム維持（右250px固定・左カラム可変） */
+    /* 左カラム(content-left)が画面幅に応じて縮小し、右カラム(250px)は固定 */
+    @media (min-width: 1025px) {
+      .content-grid {
+        grid-template-columns: 1fr 250px; /* 左カラム可変・右カラム固定 */
+      }
+      
+      /* 画面幅が狭いとき、動画アイテムのサイズを調整 */
+      .video-item {
+        min-width: clamp(200px, 30%, 280px); /* 画面幅に応じて200-280pxで可変 */
+      }
+    }
+
+    /* 1025-1200px: 動画表示を2個程度に抑える */
+    @media (min-width: 1025px) and (max-width: 1200px) {
+      .video-item {
+        min-width: clamp(180px, 40%, 240px);
+      }
+    }
+
+    /* 左ツールバー開くボタン（768px以下＝タブレット以下で表示） */
+    .sidebar-toggle-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      margin: 0;
+      padding: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: var(--radius-md);
+      color: var(--color-text-on-green);
+      cursor: pointer;
+      font-size: 1.5rem;
+      line-height: 1;
+      transition: background 0.2s;
+      /* サイドバー（80px）の中央（40px）に配置：ボタン幅44pxの中央が40pxになるように */
+      position: absolute;
+      left: 18px; /* 40px - 22px（ボタン幅の半分）= 18px */
+      top: 50%; /* 縦方向の中央 */
+      transform: translateY(-50%); /* 縦方向の中央揃え */
+    }
+
+    .sidebar-toggle-btn span {
+      display: block;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .sidebar-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .sidebar-toggle-btn[aria-expanded="true"] {
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    /* 左ツールバー用オーバーレイ（開いている時に背面を暗く） */
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 998;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* 768px以下: ハンバーガーメニュー表示・ログインボタン右端寄せ */
+    /* ※ 共通CSSの .proto-header 上書き（flex-direction: row を維持） */
+    @media (max-width: 768px) {
+      .proto-header {
+        padding-left: 0; /* ハンバーガーは header-left 内で絶対配置 */
+        padding-right: var(--spacing-md); /* ログインボタンを右端に寄せる */
+        flex-direction: row; /* 共通CSSの column を上書き */
+        align-items: center; /* 共通CSSの flex-start を上書き */
+      }
+
+      .proto-header h1 {
+        width: auto; /* 共通CSSの width: 100% を上書き */
+      }
+
+      /* header-left: サイドバー幅80pxで固定し、ハンバーガー位置の基準にする */
+      .header-left {
+        width: 80px;
+        min-width: 80px;
+      }
+
+      .header-right {
+        margin-left: auto; /* ログインボタンを右端に寄せる */
+      }
+
+      .sidebar-toggle-btn {
+        display: flex;
+      }
+    }
+
+    /* 768px未満: 左ツールバー非表示・コンテナ最大620px・フォント画面幅比例 */
+    @media (max-width: 767px) {
+      .main-wrapper {
+        padding-left: 0; /* 左ツールバー非表示のため補正解除 */
+      }
+
+      .left-sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+
+      .left-sidebar.active {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: auto;
+        margin-right: auto;
+        min-width: 0; /* 可変のため最小幅解除 */
+        max-width: 620px;
+        width: 100%;
+        padding-left: var(--spacing-md);
+        padding-right: var(--spacing-md);
+      }
+
+      /* 768px幅を基準にフォントを画面幅に比例して縮小（最小12px・最大16px） */
+      html {
+        font-size: clamp(12px, 2.083vw, 16px); /* 16/768*100 ≈ 2.083vw */
+      }
+
+      .banner-buttons {
+        flex-direction: column;
+      }
+
+      .banner-btn {
+        width: 100%;
+      }
+
+      /* h1をバナー中央に表示（ハンバーガー80px・ログイン側を避けた中央エリア） */
+      .proto-header h1 {
+        font-size: 1rem; /* remで基準フォントに追従 */
+        left: 80px; /* ハンバーガー領域の右端 */
+        right: 80px; /* ログインボタン領域の左端 */
+        width: auto;
+        margin: 0;
+        transform: none;
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="proto-header">
+    <div class="header-left">
+      <!-- モバイル時：サイドバーナビゲーション用ハンバーガーメニュー -->
+      <button type="button" class="sidebar-toggle-btn" id="sidebar-toggle-btn" aria-label="メニューを開く" aria-expanded="false" onclick="toggleSidebar()" title="メニュー（ホーム・スタート・ゴール等）">
+        <span aria-hidden="true">☰</span>
+      </button>
+    </div>
+    <h1>人生学び場　～こころ道場～</h1>
+    <div class="header-right">
+      <!-- ログイン前はログインボタン、ログイン後はアバター -->
+      <a href="prototype_SCREEN-002_login_v1.0.html" class="login-btn" id="login-btn">ログイン</a>
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='18' fill='%23EAF2E4'/%3E%3Ccircle cx='20' cy='16' r='6' fill='%2342613B'/%3E%3Cpath d='M8 32 Q8 26 20 26 Q32 26 32 32' fill='%2342613B'/%3E%3C/svg%3E" alt="ユーザーアバター" class="user-avatar" id="user-avatar" style="display: none;" onclick="window.location.href='prototype_SCREEN-003_mypage_v1.0.html'">
+    </div>
+  </header>
+
+  <!-- サイドバー用オーバーレイ（モバイルでサイドバー開閉時） -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
+  <div class="main-wrapper">
+    <!-- 左メニューバー -->
+    <aside class="left-sidebar">
+      <a href="#" class="sidebar-btn active">
+        <div class="sidebar-btn-icon">🏠</div>
+        <span>ホーム</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🌱</div>
+        <span>スタート</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">🎯</div>
+        <span>ゴール</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">📊</div>
+        <span>計画</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">📝</div>
+        <span>実行</span>
+      </a>
+      <a href="#" class="sidebar-btn">
+        <div class="sidebar-btn-icon">✍️</div>
+        <span>反省</span>
+      </a>
+      <a href="prototype_SCREEN-003_mypage_v1.0.html" class="sidebar-btn">
+        <div class="sidebar-btn-icon">👤</div>
+        <span>マイページ</span>
+      </a>
+    </aside>
+
+    <!-- メインコンテンツ -->
+    <main class="main-content">
+      <!-- バナーセクション -->
+      <section class="banner-section">
+        <div class="banner-message">一度きりの人生、なりたい自分を目指しませんか？</div>
+        <div class="banner-buttons">
+          <a href="prototype_SCREEN-001_landing_v1.0.html" class="banner-btn active">こころのトライアル</a>
+          <button class="banner-btn inactive" disabled>願いを叶える</button>
+          <button class="banner-btn inactive" disabled>課題を克服する</button>
+        </div>
+      </section>
+
+      <!-- コンテンツグリッド -->
+      <div class="content-grid">
+        <!-- 左カラム -->
+        <div class="content-left">
+          <!-- 最新動画 -->
+          <section class="content-section video-carousel">
+            <h2 class="section-title">最新動画</h2>
+            <button class="carousel-nav prev" onclick="scrollCarousel('prev')">‹</button>
+            <div class="video-carousel-container" id="video-carousel">
+              <div class="video-item">
+                <div class="video-thumbnail">動画サムネイル</div>
+                <div class="video-title">家族との絆を深める</div>
+              </div>
+              <div class="video-item">
+                <div class="video-thumbnail">動画サムネイル</div>
+                <div class="video-title">上司との付き合い方</div>
+              </div>
+              <div class="video-item">
+                <div class="video-thumbnail">動画サムネイル</div>
+                <div class="video-title">自分を輝かせる方法</div>
+              </div>
+            </div>
+            <button class="carousel-nav next" onclick="scrollCarousel('next')">›</button>
+          </section>
+
+          <!-- 本日の一番（ログイン後のみ、JavaScriptで表示制御） -->
+          <section class="content-section today-best" id="today-best" style="display: none;">
+            <h2 class="section-title">本日の一番</h2>
+            <div class="today-best-image">画像プレースホルダー</div>
+            <div class="today-best-label">今日のことば!</div>
+            <div class="today-best-text">今日は....</div>
+          </section>
+
+          <!-- 昨日までの積重ね（ログイン後のみ、JavaScriptで表示制御） -->
+          <section class="content-section accumulation" id="accumulation" style="display: none;">
+            <h2 class="section-title">昨日までの積重ね</h2>
+            <div class="calendar-preview">カレンダープレビュー</div>
+            <div class="accumulation-label">目標</div>
+            <div class="accumulation-text">きのうまでの足跡:</div>
+          </section>
+
+          <!-- 最新記事 -->
+          <section class="content-section">
+            <h2 class="section-title">最新記事</h2>
+            <ul class="article-list">
+              <li class="article-item">
+                <div class="article-thumbnail">画像</div>
+                <div class="article-content">
+                  <div class="article-summary">サマリー････</div>
+                  <div class="article-meta">作成日: 2025年12月28日 | 作成者: ユーザー名</div>
+                </div>
+              </li>
+              <li class="article-item">
+                <div class="article-thumbnail">画像</div>
+                <div class="article-content">
+                  <div class="article-summary">サマリー････</div>
+                  <div class="article-meta">作成日: 2025年12月27日 | 作成者: ユーザー名</div>
+                </div>
+              </li>
+              <li class="article-item">
+                <div class="article-thumbnail">画像</div>
+                <div class="article-content">
+                  <div class="article-summary">サマリー････</div>
+                  <div class="article-meta">作成日: 2025年12月26日 | 作成者: ユーザー名</div>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <!-- SNSリンク -->
+          <section class="content-section">
+            <h2 class="section-title">SNSリンク</h2>
+            <div class="sns-links">
+              <a href="#" class="sns-icon facebook" aria-label="Facebook">f</a>
+              <a href="#" class="sns-icon instagram" aria-label="Instagram">📷</a>
+              <a href="#" class="sns-icon twitter" aria-label="X (Twitter)">X</a>
+              <a href="#" class="sns-icon youtube" aria-label="YouTube">▶</a>
+            </div>
+          </section>
+        </div>
+
+        <!-- 右カラム -->
+        <div class="content-right">
+          <!-- 参考リンク -->
+          <section class="content-section">
+            <h2 class="section-title">参考リンク</h2>
+            <ul class="reference-links">
+              <li class="reference-category">
+                <div class="reference-category-title">カテゴリA</div>
+                <div class="reference-link-item">リンク</div>
+                <div class="reference-link-item">リンク</div>
+                <div class="reference-link-item">リンク</div>
+              </li>
+              <li class="reference-category">
+                <div class="reference-category-title">カテゴリB</div>
+                <div class="reference-link-item">リンク</div>
+                <div class="reference-link-item">リンク</div>
+                <div class="reference-link-item">リンク</div>
+              </li>
+            </ul>
+          </section>
+
+          <!-- 広告エリア -->
+          <section class="content-section">
+            <h2 class="section-title">広告エリア</h2>
+            <div class="ad-area">広告プレースホルダー（Google広告等）</div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- フッター -->
+  <footer class="homepage-footer">
+    <ul class="footer-links">
+      <li><a href="#" onclick="alert('こころ道場の案内ページは別途作成予定です'); return false;">こころ道場</a></li>
+      <li><a href="#" onclick="alert('サービス案内ページは別途作成予定です'); return false;">サービス</a></li>
+      <li><a href="#" onclick="alert('料金プランページは別途作成予定です'); return false;">料金プラン</a></li>
+      <li><a href="#" onclick="alert('利用規約ページは別途作成予定です'); return false;">利用規約</a></li>
+      <li><a href="#" onclick="alert('プライバシーポリシーページは別途作成予定です'); return false;">プライバシーポリシー</a></li>
+      <li><a href="#" onclick="alert('FAQページは別途作成予定です'); return false;">FAQ</a></li>
+      <li><a href="#" onclick="alert('お問合せページは別途作成予定です'); return false;">お問合せ</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    // グローバルナビゲーションの開閉
+    function toggleGlobalNav() {
+      const nav = document.getElementById('global-nav');
+      const overlay = document.getElementById('nav-overlay');
+      nav.classList.toggle('active');
+      overlay.classList.toggle('active');
+    }
+
+    // カルーセルのスクロール
+    function scrollCarousel(direction) {
+      const carousel = document.getElementById('video-carousel');
+      const scrollAmount = 300;
+      if (direction === 'prev') {
+        carousel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      } else {
+        carousel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+    }
+
+    // ログイン状態の確認（プロトタイプ用）
+    // 実際の実装では、認証状態を確認して表示を切り替える
+    function checkLoginStatus() {
+      // プロトタイプ: URLパラメータでログイン状態をシミュレート
+      const urlParams = new URLSearchParams(window.location.search);
+      const isLoggedIn = urlParams.get('logged_in') === 'true';
+      const trialBtn = document.querySelector('.banner-buttons .banner-btn.active');
+      
+      if (isLoggedIn) {
+        // ログイン後の表示
+        document.getElementById('login-btn').style.display = 'none';
+        document.getElementById('user-avatar').style.display = 'block';
+        document.getElementById('today-best').style.display = 'block';
+        document.getElementById('accumulation').style.display = 'block';
+        // こころのトライアル → 28日間トライアル画面へ遷移
+        if (trialBtn && trialBtn.textContent.indexOf('こころのトライアル') !== -1) {
+          trialBtn.href = 'prototype_SCREEN-004_trial_affirmation_v1.0.html';
+        }
+      } else {
+        // ログイン前の表示
+        document.getElementById('login-btn').style.display = 'block';
+        document.getElementById('user-avatar').style.display = 'none';
+        document.getElementById('today-best').style.display = 'none';
+        document.getElementById('accumulation').style.display = 'none';
+        if (trialBtn && trialBtn.textContent.indexOf('こころのトライアル') !== -1) {
+          trialBtn.href = 'prototype_SCREEN-001_landing_v1.0.html';
+        }
+      }
+    }
+
+    // ページ読み込み時にログイン状態を確認
+    checkLoginStatus();
+
+    // タブレット・モバイルでの左ツールバーの開閉
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.left-sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      const btn = document.getElementById('sidebar-toggle-btn');
+      const isOpen = sidebar.classList.toggle('active');
+      overlay.classList.toggle('active', isOpen);
+      if (btn) {
+        btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        btn.setAttribute('aria-label', isOpen ? '左メニューを閉じる' : '左メニューを開く');
+      }
+    }
+
+    function closeSidebar() {
+      const sidebar = document.querySelector('.left-sidebar');
+      const overlay = document.getElementById('sidebar-overlay');
+      const btn = document.getElementById('sidebar-toggle-btn');
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+      if (btn) {
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', '左メニューを開く');
+      }
+    }
+
+    // 左ツールバー内のリンクをクリックしたら閉じる（タブレット・モバイルで次の画面へ進むため）
+    document.querySelectorAll('.left-sidebar .sidebar-btn').forEach(function(link) {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 768) closeSidebar();
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>人生学び場 こころ道場 - ランディング（プロトタイプ）</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    .hero {
+      text-align: center;
+      padding: var(--spacing-xxl) var(--spacing-lg);
+      background: var(--color-background);
+    }
+    .hero h1 { font-size: var(--font-size-h1); margin: 0 0 var(--spacing-md); }
+    .hero .tagline { font-size: var(--font-size-body-large); color: var(--color-text-secondary); margin-bottom: var(--spacing-lg); }
+    .hero .cta { display: flex; gap: var(--spacing-md); justify-content: center; flex-wrap: wrap; margin-top: var(--spacing-xl); }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--spacing-lg); }
+    .feature-card { background: var(--color-background-secondary); padding: var(--spacing-lg); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
+    .feature-card h3 { margin: 0 0 var(--spacing-md); font-size: var(--font-size-h3); }
+    .feature-card p { margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-body-small); }
+
+    /* ハンバーガーメニューボタン */
+    .hamburger-menu {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: var(--spacing-sm);
+      position: absolute;
+      top: var(--spacing-md);
+      right: var(--spacing-md);
+    }
+
+    .hamburger-menu span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--color-text-on-green);
+      transition: all 0.3s ease;
+    }
+
+    /* レスポンシブデザイン（Media Queries） */
+    /* Mobile（< 768px） */
+    @media (max-width: 767px) {
+      /* ヒーローセクション */
+      .hero {
+        padding: var(--spacing-xl) var(--spacing-md);
+      }
+      .hero h1 {
+        font-size: 1.75rem;
+      }
+      .hero .tagline {
+        font-size: var(--font-size-body);
+      }
+      .hero .cta {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+      .hero .cta .proto-btn {
+        width: 100%;
+      }
+
+      /* 特徴グリッド */
+      .features {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+      .feature-card {
+        padding: var(--spacing-md);
+      }
+
+      /* ヘッダーのハンバーガーメニュー */
+      .proto-header {
+        position: relative;
+      }
+      .hamburger-menu {
+        display: flex;
+      }
+      .proto-header nav {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--color-primary-dark);
+        flex-direction: column;
+        padding: var(--spacing-md);
+        z-index: 1000;
+        display: none;
+      }
+      .proto-header nav.active {
+        display: flex;
+      }
+    }
+
+    /* Tablet（768px - 1024px） */
+    @media (min-width: 768px) and (max-width: 1024px) {
+      /* 特徴グリッド */
+      .features {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Desktop（> 1024px） */
+    @media (min-width: 1025px) {
+      /* ハンバーガーメニューは非表示 */
+      .hamburger-menu {
+        display: none;
+      }
+
+      /* ヘッダーのナビゲーションは常に表示 */
+      .proto-header nav {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-header">
+    <h1>人生学び場　～こころ道場～</h1>
+    <button class="hamburger-menu" aria-label="メニュー" onclick="toggleNav()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="header-nav">
+      <a href="prototype_SCREEN-000_homepage_v1.0.html">ホーム</a>
+      <a href="prototype_SCREEN-002_login_v1.0.html">ログイン</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>自分を変える　7日間プログラム</h1>
+      <p class="tagline">一度きりの人生を大切に！「自分を変えたい」をサポート</p>
+      <div class="cta">
+        <a href="prototype_SCREEN-002_login_v1.0.html" class="proto-btn proto-btn-primary">ログインして始める</a>
+        <a href="prototype_SCREEN-003_mypage_v1.0.html" class="proto-btn proto-btn-secondary">マイページ（デモ）</a>
+      </div>
+    </section>
+
+    <div class="proto-container">
+      <section class="proto-section">
+        <h2>こんな方におすすめ</h2>
+        <div class="features">
+          <div class="feature-card">
+            <h3>これからの人生をしっかり考えたい…</h3>
+            <p>自己理解から目標設定まで、一貫したサポート</p>
+          </div>
+          <div class="feature-card">
+            <h3>もっと「わたしらしく」生きてみたい</h3>
+            <p>価値観・強みを言語化し、行動につなげる</p>
+          </div>
+          <div class="feature-card">
+            <h3>同じ失敗や悩みを繰り返してしまう…</h3>
+            <p>こころのブレーキに気づき、変容を促す</p>
+          </div>
+          <div class="feature-card">
+            <h3>自分をもっと高めたい…</h3>
+            <p>PDCAサイクルで継続的に成長</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="proto-section">
+        <h2>7日間プログラムの流れ</h2>
+        <div class="proto-card">
+          <h3>理想の人生を描く</h3>
+          <p>私はだれか？「自己理解」による自分らしさの発見／自分を縛る「思い込み」とは／人生を変える「Be.do.Have」の法則</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="proto-footer">
+    <p>人生学び場　～こころ道場～　プロトタイプ v1.0（SCREEN-001）</p>
+  </footer>
+
+  <script>
+    // ハンバーガーメニューの開閉
+    function toggleNav() {
+      const nav = document.getElementById('header-nav');
+      nav.classList.toggle('active');
+    }
+
+    // ナビゲーションリンククリック時にメニューを閉じる（モバイル用）
+    document.querySelectorAll('#header-nav a').forEach(link => {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 767) {
+          document.getElementById('header-nav').classList.remove('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

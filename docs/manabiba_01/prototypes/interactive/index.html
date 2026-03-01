@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+     <!-- サーバー起動コマンド:　
+          cd docs/manabiba_01/prototypes/interactive
+          npx http-server -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>プロトタイプ一覧 - 人生学び場 こころ道場</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    .index-list { max-width: 640px; margin: var(--spacing-xl) auto; padding: 0 var(--spacing-lg); }
+    .index-list h1 { margin-bottom: var(--spacing-lg); font-size: var(--font-size-h2); }
+    .index-list ul { list-style: none; padding: 0; margin: 0; }
+    .index-list li { margin-bottom: var(--spacing-md); }
+    .index-list a { display: block; padding: var(--spacing-md) var(--spacing-lg); background: var(--color-background-secondary); border-radius: var(--radius-md); color: var(--color-primary); text-decoration: none; font-weight: 500; box-shadow: var(--shadow-card); transition: box-shadow 0.2s; }
+    .index-list a:hover { box-shadow: var(--shadow-hover); }
+    .index-list .id { font-size: var(--font-size-caption); color: var(--color-text-secondary); margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <header class="proto-header">
+    <h1>人生学び場　～こころ道場～</h1>
+    <nav><a href="prototype_SCREEN-001_landing_v1.0.html">ランディングへ</a></nav>
+  </header>
+
+  <main class="index-list">
+    <h1>インタラクティブプロトタイプ一覧</h1>
+    <p style="color: var(--color-text-secondary); margin-bottom: var(--spacing-xl);">HTML/CSS/JS で作成した画面イメージ。ブラウザで直接開いて確認できます。</p>
+    <ul>
+      <li>
+        <a href="prototype_SCREEN-000_homepage_v1.1.html">ホームページ（ログイン前）</a><span class="id">SCREEN-000 v1.1</span>
+        <br><a href="prototype_SCREEN-000_homepage_v1.1.html?logged_in=true" style="font-size: var(--font-size-caption); color: var(--color-text-secondary);">→ ログイン後のバージョン</a>
+      </li>
+      <li><a href="prototype_SCREEN-000_homepage_v1.0.html">ホームページ（旧版）</a><span class="id">SCREEN-000 v1.0</span></li>
+      <li><a href="prototype_SCREEN-001_landing_v1.0.html">ランディングページ</a><span class="id">SCREEN-001</span></li>
+      <li><a href="prototype_SCREEN-002_login_v1.0.html">ログインページ</a><span class="id">SCREEN-002</span></li>
+      <li><a href="prototype_SCREEN-003_mypage_v1.0.html">マイページ（ホーム）</a><span class="id">SCREEN-003</span></li>
+      <li><a href="prototype_SCREEN-004_trial_affirmation_v1.0.html">28日間こころのトライアル（アファメーション作成）</a><span class="id">SCREEN-004</span></li>
+      <li><a href="prototype_SCREEN-005_trial_morning_evening_v1.0.html">28日間こころのトライアル（朝・晩の活動）</a><span class="id">SCREEN-005</span></li>
+      <li><a href="prototype_SCREEN-006_trial_weekly_v1.0.html">28日間こころのトライアル（週）</a><span class="id">SCREEN-006</span></li>
+
+      <li><a href="prototype_SCREEN-007_trial_monthly_v1.0.html">28日間こころのトライアル（月）</a><span class="id">SCREEN-007</span></li>
+    </ul>
+    <p class="proto-mock-note" style="margin-top: var(--spacing-xl);">共通スタイル: <code>css/prototype-common.css</code>（DESIGN_SYSTEM 準拠）</p>
+  </main>
+
+  <footer class="proto-footer">
+    <p>人生学び場　～こころ道場～　プロトタイプ v1.0</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>人生学び場 こころ道場 - ホームページ（プロトタイプ）</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    /* ヒーローセクション */
+    .homepage-hero {
+      text-align: center;
+      padding: var(--spacing-xxl) var(--spacing-lg);
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+      color: var(--color-text-on-green);
+    }
+    .homepage-hero h1 { font-size: var(--font-size-h1); margin: 0 0 var(--spacing-md); }
+    .homepage-hero .tagline { font-size: var(--font-size-body-large); margin-bottom: var(--spacing-lg); opacity: 0.95; }
+    .homepage-hero .cta { display: flex; gap: var(--spacing-md); justify-content: center; flex-wrap: wrap; margin-top: var(--spacing-xl); }
+
+    /* サービス紹介セクション */
+    .service-intro { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--spacing-lg); }
+    .service-card { background: var(--color-background-secondary); padding: var(--spacing-xl); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
+    .service-card h3 { margin: 0 0 var(--spacing-md); font-size: var(--font-size-h3); color: var(--color-primary); }
+    .service-card p { margin: 0 0 var(--spacing-md); color: var(--color-text-secondary); }
+    .service-card .badge { display: inline-block; padding: var(--spacing-xs) var(--spacing-sm); background: var(--color-accent-gold); color: var(--color-text-primary); border-radius: var(--radius-sm); font-size: var(--font-size-caption); font-weight: 500; }
+
+    /* 料金・プランセクション */
+    .pricing-section { background: var(--color-background-accent); padding: var(--spacing-xl) 0; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--spacing-lg); }
+    .pricing-card { background: var(--color-background-secondary); padding: var(--spacing-xl); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); text-align: center; }
+    .pricing-card h3 { margin: 0 0 var(--spacing-md); font-size: var(--font-size-h3); color: var(--color-primary); }
+    .pricing-card .price { font-size: 2rem; font-weight: 700; color: var(--color-primary); margin: var(--spacing-md) 0; }
+    .pricing-card .price-unit { font-size: var(--font-size-body-small); color: var(--color-text-secondary); }
+    .pricing-card ul { list-style: none; padding: 0; margin: var(--spacing-lg) 0; text-align: left; }
+    .pricing-card ul li { padding: var(--spacing-sm) 0; color: var(--color-text-secondary); }
+    .pricing-card ul li:before { content: "✓ "; color: var(--color-primary-light); font-weight: bold; margin-right: var(--spacing-sm); }
+
+    /* 特徴・メリットセクション */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--spacing-lg); }
+    .feature-item { background: var(--color-background-secondary); padding: var(--spacing-lg); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+    .feature-item h4 { margin: 0 0 var(--spacing-sm); font-size: var(--font-size-h4); color: var(--color-primary); }
+
+    /* 最新情報セクション */
+    .news-list { list-style: none; padding: 0; }
+    .news-item { padding: var(--spacing-md) 0; border-bottom: 1px solid var(--color-border); }
+    .news-item:last-child { border-bottom: none; }
+    .news-date { color: var(--color-text-secondary); font-size: var(--font-size-caption); }
+    .news-title { margin: var(--spacing-xs) 0; font-weight: 500; }
+
+    /* FAQセクション */
+    .faq-list { list-style: none; padding: 0; }
+    .faq-item { background: var(--color-background-secondary); padding: var(--spacing-lg); margin-bottom: var(--spacing-md); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+    .faq-question { font-weight: 500; color: var(--color-primary); margin-bottom: var(--spacing-sm); }
+    .faq-answer { color: var(--color-text-secondary); font-size: var(--font-size-body-small); }
+
+    /* お問い合わせセクション */
+    .contact-section { background: var(--color-background-accent); padding: var(--spacing-xl) 0; }
+    .contact-form { max-width: 600px; margin: 0 auto; background: var(--color-background-secondary); padding: var(--spacing-xl); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); }
+    .form-group { margin-bottom: var(--spacing-lg); }
+    .form-group label { display: block; margin-bottom: var(--spacing-sm); font-weight: 500; color: var(--color-text-primary); }
+    .form-group input, .form-group textarea { width: 100%; padding: var(--spacing-md); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-family: var(--font-family-jp); font-size: var(--font-size-body); }
+    .form-group textarea { min-height: 120px; resize: vertical; }
+    .form-group .required { color: var(--color-error); }
+    .form-submit { width: 100%; padding: var(--spacing-md); background: var(--color-primary); color: var(--color-text-on-green); border: none; border-radius: var(--radius-md); font-size: var(--font-size-body); font-weight: 500; cursor: pointer; transition: background 0.2s; }
+    .form-submit:hover { background: var(--color-primary-dark); }
+
+    /* フッター */
+    .homepage-footer { background: var(--color-primary-dark); color: var(--color-text-on-green); padding: var(--spacing-xl) var(--spacing-lg); }
+    .footer-content { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-lg); }
+    .footer-section h4 { margin: 0 0 var(--spacing-md); font-size: var(--font-size-h4); }
+    .footer-section ul { list-style: none; padding: 0; margin: 0; }
+    .footer-section ul li { margin-bottom: var(--spacing-sm); }
+    .footer-section a { color: var(--color-text-on-green); text-decoration: none; opacity: 0.9; }
+    .footer-section a:hover { opacity: 1; text-decoration: underline; }
+    .footer-copyright { text-align: center; margin-top: var(--spacing-xl); padding-top: var(--spacing-lg); border-top: 1px solid rgba(255, 255, 255, 0.2); font-size: var(--font-size-caption); }
+
+    /* スムーススクロール */
+    html {
+      scroll-behavior: smooth;
+      overflow-y: auto;
+      height: auto;
+      min-height: 100%;
+    }
+    body {
+      overflow-y: auto;
+      height: auto;
+      min-height: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      opacity: 0.98;
+    }
+
+    /* ハンバーガーメニューボタン */
+    .hamburger-menu {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: var(--spacing-sm);
+      position: absolute;
+      top: var(--spacing-md);
+      right: var(--spacing-md);
+    }
+
+    .hamburger-menu span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--color-text-on-green);
+      transition: all 0.3s ease;
+    }
+
+    /* レスポンシブデザイン（Media Queries） */
+    /* Mobile（< 768px） */
+    @media (max-width: 767px) {
+      /* ヒーローセクション */
+      .homepage-hero {
+        padding: var(--spacing-xl) var(--spacing-md);
+      }
+      .homepage-hero h1 {
+        font-size: 1.75rem;
+      }
+      .homepage-hero .tagline {
+        font-size: var(--font-size-body);
+      }
+      .homepage-hero .cta {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+      }
+      .homepage-hero .cta .proto-btn {
+        width: 100%;
+      }
+
+      /* サービス紹介 */
+      .service-intro {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+      .service-card {
+        padding: var(--spacing-md);
+      }
+
+      /* 料金グリッド */
+      .pricing-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+      .pricing-card {
+        padding: var(--spacing-md);
+      }
+      .pricing-card .price {
+        font-size: 1.5rem;
+      }
+
+      /* 特徴グリッド */
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+      .feature-item {
+        padding: var(--spacing-md);
+      }
+
+      /* お問い合わせフォーム */
+      .contact-form {
+        padding: var(--spacing-md);
+      }
+
+      /* フッター */
+      .footer-content {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+      }
+      .homepage-footer {
+        padding: var(--spacing-lg) var(--spacing-md);
+      }
+
+      /* ヘッダーのハンバーガーメニュー */
+      .proto-header {
+        position: relative;
+      }
+      .hamburger-menu {
+        display: flex;
+      }
+      .proto-header nav {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--color-primary-dark);
+        flex-direction: column;
+        padding: var(--spacing-md);
+        z-index: 1000;
+        display: none;
+      }
+      .proto-header nav.active {
+        display: flex;
+      }
+    }
+    
+
+    /* Tablet（768px - 1024px） */
+    @media (min-width: 768px) and (max-width: 1024px) {
+      /* サービス紹介 */
+      .service-intro {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      /* 料金グリッド */
+      .pricing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      /* 特徴グリッド */
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      /* フッター */
+      .footer-content {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Desktop（> 1024px） */
+    @media (min-width: 1025px) {
+      /* ハンバーガーメニューは非表示 */
+      .hamburger-menu {
+        display: none;
+      }
+
+      /* ヘッダーのナビゲーションは常に表示 */
+      .proto-header nav {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-header">
+    <h1>人生学び場　～こころ道場～</h1>
+    <button class="hamburger-menu" aria-label="メニュー" onclick="toggleNav()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="header-nav">
+      <a href="#services">サービス</a>
+      <a href="#pricing">料金</a>
+      <a href="#features">特徴</a>
+      <a href="#faq">FAQ</a>
+      <a href="#contact">お問い合わせ</a>
+      <a href="prototype_SCREEN-001_landing_v1.0.html">ランディング</a>
+      <a href="prototype_SCREEN-002_login_v1.0.html">ログイン</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 1. ヒーローセクション -->
+    <section class="homepage-hero">
+      <h1>人生学び場　～こころ道場～</h1>
+      <p class="tagline">AI×セルフマネジメント×伴走コーチングで、「なりたい自分」へ確実に歩む</p>
+      <div class="cta">
+        <a href="prototype_SCREEN-001_landing_v1.0.html" class="proto-btn proto-btn-primary">プログラムを始める</a>
+        <a href="prototype_SCREEN-002_login_v1.0.html" class="proto-btn proto-btn-secondary">ログイン</a>
+      </div>
+    </section>
+
+    <div class="proto-container">
+      <!-- 2. サービス紹介セクション -->
+      <section id="services" class="proto-section">
+        <h2>サービス紹介</h2>
+        <div class="service-intro">
+          <div class="service-card">
+            <h3>自分を変える7日間プログラム</h3>
+            <span class="badge">28日間無料トライアル含む</span>
+            <p>自己理解から目標設定までの一連の流れを7つのステップで体験。願望・課題・価値観・リソースを整理し、「なりたい自分」を明確にします。</p>
+            <p><strong>対象:</strong> 自分を変えたい、人生を見直したい方</p>
+          </div>
+          <div class="service-card">
+            <h3>メインシステム（PDCAマネジメント）</h3>
+            <p>目標達成のためのPDCAサイクルを継続的に回すためのWebアプリケーション。AIとコーチによる継続的なサポートで、確実に成長を実感できます。</p>
+            <p><strong>対象:</strong> 目標達成を継続的にサポートしたい方</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. 料金・プランセクション -->
+      <section id="pricing" class="pricing-section">
+        <div class="proto-container">
+          <h2 style="text-align: center; margin-bottom: var(--spacing-xl);">料金・プラン</h2>
+          
+          <h3 style="text-align: center; margin: var(--spacing-xl) 0 var(--spacing-lg); color: var(--color-primary);">7日間プログラム</h3>
+          <div class="pricing-grid">
+            <div class="pricing-card">
+              <h3>パーソナルセッション</h3>
+              <div class="price">44,000<span class="price-unit">円</span></div>
+              <p style="color: var(--color-text-secondary); font-size: var(--font-size-body-small);">28日間無料トライアル含む</p>
+              <ul>
+                <li>1対1の個別コーチング</li>
+                <li>7日間の集中プログラム</li>
+                <li>28日間の行動トライアル</li>
+                <li>専属コーチによるサポート</li>
+              </ul>
+            </div>
+            <div class="pricing-card">
+              <h3>グループセッション</h3>
+              <div class="price">22,000<span class="price-unit">円</span></div>
+              <p style="color: var(--color-text-secondary); font-size: var(--font-size-body-small);">28日間無料トライアル含む</p>
+              <ul>
+                <li>グループでのコーチング</li>
+                <li>7日間の集中プログラム</li>
+                <li>28日間の行動トライアル</li>
+                <li>参加者同士の学び合い</li>
+              </ul>
+            </div>
+            <div class="pricing-card">
+              <h3>パーソナル（自習タイプ）</h3>
+              <div class="price">0<span class="price-unit">円</span></div>
+              <p style="color: var(--color-text-secondary); font-size: var(--font-size-body-small);">28日間無料トライアル含む</p>
+              <ul>
+                <li>自己学習形式</li>
+                <li>7日間のプログラム資料</li>
+                <li>28日間の行動トライアル</li>
+                <li>メインシステム利用可能</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3 style="text-align: center; margin: var(--spacing-xl) 0 var(--spacing-lg); color: var(--color-primary);">メインシステム（サブスクリプション）</h3>
+          <div class="pricing-grid">
+            <div class="pricing-card">
+              <h3>フリー版</h3>
+              <div class="price">0<span class="price-unit">円</span></div>
+              <p style="color: var(--color-text-secondary); font-size: var(--font-size-body-small);">基本機能を無料で利用</p>
+              <ul>
+                <li>PDCA入力（月10件まで）</li>
+                <li>目標設定（1件まで）</li>
+                <li>進捗管理（基本）</li>
+              </ul>
+            </div>
+            <div class="pricing-card">
+              <h3>スタンダード</h3>
+              <div class="price">1,320<span class="price-unit">円/月</span></div>
+              <div class="price" style="font-size: 1.5rem; margin-top: 0;">13,200<span class="price-unit">円/年</span></div>
+              <ul>
+                <li>PDCA入力（無制限）</li>
+                <li>目標設定（複数件）</li>
+                <li>進捗管理（詳細）</li>
+                <li>AIコメント（月20件）</li>
+              </ul>
+            </div>
+            <div class="pricing-card">
+              <h3>プレミアム</h3>
+              <div class="price">1,650<span class="price-unit">円/月</span></div>
+              <div class="price" style="font-size: 1.5rem; margin-top: 0;">16,500<span class="price-unit">円/年</span></div>
+              <ul>
+                <li>スタンダードの全機能</li>
+                <li>AIコメント（無制限）</li>
+                <li>コーチングセッション（月1回）</li>
+                <li>優先サポート</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. 特徴・メリットセクション -->
+      <section id="features" class="proto-section">
+        <h2>特徴・メリット</h2>
+        <div class="features-grid">
+          <div class="feature-item">
+            <h4>自己理解の深化</h4>
+            <p>願望・課題・価値観・リソースを整理し、自分らしさを明確にします。</p>
+          </div>
+          <div class="feature-item">
+            <h4>目標設定の支援</h4>
+            <p>SMART目標とBe-Do-Haveフレームワークで、具体的な目標を設定します。</p>
+          </div>
+          <div class="feature-item">
+            <h4>継続的なPDCA</h4>
+            <p>計画→実行→確認→改善のサイクルを継続的に回し、成長を実感できます。</p>
+          </div>
+          <div class="feature-item">
+            <h4>AIとコーチのサポート</h4>
+            <p>AI分析とコーチングセッションで、継続的な伴走サポートを提供します。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. 最新情報・お知らせセクション -->
+      <section class="proto-section">
+        <h2>最新情報・お知らせ</h2>
+        <ul class="news-list">
+          <li class="news-item">
+            <span class="news-date">2025年12月28日</span>
+            <div class="news-title">ホームページを公開しました</div>
+          </li>
+          <li class="news-item">
+            <span class="news-date">2025年12月27日</span>
+            <div class="news-title">7日間プログラムの詳細を追加しました</div>
+          </li>
+          <li class="news-item">
+            <span class="news-date">2025年12月24日</span>
+            <div class="news-title">メインシステムのベータ版をリリースしました</div>
+          </li>
+        </ul>
+        <p class="proto-mock-note" style="margin-top: var(--spacing-lg);">※ プロトタイプ: 実際のニュース機能は未実装</p>
+      </section>
+
+      <!-- 6. よくある質問（FAQ）セクション -->
+      <section id="faq" class="proto-section">
+        <h2>よくある質問（FAQ）</h2>
+        <ul class="faq-list">
+          <li class="faq-item">
+            <div class="faq-question">Q. 7日間プログラムとメインシステムの違いは？</div>
+            <div class="faq-answer">A. 7日間プログラムは、自己理解から目標設定までの集中プログラムです。メインシステムは、設定した目標に対してPDCAサイクルを継続的に回すためのツールです。両方を組み合わせることで、より効果的な成長が期待できます。</div>
+          </li>
+          <li class="faq-item">
+            <div class="faq-question">Q. 無料トライアルはどのくらい利用できますか？</div>
+            <div class="faq-answer">A. 7日間プログラムには28日間の無料トライアルが含まれています。メインシステムのフリー版は無料で継続利用可能です。</div>
+          </li>
+          <li class="faq-item">
+            <div class="faq-question">Q. サブスクリプションはいつでも解約できますか？</div>
+            <div class="faq-answer">A. はい、いつでも解約可能です。解約後も解約日まで利用できます。</div>
+          </li>
+          <li class="faq-item">
+            <div class="faq-question">Q. コーチングセッションはどのように行われますか？</div>
+            <div class="faq-answer">A. オンライン（Zoom等）で実施します。日程は個別に調整いたします。</div>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- 7. お問い合わせセクション -->
+    <section id="contact" class="contact-section">
+      <div class="proto-container">
+        <h2 style="text-align: center; margin-bottom: var(--spacing-xl);">お問い合わせ</h2>
+        <div class="contact-form">
+          <form>
+            <div class="form-group">
+              <label for="contact-name">お名前 <span class="required">*</span></label>
+              <input type="text" id="contact-name" name="name" required>
+            </div>
+            <div class="form-group">
+              <label for="contact-email">メールアドレス <span class="required">*</span></label>
+              <input type="email" id="contact-email" name="email" required>
+            </div>
+            <div class="form-group">
+              <label for="contact-subject">件名 <span class="required">*</span></label>
+              <input type="text" id="contact-subject" name="subject" required>
+            </div>
+            <div class="form-group">
+              <label for="contact-message">お問い合わせ内容 <span class="required">*</span></label>
+              <textarea id="contact-message" name="message" required></textarea>
+            </div>
+            <button type="submit" class="form-submit">送信する</button>
+          </form>
+          <p class="proto-mock-note" style="margin-top: var(--spacing-lg);">※ プロトタイプ: フォーム送信機能は未実装</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 8. フッター -->
+  <footer class="homepage-footer">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h4>人生学び場　～こころ道場～</h4>
+        <p style="opacity: 0.9; font-size: var(--font-size-body-small);">AI×セルフマネジメント×伴走コーチングで、「なりたい自分」へ確実に歩む</p>
+      </div>
+      <div class="footer-section">
+        <h4>リンク</h4>
+        <ul>
+          <li><a href="prototype_SCREEN-001_landing_v1.0.html">ランディングページ</a></li>
+          <li><a href="prototype_SCREEN-002_login_v1.0.html">ログイン</a></li>
+          <li><a href="#services">サービス紹介</a></li>
+          <li><a href="#pricing">料金・プラン</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>法的事項</h4>
+        <ul>
+          <li><a href="#" onclick="alert('利用規約ページは別途作成予定です'); return false;">利用規約</a></li>
+          <li><a href="#" onclick="alert('プライバシーポリシーページは別途作成予定です'); return false;">プライバシーポリシー</a></li>
+        </ul>
+      </div>
+      <div class="footer-section">
+        <h4>組織情報</h4>
+        <p style="opacity: 0.9; font-size: var(--font-size-body-small);">
+          個人事業主<br>
+          （法人格なし）
+        </p>
+      </div>
+    </div>
+    <div class="footer-copyright">
+      <p>&copy; 2025 人生学び場　～こころ道場～ All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // ハンバーガーメニューの開閉
+    function toggleNav() {
+      const nav = document.getElementById('header-nav');
+      nav.classList.toggle('active');
+    }
+
+    // ナビゲーションリンククリック時にメニューを閉じる（モバイル用）
+    document.querySelectorAll('#header-nav a').forEach(link => {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 767) {
+          document.getElementById('header-nav').classList.remove('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

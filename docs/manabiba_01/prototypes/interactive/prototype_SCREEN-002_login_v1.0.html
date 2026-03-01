@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン - 人生学び場 こころ道場（プロトタイプ）</title>
+  <link rel="stylesheet" href="css/prototype-common.css">
+  <style>
+    .login-wrap {
+      min-height: 60vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-xl);
+    }
+    .login-card {
+      max-width: 420px;
+      width: 100%;
+      background: var(--color-background-secondary);
+      padding: var(--spacing-xl);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card);
+    }
+    .login-card h1 { margin: 0 0 var(--spacing-md); font-size: var(--font-size-h2); text-align: center; }
+    .login-card .lead { text-align: center; color: var(--color-text-secondary); margin-bottom: var(--spacing-xl); }
+    .login-card .google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-md);
+      width: 100%;
+      padding: 14px 24px;
+      background: var(--color-primary);
+      color: var(--color-text-on-green);
+      font-family: var(--font-family-jp);
+      font-size: var(--font-size-body);
+      font-weight: 500;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .login-card .google-btn:hover { background: var(--color-primary-dark); }
+    .login-card .back { display: block; text-align: center; margin-top: var(--spacing-lg); color: var(--color-primary); }
+
+    /* ハンバーガーメニューボタン */
+    .hamburger-menu {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: var(--spacing-sm);
+      position: absolute;
+      top: var(--spacing-md);
+      right: var(--spacing-md);
+    }
+
+    .hamburger-menu span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--color-text-on-green);
+      transition: all 0.3s ease;
+    }
+
+    /* レスポンシブデザイン（Media Queries） */
+    /* Mobile（< 768px） */
+    @media (max-width: 767px) {
+      /* ログインラップ */
+      .login-wrap {
+        padding: var(--spacing-md);
+        min-height: 50vh;
+      }
+
+      /* ログインカード */
+      .login-card {
+        padding: var(--spacing-lg);
+        max-width: 100%;
+      }
+
+      .login-card h1 {
+        font-size: var(--font-size-h3);
+      }
+
+      /* ヘッダーのハンバーガーメニュー */
+      .proto-header {
+        position: relative;
+      }
+      .hamburger-menu {
+        display: flex;
+      }
+      .proto-header nav {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--color-primary-dark);
+        flex-direction: column;
+        padding: var(--spacing-md);
+        z-index: 1000;
+        display: none;
+      }
+      .proto-header nav.active {
+        display: flex;
+      }
+    }
+
+    /* Tablet（768px - 1024px） */
+    @media (min-width: 768px) and (max-width: 1024px) {
+      .login-card {
+        max-width: 500px;
+      }
+    }
+
+    /* Desktop（> 1024px） */
+    @media (min-width: 1025px) {
+      /* ハンバーガーメニューは非表示 */
+      .hamburger-menu {
+        display: none;
+      }
+
+      /* ヘッダーのナビゲーションは常に表示 */
+      .proto-header nav {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="proto-header">
+    <h1>人生学び場　～こころ道場～</h1>
+    <button class="hamburger-menu" aria-label="メニュー" onclick="toggleNav()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <nav id="header-nav">
+      <a href="prototype_SCREEN-000_homepage_v1.1.html">ホームへ</a>
+      <a href="prototype_SCREEN-001_landing_v1.0.html">トップへ</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>ログイン</h1>
+        <p class="lead">Googleアカウントでログインしてください</p>
+        <a href="prototype_SCREEN-003_mypage_v1.0.html" class="google-btn" style="text-decoration:none; text-align:center;">
+          <span aria-hidden="true">G</span> Googleでログイン
+        </a>
+        <a href="prototype_SCREEN-001_landing_v1.0.html" class="back">← トップに戻る</a>
+        <p class="proto-mock-note">※ 本プロトタイプでは Firebase 認証は行いません。ボタンクリックでマイページへ遷移します。</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="proto-footer">
+    <p>人生学び場　～こころ道場～　プロトタイプ v1.0（SCREEN-002）</p>
+  </footer>
+
+  <script>
+    // ハンバーガーメニューの開閉
+    function toggleNav() {
+      const nav = document.getElementById('header-nav');
+      nav.classList.toggle('active');
+    }
+
+    // ナビゲーションリンククリック時にメニューを閉じる（モバイル用）
+    document.querySelectorAll('#header-nav a').forEach(link => {
+      link.addEventListener('click', function() {
+        if (window.innerWidth <= 767) {
+          document.getElementById('header-nav').classList.remove('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
