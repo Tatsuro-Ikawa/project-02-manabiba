@@ -35,6 +35,7 @@ const ZoomVideoSDK: React.FC = () => {
   const [userName, setUserName] = useState('User');
   const [uitoolkit, setUitoolkit] = useState<ZoomUIToolkit | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [sdkUnavailable, setSdkUnavailable] = useState(false);
 
   // 認証エンドポイント（既存のVercelサーバを使用）
   const authEndpoint = "https://videosdk-auth-endpoint-sample-woad.vercel.app";
@@ -58,6 +59,7 @@ const ZoomVideoSDK: React.FC = () => {
         }
       } catch (err) {
         console.error('Zoom SDK loading error:', err);
+        setSdkUnavailable(true);
       }
     };
 
@@ -228,13 +230,19 @@ const ZoomVideoSDK: React.FC = () => {
           </div>
 
           {/* 参加ボタン */}
-          <button
-            onClick={getVideoSDKJWT}
-            disabled={isLoading || !sessionName.trim() || !userName.trim() || !isInitialized}
-            className="w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? '参加中...' : isInitialized ? 'セッションに参加' : 'SDK読み込み中...'}
-          </button>
+          {sdkUnavailable ? (
+            <p className="text-xs text-gray-500 text-center py-2">
+              Zoom Video SDK はこの環境では利用できません。
+            </p>
+          ) : (
+            <button
+              onClick={getVideoSDKJWT}
+              disabled={isLoading || !sessionName.trim() || !userName.trim() || !isInitialized}
+              className="w-full py-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? '参加中...' : isInitialized ? 'セッションに参加' : 'SDK読み込み中...'}
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex-1 flex flex-col">
