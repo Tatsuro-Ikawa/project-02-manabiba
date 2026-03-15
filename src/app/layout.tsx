@@ -3,6 +3,7 @@ import { Inter, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
+import { ViewModeProvider } from "@/context/ViewModeContext";
 
 const inter = Inter({ subsets: ["latin"] });
 const notoSansJP = Noto_Sans_JP({
@@ -32,7 +33,9 @@ export default function RootLayout({
       <body className={`${inter.className} ${notoSansJP.variable}`}>
         <AuthProvider>
           <SubscriptionProvider>
-            {children}
+            <ViewModeProvider>
+              {children}
+            </ViewModeProvider>
           </SubscriptionProvider>
         </AuthProvider>
       </body>

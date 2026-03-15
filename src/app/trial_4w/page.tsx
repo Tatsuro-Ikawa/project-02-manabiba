@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
+import { useAuth } from '@/hooks/useAuth';
 import TrialAffirmation from '@/components/trial/TrialAffirmation';
 import TrialMorningEvening from '@/components/trial/TrialMorningEvening';
 import TrialWeekly from '@/components/trial/TrialWeekly';
@@ -48,7 +49,8 @@ function Trial4wContent() {
     window.history.replaceState({}, '', url.pathname + url.search);
   }, []);
 
-  const loggedIn = searchParams.get('logged_in') === 'true';
+  const { user, loading } = useAuth();
+  const loggedIn = !loading && !!user;
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -62,7 +64,6 @@ function Trial4wContent() {
   return (
     <div style={{ fontFamily: 'var(--font-family-jp)' }}>
       <ProtoHeader
-        loggedIn={loggedIn}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen((o) => !o)}
       />

@@ -11,7 +11,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push('/mypage');
+      router.push('/');
     }
   }, [user, loading, router]);
 
@@ -19,7 +19,7 @@ export default function LoginPage() {
     try {
       setIsSigningIn(true);
       await signInWithGoogle();
-      router.push('/mypage');
+      router.push('/');
     } catch (error) {
       console.error('ログインエラー:', error);
       if (error instanceof Error && error.message.includes('popup-closed-by-user')) {

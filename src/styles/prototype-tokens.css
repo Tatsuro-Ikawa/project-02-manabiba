@@ -52,8 +52,8 @@
   --radius-xl: 12px;
   --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
-  /* コンテンツ幅（要件定義・UI/UX設計書で確定） */
-  --content-left-max-width: 1026px;
+  /* コンテンツ幅（要件定義・UI/UX設計書で確定）content-right 328px のため左を 78px 縮小 */
+  --content-left-max-width: 948px;
   --main-content-max-width: 1300px;
   --sidebar-width: 80px;
   --header-height: 60px;

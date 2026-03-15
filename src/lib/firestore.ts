@@ -117,6 +117,43 @@ export interface CoachingSettings {
   updatedAt?: Timestamp;
 }
 
+/** ホーム画面「最新動画」1件（DB保存用。id はクライアント側で付与） */
+export interface HomeLatestVideoEntry {
+  url: string;
+  title: string;
+  thumbnailUrl: string;
+  order: number;
+  author_name?: string;
+  author_url?: string;
+}
+
+/** ホーム画面「最新記事」1件（サムネイル・見出し・リード・出所） */
+export interface HomeLatestArticleEntry {
+  url: string;
+  title: string;
+  lead: string;
+  source: string;
+  thumbnailUrl: string;
+  order: number;
+}
+
+/** ホーム画面「いちおしサイト」1件（OGP 流用で URL から取得） */
+export interface HomeReferenceLinkEntry {
+  url: string;
+  title?: string;
+  siteName: string;
+  thumbnailUrl: string;
+  order: number;
+}
+
+/** site_content/home ドキュメントの型（ホーム画面用共通コンテンツ） */
+export interface HomeContent {
+  latestVideos?: HomeLatestVideoEntry[];
+  referenceLinks?: HomeReferenceLinkEntry[];
+  latestArticles?: HomeLatestArticleEntry[];
+  ad?: unknown;
+  updatedAt?: Timestamp;
+}
 
 // ユーザープロファイル関連の関数
 export const createUserProfile = async (userProfile: Omit<UserProfile, 'createdAt' | 'updatedAt' | 'lastLoginAt'>): Promise<void> => {
@@ -181,6 +218,81 @@ export const updateLastLogin = async (uid: string): Promise<void> => {
     });
   } catch (error) {
     console.error('最終ログイン更新エラー:', error);
+    throw error;
+  }
+};
+
+// サイト共通コンテンツ（ホーム画面用）
+const HOME_CONTENT_COLLECTION = 'site_content';
+const HOME_CONTENT_DOC_ID = 'home';
+
+/** ホーム画面用コンテンツを取得（未認証でも読める） */
+export const getHomeContent = async (): Promise<HomeContent | null> => {
+  try {
+    const docRef = doc(db, HOME_CONTENT_COLLECTION, HOME_CONTENT_DOC_ID);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return {
+      latestVideos: data.latestVideos ?? [],
+      referenceLinks: data.referenceLinks,
+      latestArticles: data.latestArticles,
+      ad: data.ad,
+      updatedAt: data.updatedAt,
+    } as HomeContent;
+  } catch (error) {
+    console.error('getHomeContent error:', error);
+    throw error;
+  }
+};
+
+/** 最新動画一覧を更新（管理者のみ。セキュリティルールで admin を要求） */
+export const updateHomeLatestVideos = async (
+  latestVideos: HomeLatestVideoEntry[]
+): Promise<void> => {
+  try {
+    const docRef = doc(db, HOME_CONTENT_COLLECTION, HOME_CONTENT_DOC_ID);
+    const payload = {
+      latestVideos,
+      updatedAt: serverTimestamp(),
+    };
+    await setDoc(docRef, payload, { merge: true });
+  } catch (error) {
+    console.error('updateHomeLatestVideos error:', error);
+    throw error;
+  }
+};
+
+/** 最新記事一覧を更新（管理者のみ） */
+export const updateHomeLatestArticles = async (
+  latestArticles: HomeLatestArticleEntry[]
+): Promise<void> => {
+  try {
+    const docRef = doc(db, HOME_CONTENT_COLLECTION, HOME_CONTENT_DOC_ID);
+    const payload = {
+      latestArticles,
+      updatedAt: serverTimestamp(),
+    };
+    await setDoc(docRef, payload, { merge: true });
+  } catch (error) {
+    console.error('updateHomeLatestArticles error:', error);
+    throw error;
+  }
+};
+
+/** いちおしサイト（参考リンク）一覧を更新（管理者のみ） */
+export const updateHomeReferenceLinks = async (
+  referenceLinks: HomeReferenceLinkEntry[]
+): Promise<void> => {
+  try {
+    const docRef = doc(db, HOME_CONTENT_COLLECTION, HOME_CONTENT_DOC_ID);
+    const payload = {
+      referenceLinks,
+      updatedAt: serverTimestamp(),
+    };
+    await setDoc(docRef, payload, { merge: true });
+  } catch (error) {
+    console.error('updateHomeReferenceLinks error:', error);
     throw error;
   }
 };

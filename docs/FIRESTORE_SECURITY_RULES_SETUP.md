@@ -5,6 +5,8 @@
 Firebase Firestoreがテストモードで作成され、30日後に自動的にアクセスが拒否されるようになりました。
 適切なセキュリティルールを設定して、アプリケーションを復旧させましょう。
 
+**※ 最新のルール**: プロジェクトルートの **`firestore.rules`** が実装の正本です。`site_content/home`（ホーム用・おすすめ動画・注目記事・いちおしサイト等）の read 全員・write 管理者（isAdminUser）や、ヘルパー `isAdminUser()` を含みます。CLI でデプロイする場合は `firebase deploy --only firestore:rules` をプロジェクトルートで実行してください（要 `firebase login`）。コンソールで貼り付ける場合は、**`firestore.rules` の内容全体**をコピーして使用してください。
+
 ## 📋 設定手順
 
 ### 方法1: Firebaseコンソールから直接設定（推奨）
@@ -224,6 +226,7 @@ firebase deploy --only firestore:rules
 - `goals/{goalId}` - 目標
 - `ai_analyses/{analysisId}` - AI分析
 - `coaching_settings/{userId}` - コーチング設定
+- `site_content/home` - ホーム用共通コンテンツ（おすすめ動画・注目記事・いちおしサイト・広告等）。read: 全員、create/update: 管理者（isAdminUser()）のみ。ルールは `firestore.rules` を参照。
 
 ## 🔍 トラブルシューティング
 

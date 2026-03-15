@@ -12,6 +12,13 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
+    // ヘルパー関数: ログイン中のユーザーが管理者（users/{uid}.role == 'admin'）か
+    // users ドキュメントが存在しない、または role が 'admin' でない場合は false
+    function isAdminUser() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return userDoc.data != null && userDoc.data.get('role', '') == 'admin';
+    }
+    
     // ユーザープロファイル
     match /users/{userId} {
       // 読み取り: 自分のプロファイルのみ
@@ -155,6 +162,17 @@ service cloud.firestore {
       
       // 削除: 自分の設定のみ
       allow delete: if isOwner(userId);
+    }
+    
+    // サイト共通コンテンツ（ホーム画面: 最新動画・参考リンク等）
+    match /site_content/home {
+      // 読み取り: 未認証含む全員
+      allow read: if true;
+      // 作成・更新: 管理者（users/{uid}.role == 'admin'）のみ
+      // ※ users ドキュメントが存在し、role フィールドが 'admin' のユーザーのみ書き込み可
+      allow create, update: if isAuthenticated() && 
+        isAdminUser();
+      allow delete: if false;
     }
   }
 }
