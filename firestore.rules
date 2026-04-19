@@ -18,11 +18,61 @@ service cloud.firestore {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return userDoc.data != null && userDoc.data.get('role', '') == 'admin';
     }
+
+    // A-11: コーチ↔クライアント割当（ドキュメント ID = coachUid_clientUid）
+    function coachClientAssignmentDocPath(coachUid, clientUid) {
+      return /databases/$(database)/documents/coach_client_assignments/$(coachUid + '_' + clientUid);
+    }
+
+    function hasActiveCoachAssignmentForClient(clientUid) {
+      let p = coachClientAssignmentDocPath(request.auth.uid, clientUid);
+      return isAuthenticated() &&
+        exists(p) &&
+        get(p).data.status == 'active' &&
+        get(p).data.coachUid == request.auth.uid &&
+        get(p).data.clientUid == clientUid;
+    }
+
+    // 人コーチ（月次）を許可するか（サブスク由来のフラグで運用）。
+    // 現状の型: users/{uid}.subscription.features.coachComments（boolean）
+    function clientAllowsHumanCoachComments(clientUid) {
+      let u = get(/databases/$(database)/documents/users/$(clientUid));
+      let sub = u.data != null ? u.data.get('subscription', null) : null;
+      let features = sub != null ? sub.get('features', null) : null;
+      return features != null && features.get('coachComments', false) == true;
+    }
+
+    // 親の sharedWithCoach（子 read 判定のフォールバック）。存在・型ずれで落ちないよう get を使う。
+    function affirmationSharedWithCoach(userId, affirmationId) {
+      let p = /databases/$(database)/documents/users/$(userId)/affirmations/$(affirmationId);
+      return exists(p) && get(p).data.get('sharedWithCoach', false) == true;
+    }
+
+    // 親の sharedWithCoach（journal_monthly の子 read 判定用）
+    function journalMonthlySharedWithCoach(userId, monthKey) {
+      let p = /databases/$(database)/documents/users/$(userId)/journal_monthly/$(monthKey);
+      return exists(p) && get(p).data.get('sharedWithCoach', false) == true;
+    }
+
+    match /coach_client_assignments/{assignmentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.coachUid == request.auth.uid ||
+        resource.data.clientUid == request.auth.uid ||
+        isAdminUser()
+      );
+      allow create: if isAdminUser() &&
+        assignmentId == request.resource.data.coachUid + '_' + request.resource.data.clientUid &&
+        request.resource.data.keys().hasAll(['coachUid', 'clientUid', 'status', 'assignedAt']) &&
+        request.resource.data.coachUid is string &&
+        request.resource.data.clientUid is string &&
+        request.resource.data.status is string;
+      allow update, delete: if isAdminUser();
+    }
     
     // ユーザープロファイル
     match /users/{userId} {
-      // 読み取り: 自分のプロファイルのみ
-      allow read: if isOwner(userId);
+      // 読み取り: 本人、または担当コーチ（割当 active）
+      allow read: if isOwner(userId) || hasActiveCoachAssignmentForClient(userId);
       
       // 作成: 自分のプロファイルのみ
       allow create: if isOwner(userId);
@@ -49,6 +99,116 @@ service cloud.firestore {
         // 削除: 自分の目標のみ
         allow delete: if isOwner(userId) && 
           resource.data.uid == userId;
+      }
+
+      // アファメーション（穴埋め）下書き
+      match /affirmation_drafts/{profileId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      // マネジメント日誌（学び帳）— 日次: 朝・晩
+      // パス: users/{uid}/journal_daily/{dateKey}
+      // 現段階: 本人のみ read/write（コーチ共有は A-11 等で後続）
+      match /journal_daily/{dateKey} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      // マネジメント日誌（学び帳）— 週次（SCREEN-006 実装時に利用）
+      // パス: users/{uid}/journal_weekly/{weekStartKey}（JST・ユーザの週開始日基準の YYYY-MM-DD）
+      match /journal_weekly/{weekStartKey} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      // マネジメント日誌（学び帳）— 月次（月報）
+      // パス: users/{uid}/journal_monthly/{monthKey}（JST・暦月の YYYY-MM）
+      // コーチ read/write は A-11 同型（配下の rounds / comment_versions）で制御する
+      match /journal_monthly/{monthKey} {
+        // 本体: 本人 read/write。担当コーチは「active 割当」＋「共有 ON」＋「コーチコメント機能 ON」で read のみ。
+        allow read: if isOwner(userId) || (
+          hasActiveCoachAssignmentForClient(userId) &&
+          resource.data.get('sharedWithCoach', false) == true &&
+          clientAllowsHumanCoachComments(userId)
+        );
+        allow create, update, delete: if isOwner(userId);
+
+        // クライアント送信（質問）ラウンド
+        match /coach_share_rounds/{roundId} {
+          allow read: if isOwner(userId) || (
+            hasActiveCoachAssignmentForClient(userId) &&
+            journalMonthlySharedWithCoach(userId, monthKey) &&
+            clientAllowsHumanCoachComments(userId)
+          );
+          allow create: if isOwner(userId);
+          allow update, delete: if false;
+
+          // コーチコメント（版の追記のみ）
+          match /coach_comment_versions/{versionId} {
+            allow read: if isOwner(userId) || (
+              hasActiveCoachAssignmentForClient(userId) &&
+              journalMonthlySharedWithCoach(userId, monthKey) &&
+              clientAllowsHumanCoachComments(userId)
+            );
+            allow create: if hasActiveCoachAssignmentForClient(userId) &&
+              journalMonthlySharedWithCoach(userId, monthKey) &&
+              clientAllowsHumanCoachComments(userId) &&
+              request.resource.data.authorCoachUid == request.auth.uid &&
+              request.resource.data.keys().hasAll(['encryptedBody', 'authorCoachUid', 'savedAt']);
+            allow update, delete: if false;
+          }
+        }
+      }
+
+      // アファメーション文書（親＝メタ、案 B）— A-11 コーチ共有
+      match /affirmations/{affirmationId} {
+        allow read: if isOwner(userId) || (
+          hasActiveCoachAssignmentForClient(userId) &&
+          resource.data.get('sharedWithCoach', false) == true
+        );
+        allow create, delete: if isOwner(userId);
+        allow update: if isOwner(userId) || (
+          hasActiveCoachAssignmentForClient(userId) &&
+          resource.data.get('sharedWithCoach', false) == true &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['clientUnreadLatestCoachReply', 'coachUnreadAfterClientShare', 'updatedAt'])
+        );
+
+        // published 本文: コーチ read は親 get に依存すると一覧と評価がずれることがあるため、
+        // coachCanReadPublished を published/current に同期し resource で先に判定する。
+        match /published/{docId} {
+          allow read: if isOwner(userId) || (
+            hasActiveCoachAssignmentForClient(userId) &&
+            (
+              resource.data.get('coachCanReadPublished', false) == true ||
+              affirmationSharedWithCoach(userId, affirmationId)
+            )
+          );
+          allow create, update, delete: if isOwner(userId);
+        }
+
+        match /history/{historyId} {
+          allow read, create, update, delete: if isOwner(userId);
+        }
+
+        match /coach_share_rounds/{roundId} {
+          allow read: if isOwner(userId) || (
+            hasActiveCoachAssignmentForClient(userId) &&
+            affirmationSharedWithCoach(userId, affirmationId)
+          );
+          allow create: if isOwner(userId);
+          allow update, delete: if false;
+
+          match /coach_comment_versions/{versionId} {
+            allow read: if isOwner(userId) || (
+              hasActiveCoachAssignmentForClient(userId) &&
+              affirmationSharedWithCoach(userId, affirmationId)
+            );
+            allow create: if hasActiveCoachAssignmentForClient(userId) &&
+              affirmationSharedWithCoach(userId, affirmationId) &&
+              request.resource.data.authorCoachUid == request.auth.uid &&
+              request.resource.data.keys().hasAll(['encryptedBody', 'authorCoachUid', 'savedAt']);
+            allow update, delete: if false;
+          }
+        }
       }
     }
     

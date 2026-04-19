@@ -9,14 +9,23 @@ import {
   orderBy, 
   getDocs,
   addDoc,
+  runTransaction,
   Timestamp,
   serverTimestamp,
-  deleteDoc
+  deleteDoc,
+  deleteField,
+  writeBatch,
+  type Transaction,
+  type FieldValue
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { normalizeJournalWeekStartsOnField } from '@/lib/journalWeek';
+import { decrypt, encrypt } from '@/utils/encryption';
 import { User } from 'firebase/auth';
 import { 
-  UserProfile, 
+  UserProfile,
+  TrialAffirmationSubmenu, 
+  type JournalWeekStartsOn,
   UserRole, 
   SubscriptionPlan, 
   FeatureAccess, 
@@ -180,9 +189,16 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
       const data = docSnap.data();
       return {
         ...data,
+        weekStartsOn: normalizeJournalWeekStartsOnField(data.weekStartsOn),
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
         lastLoginAt: data.lastLoginAt?.toDate(),
+        consents: data.consents
+          ? {
+              ...data.consents,
+              acceptedAt: data.consents?.acceptedAt?.toDate?.() ?? data.consents?.acceptedAt,
+            }
+          : undefined,
         subscription: {
           ...data.subscription,
           startDate: data.subscription?.startDate?.toDate(),
@@ -193,6 +209,1104 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     return null;
   } catch (error) {
     console.error('ユーザープロファイル取得エラー:', error);
+    throw error;
+  }
+};
+
+/** マネジメント日誌の週の開始曜日（`monday` のときはフィールド削除でデフォルトと一致） */
+export const updateJournalWeekStartsOn = async (
+  uid: string,
+  weekStartsOn: JournalWeekStartsOn
+): Promise<void> => {
+  try {
+    const now = serverTimestamp() as Timestamp;
+    if (weekStartsOn === 'monday') {
+      await updateDoc(doc(db, 'users', uid), {
+        weekStartsOn: deleteField(),
+        updatedAt: now,
+      });
+    } else {
+      await updateDoc(doc(db, 'users', uid), {
+        weekStartsOn: 'sunday',
+        updatedAt: now,
+      });
+    }
+  } catch (error) {
+    console.error('weekStartsOn 更新エラー:', error);
+    throw error;
+  }
+};
+
+export const updateUserConsents = async (
+  uid: string,
+  consents: { termsVersion: string; privacyVersion: string }
+): Promise<void> => {
+  try {
+    const now = serverTimestamp() as Timestamp;
+    await updateDoc(doc(db, 'users', uid), {
+      consents: {
+        ...consents,
+        acceptedAt: now,
+      },
+      updatedAt: now,
+    });
+  } catch (error) {
+    console.error('同意情報更新エラー:', error);
+    throw error;
+  }
+};
+
+// アファメーション（穴埋め）下書き
+const AFFIRMATION_DRAFTS_SUBCOLLECTION = 'affirmation_drafts';
+
+export interface AffirmationDraftDoc {
+  profileId: string;
+  /** 暗号化された JSON（slotId -> value） */
+  encryptedSlots: string;
+  updatedAt?: unknown;
+}
+
+/** 下書き 1 件取得。`updatedAtMs` は一覧の最終更新ソート用 */
+export const getAffirmationDraft = async (
+  uid: string,
+  profileId: string
+): Promise<{ encryptedSlots: string; updatedAtMs: number } | null> => {
+  try {
+    const ref = doc(db, 'users', uid, AFFIRMATION_DRAFTS_SUBCOLLECTION, profileId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    const updatedAt = data.updatedAt as Timestamp | undefined;
+    return {
+      encryptedSlots: data.encryptedSlots as string,
+      updatedAtMs: updatedAt?.toMillis() ?? Date.now(),
+    };
+  } catch (error) {
+    console.error('アファメーション下書き取得エラー:', error);
+    throw error;
+  }
+};
+
+export const saveAffirmationDraft = async (
+  uid: string,
+  profileId: string,
+  encryptedSlots: string
+): Promise<void> => {
+  try {
+    const ref = doc(db, 'users', uid, AFFIRMATION_DRAFTS_SUBCOLLECTION, profileId);
+    await setDoc(
+      ref,
+      {
+        profileId,
+        encryptedSlots,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('アファメーション下書き保存エラー:', error);
+    throw error;
+  }
+};
+
+/** プロファイル単位の穴埋め下書きを削除（発行完了後のリセットや、将来の「下書き破棄」用） */
+export const deleteAffirmationDraft = async (uid: string, profileId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, 'users', uid, AFFIRMATION_DRAFTS_SUBCOLLECTION, profileId));
+  } catch (error) {
+    console.error('アファメーション下書き削除エラー:', error);
+    throw error;
+  }
+};
+
+// マネジメント日誌（学び帳）— 日次: 朝・晩（旧名 trial_4w_daily）
+const JOURNAL_DAILY_SUBCOLLECTION = 'journal_daily';
+
+export type Trial4wDateKey = `${number}-${string}-${string}`; // YYYY-MM-DD（簡易）
+
+export type Trial4wMorningAffirmationDeclaration = 'done' | 'undone';
+export type Trial4wEveningExecution = 'done' | 'partial' | 'none';
+export type Trial4wEveningBrake = 'yes' | 'partial' | 'no';
+
+export type Trial4wDailyPlain = {
+  dateKey: string;
+  tz: 'Asia/Tokyo';
+  morningAffirmationDeclaration: Trial4wMorningAffirmationDeclaration | null;
+  morningTodayActionText: string | null;
+  morningImagingDone: boolean | null;
+
+  eveningExecution: Trial4wEveningExecution | null;
+  eveningSpecificActionsText: string | null;
+  eveningResultText: string | null;
+  eveningSatisfaction: number | null; // 0..10
+  eveningEmotionThoughtText: string | null;
+  eveningBrake: Trial4wEveningBrake | null;
+  eveningRebuttalText: string | null;
+  eveningInsightText: string | null;
+  eveningMessageToSelfText: string | null;
+  eveningTomorrowActionSeedText: string | null;
+};
+
+export type Trial4wDailyEncrypted = {
+  dateKey: string;
+  tz: 'Asia/Tokyo';
+  morningAffirmationDeclaration: Trial4wMorningAffirmationDeclaration | null;
+  morningTodayActionTextEncrypted: string | null;
+  morningImagingDone: boolean | null;
+
+  eveningExecution: Trial4wEveningExecution | null;
+  eveningSpecificActionsTextEncrypted: string | null;
+  eveningResultTextEncrypted: string | null;
+  eveningSatisfaction: number | null;
+  eveningEmotionThoughtTextEncrypted: string | null;
+  eveningBrake: Trial4wEveningBrake | null;
+  eveningRebuttalTextEncrypted: string | null;
+  eveningInsightTextEncrypted: string | null;
+  eveningMessageToSelfTextEncrypted: string | null;
+  eveningTomorrowActionSeedTextEncrypted: string | null;
+
+  createdAt?: Timestamp | FieldValue;
+  updatedAt?: Timestamp | FieldValue;
+};
+
+function toDateKeyTokyo(d: Date): string {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  return fmt.format(d); // YYYY-MM-DD
+}
+
+export function addDaysDateKey(dateKey: string, days: number): string {
+  // dateKey は YYYY-MM-DD を想定。日付操作は JST 固定で扱いたいが、
+  // まずは UTC で日付を組み立てて加算（YYYY-MM-DD の前後移動用途）。
+  const [y, m, d] = dateKey.split('-').map((x) => Number(x));
+  const base = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1));
+  base.setUTCDate(base.getUTCDate() + days);
+  const yy = base.getUTCFullYear();
+  const mm = String(base.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(base.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+function clampSatisfaction(x: number | null | undefined): number | null {
+  if (x == null || Number.isNaN(x)) return null;
+  return Math.max(0, Math.min(10, Math.round(x)));
+}
+
+function normalizeText(x: unknown): string | null {
+  if (typeof x !== 'string') return null;
+  const t = x.trim();
+  return t ? t : null;
+}
+
+export async function getTrial4wDailyPlain(
+  uid: string,
+  dateKey?: string | null
+): Promise<Trial4wDailyPlain> {
+  const dk = dateKey ?? toDateKeyTokyo(new Date());
+  const ref = doc(db, 'users', uid, JOURNAL_DAILY_SUBCOLLECTION, dk);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    return {
+      dateKey: dk,
+      tz: 'Asia/Tokyo',
+      morningAffirmationDeclaration: null,
+      morningTodayActionText: null,
+      morningImagingDone: null,
+      eveningExecution: null,
+      eveningSpecificActionsText: null,
+      eveningResultText: null,
+      eveningSatisfaction: null,
+      eveningEmotionThoughtText: null,
+      eveningBrake: null,
+      eveningRebuttalText: null,
+      eveningInsightText: null,
+      eveningMessageToSelfText: null,
+      eveningTomorrowActionSeedText: null,
+    };
+  }
+  const data = snap.data() as Trial4wDailyEncrypted;
+  const decryptOrNull = async (enc: unknown): Promise<string | null> => {
+    if (typeof enc !== 'string' || !enc) return null;
+    try {
+      return await decrypt(enc, uid);
+    } catch {
+      return null;
+    }
+  };
+  return {
+    dateKey: dk,
+    tz: 'Asia/Tokyo',
+    morningAffirmationDeclaration:
+      data.morningAffirmationDeclaration === 'done' || data.morningAffirmationDeclaration === 'undone'
+        ? data.morningAffirmationDeclaration
+        : null,
+    morningTodayActionText: await decryptOrNull(data.morningTodayActionTextEncrypted),
+    morningImagingDone: typeof data.morningImagingDone === 'boolean' ? data.morningImagingDone : null,
+
+    eveningExecution:
+      data.eveningExecution === 'done' || data.eveningExecution === 'partial' || data.eveningExecution === 'none'
+        ? data.eveningExecution
+        : null,
+    eveningSpecificActionsText: await decryptOrNull(data.eveningSpecificActionsTextEncrypted),
+    eveningResultText: await decryptOrNull(data.eveningResultTextEncrypted),
+    eveningSatisfaction: typeof data.eveningSatisfaction === 'number' ? clampSatisfaction(data.eveningSatisfaction) : null,
+    eveningEmotionThoughtText: await decryptOrNull(data.eveningEmotionThoughtTextEncrypted),
+    eveningBrake:
+      data.eveningBrake === 'yes' || data.eveningBrake === 'partial' || data.eveningBrake === 'no'
+        ? data.eveningBrake
+        : null,
+    eveningRebuttalText: await decryptOrNull(data.eveningRebuttalTextEncrypted),
+    eveningInsightText: await decryptOrNull(data.eveningInsightTextEncrypted),
+    eveningMessageToSelfText: await decryptOrNull(data.eveningMessageToSelfTextEncrypted),
+    eveningTomorrowActionSeedText: await decryptOrNull(data.eveningTomorrowActionSeedTextEncrypted),
+  };
+}
+
+/** 週次集約用: 指定範囲（JST の dateKey）の日次をまとめて取得 */
+export async function listJournalDailyPlainInRange(params: {
+  uid: string;
+  startDateKey: string; // inclusive YYYY-MM-DD
+  endDateKey: string; // inclusive YYYY-MM-DD
+}): Promise<Record<string, Trial4wDailyPlain>> {
+  const { uid, startDateKey, endDateKey } = params;
+  if (!uid) return {};
+  if (!startDateKey || !endDateKey) return {};
+
+  const q = query(
+    collection(db, 'users', uid, JOURNAL_DAILY_SUBCOLLECTION),
+    where('dateKey', '>=', startDateKey),
+    where('dateKey', '<=', endDateKey),
+    orderBy('dateKey', 'asc')
+  );
+  const snaps = await getDocs(q);
+
+  const decryptOrNull = async (enc: unknown): Promise<string | null> => {
+    if (typeof enc !== 'string' || !enc) return null;
+    try {
+      return await decrypt(enc, uid);
+    } catch {
+      return null;
+    }
+  };
+
+  const out: Record<string, Trial4wDailyPlain> = {};
+  for (const snap of snaps.docs) {
+    const raw = snap.data() as Partial<Trial4wDailyEncrypted>;
+    const dk = typeof raw.dateKey === 'string' ? raw.dateKey : snap.id;
+    out[dk] = {
+      dateKey: dk,
+      tz: 'Asia/Tokyo',
+      morningAffirmationDeclaration:
+        raw.morningAffirmationDeclaration === 'done' || raw.morningAffirmationDeclaration === 'undone'
+          ? raw.morningAffirmationDeclaration
+          : null,
+      morningTodayActionText: await decryptOrNull(raw.morningTodayActionTextEncrypted),
+      morningImagingDone: typeof raw.morningImagingDone === 'boolean' ? raw.morningImagingDone : null,
+      eveningExecution:
+        raw.eveningExecution === 'done' || raw.eveningExecution === 'partial' || raw.eveningExecution === 'none'
+          ? raw.eveningExecution
+          : null,
+      eveningSpecificActionsText: await decryptOrNull(raw.eveningSpecificActionsTextEncrypted),
+      eveningResultText: await decryptOrNull(raw.eveningResultTextEncrypted),
+      eveningSatisfaction: typeof raw.eveningSatisfaction === 'number' ? clampSatisfaction(raw.eveningSatisfaction) : null,
+      eveningEmotionThoughtText: await decryptOrNull(raw.eveningEmotionThoughtTextEncrypted),
+      eveningBrake:
+        raw.eveningBrake === 'yes' || raw.eveningBrake === 'partial' || raw.eveningBrake === 'no'
+          ? raw.eveningBrake
+          : null,
+      eveningRebuttalText: await decryptOrNull(raw.eveningRebuttalTextEncrypted),
+      eveningInsightText: await decryptOrNull(raw.eveningInsightTextEncrypted),
+      eveningMessageToSelfText: await decryptOrNull(raw.eveningMessageToSelfTextEncrypted),
+      eveningTomorrowActionSeedText: await decryptOrNull(raw.eveningTomorrowActionSeedTextEncrypted),
+    };
+  }
+  return out;
+}
+
+export async function saveTrial4wDailyPlain(params: {
+  uid: string;
+  dateKey: string;
+  patch: Partial<Trial4wDailyPlain>;
+}): Promise<void> {
+  const ref = doc(db, 'users', params.uid, JOURNAL_DAILY_SUBCOLLECTION, params.dateKey);
+  const now = serverTimestamp();
+
+  const payload: Partial<Trial4wDailyEncrypted> = {
+    dateKey: params.dateKey,
+    tz: 'Asia/Tokyo',
+    updatedAt: now as FieldValue,
+  };
+
+  if ('morningAffirmationDeclaration' in params.patch) {
+    payload.morningAffirmationDeclaration = params.patch.morningAffirmationDeclaration ?? null;
+  }
+  if ('morningImagingDone' in params.patch) {
+    payload.morningImagingDone =
+      typeof params.patch.morningImagingDone === 'boolean' ? params.patch.morningImagingDone : null;
+  }
+  if ('eveningExecution' in params.patch) {
+    payload.eveningExecution = params.patch.eveningExecution ?? null;
+  }
+  if ('eveningBrake' in params.patch) {
+    payload.eveningBrake = params.patch.eveningBrake ?? null;
+  }
+  if ('eveningSatisfaction' in params.patch) {
+    payload.eveningSatisfaction = clampSatisfaction(params.patch.eveningSatisfaction);
+  }
+
+  const encFields: Array<[keyof Trial4wDailyEncrypted, string | null]> = [];
+  if ('morningTodayActionText' in params.patch) {
+    encFields.push(['morningTodayActionTextEncrypted', normalizeText(params.patch.morningTodayActionText)]);
+  }
+  if ('eveningSpecificActionsText' in params.patch) {
+    encFields.push(['eveningSpecificActionsTextEncrypted', normalizeText(params.patch.eveningSpecificActionsText)]);
+  }
+  if ('eveningResultText' in params.patch) {
+    encFields.push(['eveningResultTextEncrypted', normalizeText(params.patch.eveningResultText)]);
+  }
+  if ('eveningEmotionThoughtText' in params.patch) {
+    encFields.push(['eveningEmotionThoughtTextEncrypted', normalizeText(params.patch.eveningEmotionThoughtText)]);
+  }
+  if ('eveningRebuttalText' in params.patch) {
+    encFields.push(['eveningRebuttalTextEncrypted', normalizeText(params.patch.eveningRebuttalText)]);
+  }
+  if ('eveningInsightText' in params.patch) {
+    encFields.push(['eveningInsightTextEncrypted', normalizeText(params.patch.eveningInsightText)]);
+  }
+  if ('eveningMessageToSelfText' in params.patch) {
+    encFields.push(['eveningMessageToSelfTextEncrypted', normalizeText(params.patch.eveningMessageToSelfText)]);
+  }
+  if ('eveningTomorrowActionSeedText' in params.patch) {
+    encFields.push([
+      'eveningTomorrowActionSeedTextEncrypted',
+      normalizeText(params.patch.eveningTomorrowActionSeedText),
+    ]);
+  }
+
+  for (const [k, t] of encFields) {
+    (payload as any)[k] = t ? await encrypt(t, params.uid) : null;
+  }
+
+  // 翌日の「今日の行動内容（目標）」へコピー（未入力のときのみ）
+  const seed = normalizeText(params.patch.eveningTomorrowActionSeedText);
+  if (seed) {
+    const nextKey = addDaysDateKey(params.dateKey, 1);
+    const nextRef = doc(db, 'users', params.uid, JOURNAL_DAILY_SUBCOLLECTION, nextKey);
+    await runTransaction(db, async (tx: Transaction) => {
+      const nextSnap = await tx.get(nextRef);
+      const nextData = nextSnap.exists() ? (nextSnap.data() as Trial4wDailyEncrypted) : null;
+      const already = typeof nextData?.morningTodayActionTextEncrypted === 'string' && nextData.morningTodayActionTextEncrypted;
+
+      if (!nextSnap.exists()) {
+        tx.set(nextRef, {
+          dateKey: nextKey,
+          tz: 'Asia/Tokyo',
+          morningTodayActionTextEncrypted: already ? nextData!.morningTodayActionTextEncrypted : await encrypt(seed, params.uid),
+          createdAt: now as FieldValue,
+          updatedAt: now as FieldValue,
+        } as any);
+      } else if (!already) {
+        tx.update(nextRef, {
+          morningTodayActionTextEncrypted: await encrypt(seed, params.uid),
+          updatedAt: now as FieldValue,
+        } as any);
+      }
+      tx.set(ref, { ...payload, createdAt: now as FieldValue } as any, { merge: true });
+    });
+    return;
+  }
+
+  await setDoc(ref, { ...payload, createdAt: now as FieldValue } as any, { merge: true });
+}
+
+// マネジメント日誌（学び帳）— 週次（SCREEN-006）
+const JOURNAL_WEEKLY_SUBCOLLECTION = 'journal_weekly';
+
+/** 週次ドキュメント ID = 当該週の開始日 YYYY-MM-DD（JST・ユーザの週開始設定に準拠したキー） */
+export type JournalWeeklyPlain = {
+  weekStartKey: string;
+  tz: 'Asia/Tokyo';
+  /** 今週の行動目標 */
+  thisWeekActionGoalText: string | null;
+  /** 行動内容と成果 */
+  actionContentAndOutcomeText: string | null;
+  /** 行動時の思考・感情 */
+  emotionAndThoughtText: string | null;
+  /** 今週の気づき・感動・学び */
+  insightAndLearningText: string | null;
+  /** 今週の改善まとめ */
+  improvementSummaryText: string | null;
+  /** 来週の行動目標 */
+  nextWeekActionGoalText: string | null;
+};
+
+export type JournalWeeklyEncrypted = {
+  weekStartKey: string;
+  tz: 'Asia/Tokyo';
+  thisWeekActionGoalTextEncrypted: string | null;
+  actionContentAndOutcomeTextEncrypted: string | null;
+  emotionAndThoughtTextEncrypted: string | null;
+  insightAndLearningTextEncrypted: string | null;
+  improvementSummaryTextEncrypted: string | null;
+  nextWeekActionGoalTextEncrypted: string | null;
+  createdAt?: Timestamp | FieldValue;
+  updatedAt?: Timestamp | FieldValue;
+};
+
+export function journalWeeklyPlainEmpty(weekStartKey: string): JournalWeeklyPlain {
+  return {
+    weekStartKey,
+    tz: 'Asia/Tokyo',
+    thisWeekActionGoalText: null,
+    actionContentAndOutcomeText: null,
+    emotionAndThoughtText: null,
+    insightAndLearningText: null,
+    improvementSummaryText: null,
+    nextWeekActionGoalText: null,
+  };
+}
+
+export async function getJournalWeeklyPlain(
+  uid: string,
+  weekStartKey: string
+): Promise<JournalWeeklyPlain> {
+  if (!weekStartKey) return journalWeeklyPlainEmpty('');
+  const ref = doc(db, 'users', uid, JOURNAL_WEEKLY_SUBCOLLECTION, weekStartKey);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    return journalWeeklyPlainEmpty(weekStartKey);
+  }
+  const data = snap.data() as JournalWeeklyEncrypted;
+  const decryptOrNull = async (enc: unknown): Promise<string | null> => {
+    if (typeof enc !== 'string' || !enc) return null;
+    try {
+      return await decrypt(enc, uid);
+    } catch {
+      return null;
+    }
+  };
+  return {
+    weekStartKey,
+    tz: 'Asia/Tokyo',
+    thisWeekActionGoalText: await decryptOrNull(data.thisWeekActionGoalTextEncrypted),
+    actionContentAndOutcomeText: await decryptOrNull(data.actionContentAndOutcomeTextEncrypted),
+    emotionAndThoughtText: await decryptOrNull(data.emotionAndThoughtTextEncrypted),
+    insightAndLearningText: await decryptOrNull(data.insightAndLearningTextEncrypted),
+    improvementSummaryText: await decryptOrNull(data.improvementSummaryTextEncrypted),
+    nextWeekActionGoalText: await decryptOrNull(data.nextWeekActionGoalTextEncrypted),
+  };
+}
+
+export async function saveJournalWeeklyPlain(params: {
+  uid: string;
+  weekStartKey: string;
+  patch: Partial<JournalWeeklyPlain>;
+}): Promise<void> {
+  if (!params.weekStartKey) return;
+  const ref = doc(db, 'users', params.uid, JOURNAL_WEEKLY_SUBCOLLECTION, params.weekStartKey);
+  const now = serverTimestamp();
+
+  const payload: Partial<JournalWeeklyEncrypted> = {
+    weekStartKey: params.weekStartKey,
+    tz: 'Asia/Tokyo',
+    updatedAt: now as FieldValue,
+  };
+
+  const encPairs: Array<[keyof JournalWeeklyEncrypted, string | null]> = [];
+  if ('thisWeekActionGoalText' in params.patch) {
+    encPairs.push(['thisWeekActionGoalTextEncrypted', normalizeText(params.patch.thisWeekActionGoalText)]);
+  }
+  if ('actionContentAndOutcomeText' in params.patch) {
+    encPairs.push(['actionContentAndOutcomeTextEncrypted', normalizeText(params.patch.actionContentAndOutcomeText)]);
+  }
+  if ('emotionAndThoughtText' in params.patch) {
+    encPairs.push(['emotionAndThoughtTextEncrypted', normalizeText(params.patch.emotionAndThoughtText)]);
+  }
+  if ('insightAndLearningText' in params.patch) {
+    encPairs.push(['insightAndLearningTextEncrypted', normalizeText(params.patch.insightAndLearningText)]);
+  }
+  if ('improvementSummaryText' in params.patch) {
+    encPairs.push(['improvementSummaryTextEncrypted', normalizeText(params.patch.improvementSummaryText)]);
+  }
+  if ('nextWeekActionGoalText' in params.patch) {
+    encPairs.push(['nextWeekActionGoalTextEncrypted', normalizeText(params.patch.nextWeekActionGoalText)]);
+  }
+
+  for (const [k, t] of encPairs) {
+    (payload as Record<string, unknown>)[k as string] = t ? await encrypt(t, params.uid) : null;
+  }
+
+  await setDoc(ref, { ...payload, createdAt: now as FieldValue } as Record<string, unknown>, {
+    merge: true,
+  });
+}
+
+/**
+ * フェーズ6: 「来週の行動目標」→ 翌週の「今週の行動目標」へ繰り越し（上書きしない）。
+ * - target（翌週）の thisWeekActionGoalText が空ならセット
+ * - すでに入力済みなら何もしない
+ */
+export async function carryOverNextWeekGoalToNextThisWeek(params: {
+  uid: string;
+  targetWeekStartKey: string;
+  nextWeekActionGoalText: string | null | undefined;
+}): Promise<void> {
+  const goal = normalizeText(params.nextWeekActionGoalText);
+  if (!goal) return;
+  if (!params.targetWeekStartKey) return;
+
+  const ref = doc(db, 'users', params.uid, JOURNAL_WEEKLY_SUBCOLLECTION, params.targetWeekStartKey);
+  const now = serverTimestamp();
+
+  await runTransaction(db, async (tx: Transaction) => {
+    const snap = await tx.get(ref);
+    const existing = snap.exists() ? (snap.data() as Partial<JournalWeeklyEncrypted>) : null;
+    const already =
+      typeof existing?.thisWeekActionGoalTextEncrypted === 'string' && !!existing.thisWeekActionGoalTextEncrypted;
+
+    if (!snap.exists()) {
+      tx.set(
+        ref,
+        {
+          weekStartKey: params.targetWeekStartKey,
+          tz: 'Asia/Tokyo',
+          thisWeekActionGoalTextEncrypted: already ? existing!.thisWeekActionGoalTextEncrypted : await encrypt(goal, params.uid),
+          createdAt: now as FieldValue,
+          updatedAt: now as FieldValue,
+        } as Record<string, unknown>,
+        { merge: true }
+      );
+      return;
+    }
+
+    if (!already) {
+      tx.set(
+        ref,
+        {
+          tz: 'Asia/Tokyo',
+          thisWeekActionGoalTextEncrypted: await encrypt(goal, params.uid),
+          updatedAt: now as FieldValue,
+        } as Record<string, unknown>,
+        { merge: true }
+      );
+    }
+  });
+}
+
+// マネジメント日誌（学び帳）— 月次（SCREEN-007）
+const JOURNAL_MONTHLY_SUBCOLLECTION = 'journal_monthly';
+
+/** 月次ドキュメント ID = 暦月 YYYY-MM（Asia/Tokyo） */
+export type JournalMonthlyPlain = {
+  monthKey: string;
+  tz: 'Asia/Tokyo';
+  /** 今月成果目標 */
+  thisMonthOutcomeGoalText: string | null;
+  /** 今月行動目標 */
+  thisMonthActionGoalText: string | null;
+  /** 行動概要と成果達成状況 */
+  actionSummaryAndOutcomeProgressText: string | null;
+  /** 気づき・感動・学び */
+  insightAndLearningText: string | null;
+  /** 改善点 */
+  improvementPointsText: string | null;
+  /** 来月の行動目標 */
+  nextMonthActionGoalText: string | null;
+  /** 人コーチへの共有（閲覧）を許可するか */
+  sharedWithCoach?: boolean;
+};
+
+export type JournalMonthlyEncrypted = {
+  monthKey: string;
+  tz: 'Asia/Tokyo';
+  thisMonthOutcomeGoalTextEncrypted: string | null;
+  thisMonthActionGoalTextEncrypted: string | null;
+  actionSummaryAndOutcomeProgressTextEncrypted: string | null;
+  insightAndLearningTextEncrypted: string | null;
+  improvementPointsTextEncrypted: string | null;
+  nextMonthActionGoalTextEncrypted: string | null;
+  sharedWithCoach?: boolean;
+  createdAt?: Timestamp | FieldValue;
+  updatedAt?: Timestamp | FieldValue;
+};
+
+export function journalMonthlyPlainEmpty(monthKey: string): JournalMonthlyPlain {
+  return {
+    monthKey,
+    tz: 'Asia/Tokyo',
+    thisMonthOutcomeGoalText: null,
+    thisMonthActionGoalText: null,
+    actionSummaryAndOutcomeProgressText: null,
+    insightAndLearningText: null,
+    improvementPointsText: null,
+    nextMonthActionGoalText: null,
+    sharedWithCoach: false,
+  };
+}
+
+export async function getJournalMonthlyPlain(uid: string, monthKey: string): Promise<JournalMonthlyPlain> {
+  if (!monthKey) return journalMonthlyPlainEmpty('');
+  const ref = doc(db, 'users', uid, JOURNAL_MONTHLY_SUBCOLLECTION, monthKey);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    return journalMonthlyPlainEmpty(monthKey);
+  }
+  const data = snap.data() as JournalMonthlyEncrypted;
+  const decryptOrNull = async (enc: unknown): Promise<string | null> => {
+    if (typeof enc !== 'string' || !enc) return null;
+    try {
+      return await decrypt(enc, uid);
+    } catch {
+      return null;
+    }
+  };
+  return {
+    monthKey,
+    tz: 'Asia/Tokyo',
+    thisMonthOutcomeGoalText: await decryptOrNull(data.thisMonthOutcomeGoalTextEncrypted),
+    thisMonthActionGoalText: await decryptOrNull(data.thisMonthActionGoalTextEncrypted),
+    actionSummaryAndOutcomeProgressText: await decryptOrNull(data.actionSummaryAndOutcomeProgressTextEncrypted),
+    insightAndLearningText: await decryptOrNull(data.insightAndLearningTextEncrypted),
+    improvementPointsText: await decryptOrNull(data.improvementPointsTextEncrypted),
+    nextMonthActionGoalText: await decryptOrNull(data.nextMonthActionGoalTextEncrypted),
+    sharedWithCoach: data.sharedWithCoach ?? false,
+  };
+}
+
+export async function saveJournalMonthlyPlain(params: {
+  uid: string;
+  monthKey: string;
+  patch: Partial<JournalMonthlyPlain>;
+}): Promise<void> {
+  if (!params.monthKey) return;
+  const ref = doc(db, 'users', params.uid, JOURNAL_MONTHLY_SUBCOLLECTION, params.monthKey);
+  const now = serverTimestamp();
+
+  const payload: Partial<JournalMonthlyEncrypted> = {
+    monthKey: params.monthKey,
+    tz: 'Asia/Tokyo',
+    updatedAt: now as FieldValue,
+  };
+
+  const encPairs: Array<[keyof JournalMonthlyEncrypted, string | null]> = [];
+  if ('sharedWithCoach' in params.patch) {
+    payload.sharedWithCoach = !!params.patch.sharedWithCoach;
+  }
+  if ('thisMonthOutcomeGoalText' in params.patch) {
+    encPairs.push(['thisMonthOutcomeGoalTextEncrypted', normalizeText(params.patch.thisMonthOutcomeGoalText)]);
+  }
+  if ('thisMonthActionGoalText' in params.patch) {
+    encPairs.push(['thisMonthActionGoalTextEncrypted', normalizeText(params.patch.thisMonthActionGoalText)]);
+  }
+  if ('actionSummaryAndOutcomeProgressText' in params.patch) {
+    encPairs.push([
+      'actionSummaryAndOutcomeProgressTextEncrypted',
+      normalizeText(params.patch.actionSummaryAndOutcomeProgressText),
+    ]);
+  }
+  if ('insightAndLearningText' in params.patch) {
+    encPairs.push(['insightAndLearningTextEncrypted', normalizeText(params.patch.insightAndLearningText)]);
+  }
+  if ('improvementPointsText' in params.patch) {
+    encPairs.push(['improvementPointsTextEncrypted', normalizeText(params.patch.improvementPointsText)]);
+  }
+  if ('nextMonthActionGoalText' in params.patch) {
+    encPairs.push(['nextMonthActionGoalTextEncrypted', normalizeText(params.patch.nextMonthActionGoalText)]);
+  }
+
+  for (const [k, t] of encPairs) {
+    (payload as Record<string, unknown>)[k as string] = t ? await encrypt(t, params.uid) : null;
+  }
+
+  await setDoc(ref, { ...payload, createdAt: now as FieldValue } as Record<string, unknown>, {
+    merge: true,
+  });
+}
+
+const AFFIRMATIONS_SUBCOLLECTION = 'affirmations';
+
+/**
+ * 穴埋め結果を 1 本文（Markdown 相当の文字列）として発行する（案 B）。
+ * - 親: `users/{uid}/affirmations/{affirmationId}`（メタ）
+ * - 本文: `users/{uid}/affirmations/{affirmationId}/published/current`（暗号化）
+ */
+/** 発行済み本文（Markdown 平文）の上限（§9.7 #6a） */
+export const AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH = 1000;
+
+export function validateAffirmationMarkdownBody(
+  body: string
+): { ok: true } | { ok: false; message: string } {
+  const t = body.trim();
+  if (!t) return { ok: false, message: '本文を入力してください。' };
+  if (t.length > AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH) {
+    return {
+      ok: false,
+      message: `本文は${AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH}文字以内にしてください。`,
+    };
+  }
+  return { ok: true };
+}
+
+export const publishAffirmation = async (
+  uid: string,
+  params: {
+    title: string;
+    profileId: string;
+    /** 発行する本文（プレビューと同じ生成結果を渡す） */
+    markdownBody: string;
+  }
+): Promise<{ affirmationId: string }> => {
+  try {
+    const v = validateAffirmationMarkdownBody(params.markdownBody);
+    if (!v.ok) {
+      throw new Error(v.message);
+    }
+    const colRef = collection(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION);
+    const affirmationRef = doc(colRef);
+    const affirmationId = affirmationRef.id;
+    const encryptedBody = await encrypt(params.markdownBody.trim(), uid);
+    const now = serverTimestamp();
+
+    await setDoc(affirmationRef, {
+      title: params.title,
+      status: 'published',
+      profileId: params.profileId,
+      sharedWithCoach: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await setDoc(doc(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId, 'published', 'current'), {
+      encryptedBody,
+      publishedAt: now,
+      updatedAt: now,
+      coachCanReadPublished: false,
+    });
+
+    return { affirmationId };
+  } catch (error) {
+    console.error('アファメーション発行エラー:', error);
+    throw error;
+  }
+};
+
+/** 一覧用（A-7）。`updatedAt` で降順ソート（クライアント側。複合インデックス不要） */
+export type AffirmationListItem = {
+  id: string;
+  title: string;
+  status: string;
+  profileId: string;
+  updatedAtMs: number;
+};
+
+/** `coachScoped: true` … 担当コーチがクライアントの一覧を読むとき。ルールは共有 ON の親のみ read 可のため必須。 */
+export const listUserAffirmations = async (
+  uid: string,
+  options?: { coachScoped?: boolean }
+): Promise<AffirmationListItem[]> => {
+  try {
+    const colRef = collection(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION);
+    const qRef =
+      options?.coachScoped === true
+        ? query(colRef, where('sharedWithCoach', '==', true))
+        : colRef;
+    const snap = await getDocs(qRef);
+    const items: AffirmationListItem[] = snap.docs.map((d) => {
+      const data = d.data();
+      const updatedAt = data.updatedAt as Timestamp | undefined;
+      return {
+        id: d.id,
+        title: typeof data.title === 'string' ? data.title : '',
+        status: typeof data.status === 'string' ? data.status : 'unknown',
+        profileId: typeof data.profileId === 'string' ? data.profileId : '',
+        updatedAtMs: updatedAt?.toMillis() ?? 0,
+      };
+    });
+    items.sort((a, b) => b.updatedAtMs - a.updatedAtMs);
+    return items;
+  } catch (error) {
+    console.error('アファメーション一覧取得エラー:', error);
+    throw error;
+  }
+};
+
+/** `published/current` の本文を復号して返す（無い・失敗時は null） */
+export const getAffirmationPublishedMarkdown = async (
+  uid: string,
+  affirmationId: string
+): Promise<string | null> => {
+  try {
+    const ref = doc(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId, 'published', 'current');
+    const s = await getDoc(ref);
+    if (!s.exists()) return null;
+    const data = s.data();
+    const enc = data.encryptedBody;
+    if (typeof enc !== 'string') return null;
+    return await decrypt(enc, uid);
+  } catch (error) {
+    console.error('アファメーション本文取得エラー:', error);
+    return null;
+  }
+};
+
+/** A-9：履歴一覧の 1 行（`savedAt` 降順で並べ替え済みを想定） */
+export type AffirmationHistoryListItem = {
+  id: string;
+  savedAtMs: number;
+  /** 保存当時の名称（復号） */
+  title: string;
+};
+
+/**
+ * A-9：`affirmations/{id}/history` を列挙し、日時の新しい順で返す。
+ * 各行のタイトルは復号（失敗時はプレースホルダ文言）。
+ */
+export const listAffirmationHistory = async (
+  uid: string,
+  affirmationId: string
+): Promise<AffirmationHistoryListItem[]> => {
+  try {
+    const colRef = collection(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId, 'history');
+    const snap = await getDocs(colRef);
+    const items: AffirmationHistoryListItem[] = [];
+    for (const d of snap.docs) {
+      const data = d.data();
+      const savedAt = data.savedAt as Timestamp | undefined;
+      const encTitle = data.encryptedTitle;
+      let title = '（無題）';
+      if (typeof encTitle === 'string') {
+        try {
+          const t = await decrypt(encTitle, uid);
+          if (t.trim()) title = t;
+        } catch {
+          title = '（名称を表示できません）';
+        }
+      }
+      items.push({
+        id: d.id,
+        savedAtMs: savedAt?.toMillis() ?? 0,
+        title,
+      });
+    }
+    items.sort((a, b) => b.savedAtMs - a.savedAtMs);
+    return items;
+  } catch (error) {
+    console.error('アファメーション履歴一覧取得エラー:', error);
+    throw error;
+  }
+};
+
+export type AffirmationHistoryEntryDecrypted = {
+  title: string;
+  bodyMarkdown: string;
+  savedAtMs: number;
+};
+
+/** A-9：履歴 1 件を復号（参照のみ・編集・復元はしない） */
+export const getAffirmationHistoryEntryDecrypted = async (
+  uid: string,
+  affirmationId: string,
+  historyDocId: string
+): Promise<AffirmationHistoryEntryDecrypted | null> => {
+  try {
+    const ref = doc(
+      db,
+      'users',
+      uid,
+      AFFIRMATIONS_SUBCOLLECTION,
+      affirmationId,
+      'history',
+      historyDocId
+    );
+    const s = await getDoc(ref);
+    if (!s.exists()) return null;
+    const data = s.data();
+    const savedAt = data.savedAt as Timestamp | undefined;
+    let title = '（無題）';
+    let bodyMarkdown = '';
+    const encT = data.encryptedTitle;
+    if (typeof encT === 'string') {
+      try {
+        const t = await decrypt(encT, uid);
+        if (t.trim()) title = t;
+      } catch {
+        title = '（名称を復号できません）';
+      }
+    }
+    const encB = data.encryptedBody;
+    if (typeof encB === 'string') {
+      try {
+        bodyMarkdown = await decrypt(encB, uid);
+      } catch {
+        bodyMarkdown = '';
+      }
+    }
+    return {
+      title,
+      bodyMarkdown,
+      savedAtMs: savedAt?.toMillis() ?? 0,
+    };
+  } catch (error) {
+    console.error('アファメーション履歴取得エラー:', error);
+    return null;
+  }
+};
+
+/**
+ * 発行済み本文を更新（A-8）。親 `updatedAt` も更新。
+ * `keepHistory`: true のとき、更新前の本文＋親タイトルを `history` に 1 件追加してから `published/current` を更新。
+ */
+export const savePublishedAffirmationBody = async (
+  uid: string,
+  affirmationId: string,
+  params: { newMarkdownBody: string; keepHistory: boolean }
+): Promise<void> => {
+  const v = validateAffirmationMarkdownBody(params.newMarkdownBody);
+  if (!v.ok) {
+    throw new Error(v.message);
+  }
+  const trimmed = params.newMarkdownBody.trim();
+  try {
+    const parentRef = doc(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId);
+    const publishedRef = doc(
+      db,
+      'users',
+      uid,
+      AFFIRMATIONS_SUBCOLLECTION,
+      affirmationId,
+      'published',
+      'current'
+    );
+    const [parentSnap, pubSnap] = await Promise.all([getDoc(parentRef), getDoc(publishedRef)]);
+    if (!parentSnap.exists()) throw new Error('アファメーションが見つかりません。');
+    if (!pubSnap.exists()) throw new Error('発行済み本文が見つかりません。');
+
+    const title =
+      typeof parentSnap.data().title === 'string' ? parentSnap.data().title : '';
+    const now = serverTimestamp();
+    const newEnc = await encrypt(trimmed, uid);
+
+    if (params.keepHistory) {
+      const oldEnc = pubSnap.data().encryptedBody;
+      if (typeof oldEnc !== 'string') throw new Error('現行本文の読み取りに失敗しました。');
+      const oldMarkdown = await decrypt(oldEnc, uid);
+      const histEncBody = await encrypt(oldMarkdown, uid);
+      const histEncTitle = await encrypt(title, uid);
+      const batch = writeBatch(db);
+      const histRef = doc(
+        collection(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId, 'history')
+      );
+      batch.set(histRef, {
+        savedAt: now,
+        encryptedBody: histEncBody,
+        encryptedTitle: histEncTitle,
+      });
+      batch.update(publishedRef, {
+        encryptedBody: newEnc,
+        updatedAt: now,
+      });
+      batch.update(parentRef, { updatedAt: now });
+      await batch.commit();
+    } else {
+      const batch = writeBatch(db);
+      batch.update(publishedRef, {
+        encryptedBody: newEnc,
+        updatedAt: now,
+      });
+      batch.update(parentRef, { updatedAt: now });
+      await batch.commit();
+    }
+  } catch (error) {
+    console.error('発行済み本文保存エラー:', error);
+    throw error;
+  }
+};
+
+/** 同一ユーザ内で `title` が既に使われているか（トリム後一致。除外 ID は自分自身の改名時用） */
+export const isAffirmationTitleTaken = async (
+  uid: string,
+  title: string,
+  excludeAffirmationId?: string | null
+): Promise<boolean> => {
+  const t = title.trim();
+  if (!t) return false;
+  try {
+    const q = query(collection(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION), where('title', '==', t));
+    const snap = await getDocs(q);
+    if (excludeAffirmationId) {
+      return snap.docs.some((d) => d.id !== excludeAffirmationId);
+    }
+    return !snap.empty;
+  } catch (error) {
+    console.error('アファメーション名重複チェックエラー:', error);
+    throw error;
+  }
+};
+
+export const updateAffirmationTitle = async (
+  uid: string,
+  affirmationId: string,
+  title: string
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId), {
+      title: title.trim(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('アファメーション名更新エラー:', error);
+    throw error;
+  }
+};
+
+/**
+ * 親・`published/*`・`history/*` をまとめて物理削除（バッチ分割 450 件単位）
+ */
+export const deleteAffirmationFully = async (uid: string, affirmationId: string): Promise<void> => {
+  try {
+    const parentRef = doc(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId);
+    const pubSnap = await getDocs(collection(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId, 'published'));
+    const histSnap = await getDocs(collection(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId, 'history'));
+    const refs = [...pubSnap.docs.map((d) => d.ref), ...histSnap.docs.map((d) => d.ref), parentRef];
+    const chunkSize = 450;
+    for (let i = 0; i < refs.length; i += chunkSize) {
+      const batch = writeBatch(db);
+      for (const r of refs.slice(i, i + chunkSize)) {
+        batch.delete(r);
+      }
+      await batch.commit();
+    }
+  } catch (error) {
+    console.error('アファメーション削除エラー:', error);
+    throw error;
+  }
+};
+
+/** `users/{uid}.trialAffirmationMeta` の部分更新（ドット記法。localStorage は使わない） */
+export const updateTrialAffirmationUiMetaFields = async (
+  uid: string,
+  fields: Partial<{
+    lastSubmenu: TrialAffirmationSubmenu | null;
+    lastSelectedAffirmationId: string | null;
+  }>
+): Promise<void> => {
+  try {
+    const payload: Record<string, unknown> = {
+      updatedAt: serverTimestamp(),
+    };
+    if ('lastSubmenu' in fields) {
+      payload['trialAffirmationMeta.lastSubmenu'] = fields.lastSubmenu;
+    }
+    if ('lastSelectedAffirmationId' in fields) {
+      payload['trialAffirmationMeta.lastSelectedAffirmationId'] = fields.lastSelectedAffirmationId;
+    }
+    await updateDoc(doc(db, 'users', uid), payload);
+  } catch (error) {
+    console.error('trialAffirmationMeta 更新エラー:', error);
     throw error;
   }
 };

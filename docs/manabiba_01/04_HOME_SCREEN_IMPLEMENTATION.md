@@ -4,7 +4,7 @@
 
 ホーム画面のロール別表示と、管理者による編集（現段階では管理者のみ）を、ステップバイステップで実装するための方針・確認事項・手順をまとめる。
 
-- 参照: [ROLES_AND_SUBSCRIPTION_DESIGN.md](./ROLES_AND_SUBSCRIPTION_DESIGN.md)（ロール・モード切替）
+- 参照: [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)（ロール・モード切替）
 - 画像「ホーム画面: ロール別コンテナ表示内容」の内容を反映している。
 
 ---
@@ -32,6 +32,15 @@
 - **フッター**: 利用規約・プライバシーポリシー・コピーライトを実装済み。`ProtoFooter` で `/terms`・`/privacy` へのリンクとコピーライト表示。セクション ID は付与していない。
 
 ---
+
+## 1.1 トライアル開始導線（最新）
+
+- ホーム（未ログイン）: 「**試してみる**」→ `GET /trial_4w/landing`
+- ランディング: `GET /trial_4w/landing`
+  - 2/2（AIコーチ）の「やってみる」のみ有効
+  - 未ログインなら `GET /login?next=/trial_4w`（ログイン必須）
+  - ログイン後は `GET /post-login?next=/trial_4w` に遷移し、同意状況により `/consent` を必須表示
+  - 同意完了後に `/trial_4w` へ遷移
 
 ## 2. 管理者モード時の編集 UI
 
@@ -173,7 +182,7 @@
 
 ## 6. 参照
 
-- [ROLES_AND_SUBSCRIPTION_DESIGN.md](./ROLES_AND_SUBSCRIPTION_DESIGN.md) — ロール・モード・ホーム section ID
-- [IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./IMPLEMENTATION_STEPS_DB_AND_AUTH.md) — Phase 2 全体
+- [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md) — ロール・モード・ホーム section ID
+- [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md) — Phase 2 全体
 - 画像: ホーム画面 ロール別コンテナ表示内容
 

@@ -54,7 +54,7 @@ prototypes/
 - **メインコンテンツ幅（trial-main）**: 最大幅 **1026px**（ホームの content-left と同一）
 - **サイドバー「ホーム」**: ホーム画面のURLへ遷移。**プロトタイプ**では認証がないため `?logged_in=true` でログイン表示を模擬。**実装**ではリンク先はホームのURLのみとし、ログイン状態の表示はホーム側で認証状態（AuthContext 等）を参照して判定する。
 
-詳細は [要件定義書](../REQUIREMENTS_SPECIFICATION.md) 2.8.3、[UI/UX設計書](../UI_UX_DESIGN.md) 5.10.4、[デザインシステム](../DESIGN_SYSTEM.md) 3.3.5 を参照。
+詳細は [要件定義書](../01_REQUIREMENTS_SPECIFICATION.md) 2.8.3、[UI/UX設計書](../01_UI_UX_DESIGN.md) 5.10.4、[デザインシステム](../02_DESIGN_SYSTEM.md) 3.3.5 を参照。
 
 ## 更新ルール
 
@@ -67,6 +67,6 @@ prototypes/
 
 ## 関連ドキュメント
 
-- [UI/UX設計書](../UI_UX_DESIGN.md)
-- [デザインシステム](../DESIGN_SYSTEM.md)
+- [UI/UX設計書](../01_UI_UX_DESIGN.md)
+- [デザインシステム](../02_DESIGN_SYSTEM.md)
 - [プロトタイプ機能追加ガイドライン](./PROTOTYPE_GUIDELINES.md) - **プロトタイプ段階で追加・修正できる機能の範囲を定義**

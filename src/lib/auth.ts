@@ -9,6 +9,9 @@ import { auth } from './firebase';
 
 // Googleログインプロバイダーの設定
 const googleProvider = new GoogleAuthProvider();
+// 別アカウントでログインし直せるように、毎回アカウント選択を促す。
+// （Firebase の signOut は Google セッション自体をログアウトしないため、既定だと前回アカウントで自動ログインされやすい）
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Googleログイン関数（ポップアップ方式）
 export const signInWithGoogle = async () => {

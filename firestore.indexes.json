@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "coach_client_assignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "coachUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "coach_client_assignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

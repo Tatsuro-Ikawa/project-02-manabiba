@@ -91,8 +91,8 @@ export default function HomePage() {
                 </Link>
               ) : (
                 <>
-                  <Link href="/trial_4w" className="banner-btn active">
-                    28日間 こころのトライアルを始める
+                  <Link href="/trial_4w/landing" className="banner-btn active">
+                    試してみる
                   </Link>
                   <span className="banner-btn inactive">ログインして続きから</span>
                 </>

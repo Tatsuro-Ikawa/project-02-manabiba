@@ -5,7 +5,7 @@
 | 項目 | 内容 |
 |------|------|
 | **目的** | ロール（3種）とサブスクリプションの技術的方針を定義する。決済は別フェーズで実装する。 |
-| **参照** | [IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./IMPLEMENTATION_STEPS_DB_AND_AUTH.md)（Phase 2 実装手順） |
+| **参照** | [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md)（Phase 2 実装手順） |
 
 ---
 
@@ -77,6 +77,14 @@
 | 他ユーザーの記録閲覧（UI） | ❌ | ✅（共有OKの範囲のみ） | ❌（IF 上からは見れない） |
 | サイト共通コンテンツの編集 | ❌ | ❌ | ✅ |
 
+#### 1.3.1 アファメーション（補足）
+
+| ロール | 内容 |
+|--------|------|
+| **user（クライアント）** | 自身のアファメーションの作成・下書き・発行・編集・削除・履歴（仕様どおり）。 |
+| **coach** | **発行済みかつクライアントが共有可能にしたアファメーション** の本文を閲覧。下書き・本文編集・削除・編集履歴（`history`）は行わない。**A-11** で `coach_comment_versions` への追記・担当は `coach_client_assignments`（[03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)）。画面遷移は [04_AFFIRMATION_DESIGN.md](./04_AFFIRMATION_DESIGN.md) 3.7・3.10。 |
+| **admin** | ユーザーのアファメーション本文を **IF から閲覧しない**（既存 1.5 と同方針）。システム用プロファイル `affirmation_profiles` の編集は管理者権限で可（ルール実装時）。 |
+
 ### 1.4 URL とロールの考え方
 
 - **URL は画面（機能）単位で共通**とする。ロールごとに URL を変えない。
@@ -139,6 +147,8 @@
 | 3 | **クライアント共有コンテンツ表示** | そのクライアントが「コーチと共有」にしたコンテンツ（例: 週報、28日間トライアルの共有項目）を表示する。 |
 | 4 | **コメント記入** | 共有されている項目ごとにコーチがコメントを記入・保存する。クライアントは後から自分の画面でそのコメントを確認できる。 |
 
+- **アファメーション（A-11）** のデータ置き場・フィールド名の現状案は [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)（割当 `coach_client_assignments`、`coach_share_rounds` / `coach_comment_versions`）。
+- **マネジメント日誌（学び帳）** の人コーチ／AI／サブスク **コース定義・能力マトリックス** は [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。日次は人コーチに共有しない。週次は共有のみ、月次は質問・回答含む（現行プラン `ai_plus_personal`）。動的ルールではなく **コース（運用）で切替**。
 - この流れを**画面設計で考慮**し、ホーム・28日間トライアルそれぞれで「モード切替時の見え方」と「クライアントとの情報共有（コメントのやり取り）」のイメージを用意する（後述「3. 画面設計で作成するイメージ・成果物」）。
 
 ---
@@ -187,7 +197,7 @@
 
 ### 2.5 ホーム画面の content-section ID 一覧（ロール別表示用）
 
-ロール別に項目の表示を区別するため、ホームの各セクションに識別用 ID を付与している。**ロール別の詳細な区分（表示・非表示・編集可）** と **管理者モード時の編集UI・参考リンクのテーブル形式編集画面・実装前の確認事項・ステップ** は [HOME_SCREEN_IMPLEMENTATION.md](./HOME_SCREEN_IMPLEMENTATION.md) にまとめた。
+ロール別に項目の表示を区別するため、ホームの各セクションに識別用 ID を付与している。**ロール別の詳細な区分（表示・非表示・編集可）** と **管理者モード時の編集UI・参考リンクのテーブル形式編集画面・実装前の確認事項・ステップ** は [04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) にまとめた。
 
 | ID | セクション名 | ゲスト | クライアント/ホスト | 管理者 | 備考 |
 |----|----------------|--------|---------------------|--------|------|
@@ -287,6 +297,6 @@
 
 ## 6. 参照
 
-- 実装手順: [IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./IMPLEMENTATION_STEPS_DB_AND_AUTH.md)
-- 要件定義: [REQUIREMENTS_SPECIFICATION.md](./REQUIREMENTS_SPECIFICATION.md)（2.1 認証・認可）
-- システムアーキテクチャ: [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md)（データモデル）
+- 実装手順: [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md)
+- 要件定義: [01_REQUIREMENTS_SPECIFICATION.md](./01_REQUIREMENTS_SPECIFICATION.md)（2.1 認証・認可）
+- システムアーキテクチャ: [02_SYSTEM_ARCHITECTURE.md](./02_SYSTEM_ARCHITECTURE.md)（データモデル）

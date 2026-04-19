@@ -2,7 +2,7 @@
 
 ## 📋 目的
 
-Phase 1（[IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md)）で実装したホーム・トライアル画面に、**認証（Firebase Authentication）とDB（Firestore）** を組み込み、次を実現するための手順です。
+Phase 1（[04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md)）で実装したホーム・トライアル画面に、**認証（Firebase Authentication）とDB（Firestore）** を組み込み、次を実現するための手順です。
 
 - **ユーザー権限（3ロール）** の定義と実装（一般ユーザ／ホスト＝コーチ／管理者）
 - **ログイン状態**に応じたホーム・トライアルの表示切替
@@ -22,7 +22,7 @@ Phase 1（[IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./IMPLEMENTATION_STEPS_HOME_A
 
 実装の前提となる**ユーザー権限**と**サブスクリプションの器**は、別ドキュメントで定義する。
 
-- **[ROLES_AND_SUBSCRIPTION_DESIGN.md](./ROLES_AND_SUBSCRIPTION_DESIGN.md)** を参照すること。
+- **[01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)** を参照すること。
   - **ロール**: 一般ユーザ（クライアント）／ホストユーザ（コーチ）／管理者（アドミニストレータ）の3種。閲覧・編集権限の整理あり。
   - **サブスク**: フリー・期間限定（トライアル）・コース・個別追加などを**技術的な器**として定義。28日間トライアルは「28日間フリー → 以降有料」とし、決済は後フェーズで実装する。
 
@@ -31,7 +31,7 @@ Phase 1（[IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./IMPLEMENTATION_STEPS_HOME_A
 ## 進め方の流れ（手順一覧）
 
 ```
-【0】ロール・サブスク設計の確認（ROLES_AND_SUBSCRIPTION_DESIGN.md）
+【0】ロール・サブスク設計の確認（01_ROLES_AND_SUBSCRIPTION_DESIGN.md）
     ↓
 【1】ユーザー権限（ロール）の実装
     ↓
@@ -52,7 +52,7 @@ Phase 1（[IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./IMPLEMENTATION_STEPS_HOME_A
 
 ## 【0】ロール・サブスク設計の確認
 
-**目的**: 実装前に [ROLES_AND_SUBSCRIPTION_DESIGN.md](./ROLES_AND_SUBSCRIPTION_DESIGN.md) を読み、3ロールの権限とサブスクの器（プラン種別・トライアル終了日など）を把握する。
+**目的**: 実装前に [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md) を読み、3ロールの権限とサブスクの器（プラン種別・トライアル終了日など）を把握する。
 
 ### 0.1 やること
 
@@ -154,9 +154,9 @@ Phase 1（[IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./IMPLEMENTATION_STEPS_HOME_A
 
 ### 5.1 やること
 
-- [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md) の「6.1 Firestoreコレクション構造」を参照する。
+- [02_SYSTEM_ARCHITECTURE.md](./02_SYSTEM_ARCHITECTURE.md) の「6.1 Firestoreコレクション構造」を参照する。
 - セキュリティルールで、**管理者向け**のサイト共通コンテンツ（例: 最新動画・参考リンク用コレクション）を用意する場合、`admin` のみ書き込み可などルールを追加する。
-- コーチが**クライアントのデータ**を参照する場合、`coach` ロールと「担当クライアント」の対応をどのコレクションで持つか設計し、ルールに反映する（実装は後段階でも可）。
+- コーチが**クライアントのデータ**を参照する場合、`coach` ロールと「担当クライアント」の対応をどのコレクションで持つか設計し、ルールに反映する（実装は後段階でも可）。**現状案**: ルート **`coach_client_assignments`**（[03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)、[03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.14）。
 - 28日間トライアル用のサブコレクション（例: `users/{uid}/coaching-program/28day-trial/{date}`）が既存設計にあれば、そのまま利用する。無ければコレクション名とスキーマを決め、ルールに追加する。
 
 ### 5.2 成果物
@@ -208,32 +208,35 @@ Phase 1（[IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./IMPLEMENTATION_STEPS_HOME_A
 
 - **【1】ユーザー権限（ロール）**: `UserRole`（user / coach / admin）、`users/{uid}.role`、`hasRole`。表示モード切替（ViewModeContext: client / coach / admin）を実装。ヘッダーアバタークリックでロール・モード表示とアカウント設定・ログアウト。
 - **【2】ホーム画面を認証状態に連携**: `HomePage` で `useAuth` を使用。ログイン前は「本日の一番」「昨日までの積重ね」非表示。ログイン後はホームに留まり、マイページはサイドバーから遷移。ログインリダイレクト先を `/` に変更。
+- **トライアル導線（ランディング + 同意ゲート）**: `GET /trial_4w/landing` を追加。ランディングの 2/2（AIコーチ）の「やってみる」から、未ログインなら `/login?next=/trial_4w` → ログイン後 `/post-login?next=/trial_4w` で同意状況を判定。未同意なら `/consent?next=/trial_4w` を必須表示し、同意後に `/trial_4w` へ遷移。`users/{uid}.consents` に同意情報（termsVersion/privacyVersion は日付）を保存。
 - **【5】Firestore**: `site_content/home` を追加。`latestVideos`・`latestArticles`・`referenceLinks` の読み書き。セキュリティルールに `site_content/home`（read: 全員、create/update: isAdminUser()）とヘルパー `isAdminUser()` を追加。プロジェクトルートに `firebase.json`・`.firebaserc` を用意し、`firebase deploy --only firestore:rules` でデプロイ可能。
 - **ホーム 管理者編集（最新動画）**: 管理者モード時のみ「編集」ボタン表示。`LatestVideosEditModal` で URL・タイトル・サムネイル・並び・作成者（author_name, author_url）を編集。`/api/youtube-oembed` で YouTube（Shorts 含む）のメタデータ取得。保存で `updateHomeLatestVideos`。カード表示は 4:3（幅 213px・高さ 160px）、object-fit: contain。
 - **ホーム 管理者編集（最新記事）**: 管理者モード時のみ「編集」ボタン表示。`LatestArticlesEditModal` で URL・見出し・リード・出所・サムネイルURL・並びを編集。`/api/article-ogp` で記事 URL の OGP 取得。保存で `updateHomeLatestArticles`。カード表示は動画と同様のスタイルで横スクロール。
 - **ホーム 管理者編集（いちおしサイト）**: セクション名「参考リンク」→「いちおしサイト」。管理者モード時のみ「編集」ボタン表示。`ReferenceLinksEditModal` で URL・タイトル・サイト名・サムネイルURL・並びを編集。「URLから情報を取得」で `/api/article-ogp` を流用。保存で `updateHomeReferenceLinks`。表示は縦並び・高さ 60px・左 16:9 サムネ・右にタイトル・サイト名。`content-right` 幅 328px（`content-left` 最大幅 948px）。
 - **フッター**: 利用規約・プライバシーポリシー・コピーライトを実装。`ProtoFooter` で「利用規約」「プライバシーポリシー」リンク（`/terms`・`/privacy`）とコピーライト表示。`/terms`・`/privacy` はプレースホルダーページ（本文は準備中）。ホーム・各静的ページにフッター表示。
 - **SNS セクション（home-section-sns）**: 運用方針決定まで CSS で非表示。復活時は `home-trial.css` の該当ルールを削除。
+- **アファメーション（プロト）**: 固定プロファイル（`AFFIRMATION_PROFILE_V1`）による穴埋め UI、`users/{uid}/affirmation_drafts/{profileId}` への暗号化下書き保存・読込。サブメニュー（選択／作成／編集／履歴）骨格・初期プレビューのみ・UI 状態は **`users/{uid}.trialAffirmationMeta`**（`updateTrialAffirmationUiMetaFields`、localStorage 不使用）。**A-6〜A-9** は [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) 9.5 にて **表示レベルで当面完了** と記録。**A-10**: 共通 **`AffirmationMarkdownView`**（`react-markdown`）でプレビュー表示。モーダル・一覧 CRUD・発行・履歴 UI の本格実装は後続（[04_AFFIRMATION_DESIGN.md](./04_AFFIRMATION_DESIGN.md) 参照）。
 - **その他**: favicon を `public/favicon.ico` に移動（メタデータルートの 500 回避）。
 
 ### 未実装・今後の項目
 
 - **【3】【4】【6】**: トライアルの認証ガード・サブスクの器の拡張・トライアル用データの保存は要件に応じて未実装または部分実装の可能性あり。
-- **広告エリア（home-section-ad）**: `site_content/home` の `ad` の編集 UI は未実装。入力方法は運用方針決定後に実装。スキーマは [FIRESTORE_DATABASE_STRUCTURE.md](./FIRESTORE_DATABASE_STRUCTURE.md) に記載。
+- **アファメーション**: 下書きまで部分実装。完全仕様は要件定義書 2.8.3「アファメーション詳細」および [04_AFFIRMATION_DESIGN.md](./04_AFFIRMATION_DESIGN.md)。
+- **広告エリア（home-section-ad）**: `site_content/home` の `ad` の編集 UI は未実装。入力方法は運用方針決定後に実装。スキーマは [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) に記載。
 
 ---
 
 ## 参照ドキュメント
 
-- **ロール・サブスク設計**: [ROLES_AND_SUBSCRIPTION_DESIGN.md](./ROLES_AND_SUBSCRIPTION_DESIGN.md)
-- **ホーム画面実装**: [HOME_SCREEN_IMPLEMENTATION.md](./HOME_SCREEN_IMPLEMENTATION.md)
-- Phase 1: [IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md)
-- 要件定義書: [REQUIREMENTS_SPECIFICATION.md](./REQUIREMENTS_SPECIFICATION.md)（2.1 認証・認可、2.8.3 トライアル、2.11 ホーム）
-- システムアーキテクチャ: [SYSTEM_ARCHITECTURE.md](./SYSTEM_ARCHITECTURE.md)
-- Firestore 構造: [FIRESTORE_DATABASE_STRUCTURE.md](./FIRESTORE_DATABASE_STRUCTURE.md)
+- **ロール・サブスク設計**: [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)
+- **ホーム画面実装**: [04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md)
+- Phase 1: [04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md)
+- 要件定義書: [01_REQUIREMENTS_SPECIFICATION.md](./01_REQUIREMENTS_SPECIFICATION.md)（2.1 認証・認可、2.8.3 トライアル、2.11 ホーム）
+- システムアーキテクチャ: [02_SYSTEM_ARCHITECTURE.md](./02_SYSTEM_ARCHITECTURE.md)
+- Firestore 構造: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md)
 - Firestore セキュリティルール: [FIRESTORE_SECURITY_RULES_SETUP.md](../FIRESTORE_SECURITY_RULES_SETUP.md)
-- 機能一覧: [FEATURE_LIST.md](./FEATURE_LIST.md)
+- 機能一覧: [01_FEATURE_LIST.md](./01_FEATURE_LIST.md)
 
 ---
 
-**次のアクション**: 上記「現状までの実装状況」を参照しつつ、【3】トライアル方針→【4】サブスクの器→【6】トライアルデータの順で進める。広告エリアの編集は運用方針決定後に [HOME_SCREEN_IMPLEMENTATION.md](./HOME_SCREEN_IMPLEMENTATION.md) を参照。決済・課金は別フェーズで実装。
+**次のアクション**: 上記「現状までの実装状況」を参照しつつ、【3】トライアル方針→【4】サブスクの器→【6】トライアルデータの順で進める。広告エリアの編集は運用方針決定後に [04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) を参照。決済・課金は別フェーズで実装。

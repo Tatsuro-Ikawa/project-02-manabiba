@@ -107,7 +107,7 @@
 ### 2.1 やること
 
 - **デザイントークン**
-  - `docs/manabiba_01/DESIGN_SYSTEM.md` およびプロトタイプの `prototype-common.css`（`--color-primary` など）を参照し、Tailwind の theme 拡張や CSS 変数で同じ値を定義する。
+  - `docs/manabiba_01/02_DESIGN_SYSTEM.md` およびプロトタイプの `prototype-common.css`（`--color-primary` など）を参照し、Tailwind の theme 拡張や CSS 変数で同じ値を定義する。
 - **アイコン**
   - 実装版では **Google Fonts の Material Symbols**（無料）を使用する。読み込み方法・アイコン名は DESIGN_SYSTEM の「5.1.1 実装版の標準：Google Fonts 無料アイコン（Material Symbols）」およびプロトタイプ絵文字との対応表を参照する。
 - **共通レイアウト**
@@ -219,11 +219,11 @@
 
 ## 参照ドキュメント
 
-- 要件定義書: `docs/manabiba_01/REQUIREMENTS_SPECIFICATION.md`（2.8.3 トライアルUI仕様、2.11 ホームページ）
-- UI/UX設計書: `docs/manabiba_01/UI_UX_DESIGN.md`（5.10.4 トライアル画面のレイアウト・ナビゲーション）
-- デザインシステム: `docs/manabiba_01/DESIGN_SYSTEM.md`（3.3.5 コンテンツ幅）
+- 要件定義書: `docs/manabiba_01/01_REQUIREMENTS_SPECIFICATION.md`（2.8.3 トライアルUI仕様、2.11 ホームページ）
+- UI/UX設計書: `docs/manabiba_01/01_UI_UX_DESIGN.md`（5.10.4 トライアル画面のレイアウト・ナビゲーション）
+- デザインシステム: `docs/manabiba_01/02_DESIGN_SYSTEM.md`（3.3.5 コンテンツ幅）
 - プロトタイプ: `docs/manabiba_01/prototypes/interactive/`（SCREEN-000, SCREEN-004〜007）
 
 ---
 
-**次のアクション（Phase 1 完了後）**: DB・認証連携は [IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./IMPLEMENTATION_STEPS_DB_AND_AUTH.md)（Phase 2）に従い進める。Phase 2 にて以下が実装済み: ホームの認証状態連携、ロール・表示モード切替、`site_content/home`（latestVideos・latestArticles・referenceLinks）の読み書き、おすすめ動画・注目記事・いちおしサイトの管理者用編集モーダル（youtube-oembed・article-ogp API）、フッター（利用規約・プライバシーポリシー・コピーライト、`/terms`・`/privacy`）、Firestore ルール（isAdminUser）、firebase.json／.firebaserc。SNS セクションは運用方針決定まで非表示。広告エリアの編集およびトライアルデータ保存は未実装。
+**次のアクション（Phase 1 完了後）**: DB・認証連携は [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md)（Phase 2）に従い進める。Phase 2 にて以下が実装済み: ホームの認証状態連携、ロール・表示モード切替、`site_content/home`（latestVideos・latestArticles・referenceLinks）の読み書き、おすすめ動画・注目記事・いちおしサイトの管理者用編集モーダル（youtube-oembed・article-ogp API）、フッター（利用規約・プライバシーポリシー・コピーライト、`/terms`・`/privacy`）、Firestore ルール（isAdminUser）、firebase.json／.firebaserc。SNS セクションは運用方針決定まで非表示。広告エリアの編集およびトライアルデータ保存は未実装。

@@ -756,6 +756,6 @@ function mockGoogleSignIn() {
 
 ## 9. 参考資料
 
-- [UI/UX設計書](../UI_UX_DESIGN.md)
-- [デザインシステム](../DESIGN_SYSTEM.md)
-- [要件定義書](../REQUIREMENTS_SPECIFICATION.md)
+- [UI/UX設計書](../01_UI_UX_DESIGN.md)
+- [デザインシステム](../02_DESIGN_SYSTEM.md)
+- [要件定義書](../01_REQUIREMENTS_SPECIFICATION.md)

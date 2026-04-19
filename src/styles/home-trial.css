@@ -510,6 +510,7 @@
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -705,6 +706,189 @@
   font-size: var(--font-size-caption);
 }
 
+/* ========== トライアル: ランディング（trial_4w/landing） ========== */
+.trial-landing-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.trial-landing-title {
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.trial-landing-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text-primary);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.trial-landing-back:hover {
+  background: var(--color-background-secondary);
+}
+
+.trial-landing-headline {
+  font-size: var(--font-size-h4);
+  font-weight: 800;
+  text-align: center;
+  margin: var(--spacing-md) 0 var(--spacing-lg);
+  color: var(--color-text-primary);
+}
+
+.trial-landing-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.trial-landing-card {
+  background: #f4f6f0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.trial-landing-subtitle {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.trial-landing-card-inner {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  flex: 1;
+}
+
+.trial-landing-card-title {
+  background: rgba(66, 97, 59, 0.25);
+  color: var(--color-text-primary);
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  font-weight: 800;
+  margin: 0 auto var(--spacing-lg);
+  max-width: 520px;
+}
+
+.trial-landing-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+.trial-landing-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.trial-landing-col-header {
+  background: var(--color-primary-dark);
+  color: var(--color-text-on-green);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  font-weight: 800;
+  min-width: 180px;
+  text-align: center;
+}
+
+.trial-landing-price-box {
+  width: 100%;
+  max-width: 260px;
+  background: #efe3c9;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+}
+
+.trial-landing-price {
+  color: #b00000;
+  font-weight: 900;
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.trial-landing-price.strike {
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.trial-landing-note {
+  margin-top: 6px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+}
+
+.trial-landing-note.small {
+  font-size: 11px;
+}
+
+.trial-landing-note.strike {
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.trial-landing-badge {
+  display: inline-block;
+  margin-top: 10px;
+  background: rgba(66, 97, 59, 0.25);
+  color: var(--color-text-primary);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.trial-landing-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 210px;
+  height: 64px;
+  border-radius: 14px;
+  background: #c20000;
+  border: 3px solid #8f0000;
+  color: #fff;
+  font-weight: 900;
+  font-size: 22px;
+  text-decoration: none;
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  user-select: none;
+}
+
+.trial-landing-cta:hover {
+  filter: brightness(1.03);
+}
+
+.trial-landing-cta.disabled,
+.trial-landing-cta:disabled {
+  background: #c9c9c9;
+  border-color: #9d9d9d;
+  box-shadow: none;
+  cursor: not-allowed;
+  color: #fff;
+  opacity: 0.9;
+}
+
 /* ========== フッター（利用規約・プライバシーポリシー・コピーライト） ========== */
 .home-footer {
   background: var(--color-primary-dark);
@@ -793,7 +977,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-sm);
   background: var(--color-background);
   min-width: 0;
   max-width: var(--content-left-max-width);
@@ -806,10 +990,130 @@
   background: var(--color-background-secondary);
   border-radius: var(--radius-md);
   padding: var(--spacing-xs);
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
   border: 1px solid var(--color-border);
   flex-wrap: wrap;
   gap: var(--spacing-xs);
+}
+
+.trial-menu-bar.coach-share-active {
+  border: 2px solid var(--color-warning);
+}
+
+.trial-menu-spacer {
+  flex: 1 1 auto;
+}
+
+.trial-menu-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  font-family: var(--font-family-jp);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  min-width: 0;
+  max-width: min(100%, 14rem);
+}
+
+.trial-menu-share-btn:hover {
+  background: var(--color-background-accent);
+  color: var(--color-primary);
+  border-color: var(--color-border-accent);
+}
+
+.trial-menu-share-btn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+/* 共有モード中: 共有ボタンを warning 色で強調 */
+.trial-menu-share-btn--active {
+  background: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 85%, #000);
+  color: var(--color-text-on-green);
+}
+
+.trial-menu-share-btn--active:hover {
+  background: color-mix(in srgb, var(--color-warning) 90%, #000);
+  border-color: color-mix(in srgb, var(--color-warning) 75%, #000);
+  color: var(--color-text-on-green);
+}
+
+.trial-menu-share-btn--active .material-symbols-outlined {
+  color: var(--color-text-on-green);
+}
+
+/* 共有中: ボタン内「共有中: 名前」（1行・長い場合は CSS でも省略） */
+.trial-menu-share-btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.trial-menu-share-status {
+  flex-shrink: 0;
+}
+
+.trial-menu-share-client {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 行動宣言: テーマタイトルバー（クライアント: 右にコーチ共有チェック） */
+.affirmation-theme-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  background: var(--color-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  min-height: 44px;
+}
+
+.affirmation-theme-title-text {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.affirmation-coach-share-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-body-small);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.affirmation-coach-share-label input {
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+}
+
+.affirmation-coach-guide-box {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  background: #fff;
 }
 
 .trial-menu-item {
@@ -839,6 +1143,27 @@
   color: var(--color-text-on-green);
 }
 
+/* 425px以下: トライアル上部タブはラベル非表示・アイコンのみ（閾値は後段階で全体見直し可） */
+@media (max-width: 425px) {
+  .trial-menu-bar {
+    /* 子を flex:1 でバー全幅を等分（中央寄せではなく外幅基準の均等割） */
+    gap: var(--spacing-xs);
+  }
+
+  .trial-menu-item {
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 0;
+    padding: var(--spacing-sm);
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .trial-menu-item .menu-text {
+    display: none;
+  }
+}
+
 /* ========== トライアル: タブコンテンツ共通 ========== */
 .trial-tab-content {
   flex: 1;
@@ -857,17 +1182,1189 @@
   background: var(--color-background-secondary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  padding: var(--spacing-xl);
+  padding: var(--spacing-sm);
 }
 
-.affirmation-container h2,
-.morning-evening-container h2,
-.trial-weekly-container h2,
-.trial-monthly-container h2 {
-  margin: 0 0 var(--spacing-lg) 0;
+/* トライアル各タブ: 見出し行（中央寄せ。アファメはヘルプボタン同梱） */
+.trial-tab-heading-row,
+.affirmation-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin: 0 0 var(--spacing-xs) 0;
+  flex-wrap: wrap;
+}
+
+.morning-evening-container .trial-tab-heading-row h2,
+.trial-weekly-container .trial-tab-heading-row h2,
+.trial-monthly-container .trial-tab-heading-row h2,
+.affirmation-container .affirmation-heading-row h2,
+#affirmation-section-title {
+  margin: 0.25rem;
   font-size: var(--font-size-h3);
   font-weight: 700;
   color: var(--color-text-primary);
+  text-align: center;
+}
+
+.affirmation-help-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.affirmation-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-background-secondary);
+  color: var(--color-primary);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.affirmation-help-btn:hover {
+  background: var(--color-secondary);
+}
+
+.affirmation-help-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.affirmation-help-btn[aria-expanded='true'] {
+  background: var(--color-secondary);
+}
+
+.affirmation-help-bubble {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--spacing-xs));
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: min(280px, calc(100vw - 2 * var(--spacing-xl)));
+  max-width: min(360px, calc(100vw - 2 * var(--spacing-xl)));
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  box-shadow: var(--shadow-card);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body-small);
+  line-height: 1.55;
+  text-align: left;
+}
+
+.affirmation-help-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -8px;
+  border: 8px solid transparent;
+  border-bottom-color: var(--color-border);
+}
+
+.affirmation-help-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -7px;
+  border: 7px solid transparent;
+  border-bottom-color: #fff;
+}
+
+/* 週次ナビ（SCREEN-006 プロトタイプ準拠） */
+.trial-weekly-container .week-nav,
+.trial-monthly-container .week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  flex-shrink: 0;
+}
+
+.trial-weekly-container .week-nav-btn,
+.trial-monthly-container .week-nav-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.trial-weekly-container .week-nav-btn:hover,
+.trial-monthly-container .week-nav-btn:hover {
+  background: var(--color-background-accent);
+}
+
+.trial-weekly-container .week-nav-label,
+.trial-monthly-container .week-nav-label {
+  font-size: var(--font-size-h4);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  min-width: 260px;
+  text-align: center;
+}
+
+/* 月次: 送信ボタン（暫定。後続で状態により活性制御） */
+.trial-monthly-container .trial-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.trial-monthly-container .trial-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 月次: 行動の結果（月間カレンダーグリッド） */
+.trial-monthly-container .monthly-section {
+  margin-bottom: var(--spacing-xxl);
+}
+
+.trial-monthly-container .month-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  margin-top: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.trial-monthly-container .month-cal-header {
+  background: var(--color-background-accent);
+  padding: var(--spacing-sm);
+  text-align: center;
+  font-weight: 600;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-primary);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.trial-monthly-container .month-cal-header:nth-child(7) {
+  border-right: none;
+}
+
+.trial-monthly-container .month-cal-cell {
+  background: var(--color-background);
+  padding: var(--spacing-xs);
+  min-height: 56px;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.trial-monthly-container .month-cal-cell:nth-child(7n) {
+  border-right: none;
+}
+
+.trial-monthly-container .month-cal-cell.empty {
+  background: var(--color-background-secondary);
+  color: var(--color-text-disabled);
+}
+
+.trial-monthly-container .month-cal-cell .cell-date {
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.trial-monthly-container .month-cal-cell .cell-symbols {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.trial-monthly-container .month-cal-cell .cell-symbols .monthly-symbol {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.trial-monthly-container .month-cal-cell .cell-symbols .monthly-symbol:hover {
+  background: var(--color-background-accent);
+}
+
+.trial-monthly-container .month-cal-cell .cell-symbols .monthly-symbol:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.trial-monthly-container .month-cal-cell .cell-symbols .symbol-o {
+  color: var(--color-success);
+}
+.trial-monthly-container .month-cal-cell .cell-symbols .symbol-delta {
+  color: var(--color-warning);
+}
+.trial-monthly-container .month-cal-cell .cell-symbols .symbol-x {
+  color: var(--color-error);
+}
+.trial-monthly-container .month-cal-cell .cell-symbols .symbol-none {
+  color: var(--color-text-disabled);
+}
+
+@media (max-width: 767px) {
+  .trial-monthly-container .month-cal-cell {
+    padding: 2px;
+    min-height: 44px;
+  }
+  .trial-monthly-container .month-cal-cell .cell-symbols .monthly-symbol {
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    font-size: 0.75rem;
+  }
+}
+
+/* 週次: 行動の結果（7日グリッド） */
+.trial-weekly-container .weekly-result-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+@media (max-width: 900px) {
+  .trial-weekly-container .weekly-result-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .trial-weekly-container .weekly-result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.trial-weekly-container .weekly-result-cell {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.trial-weekly-container .weekly-result-date {
+  font-weight: 700;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body-small);
+}
+
+.trial-weekly-container .weekly-result-dow {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.trial-weekly-container .weekly-result-symbols {
+  display: flex;
+  gap: 10px;
+}
+
+.trial-weekly-container .weekly-symbol {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.trial-weekly-container .weekly-symbol:hover {
+  background: var(--color-background-accent);
+}
+
+.trial-weekly-container .weekly-symbol.symbol-o { color: #0f766e; }
+.trial-weekly-container .weekly-symbol.symbol-delta { color: #b45309; }
+.trial-weekly-container .weekly-symbol.symbol-x { color: #b91c1c; }
+.trial-weekly-container .weekly-symbol.symbol-none { color: var(--color-text-secondary); }
+
+.trial-weekly-container .weekly-symbol:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 週次: 満足度（平均 + 折れ線） */
+.trial-weekly-container .weekly-satisfaction {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.trial-weekly-container .weekly-satisfaction-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.trial-weekly-container .weekly-satisfaction-value {
+  font-weight: 800;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.trial-weekly-container .weekly-satisfaction-note {
+  margin-left: 8px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.trial-weekly-container .weekly-satisfaction-chart {
+  width: 100%;
+}
+
+
+.affirmation-submenu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--spacing-md);
+}
+
+.affirmation-submenu-btn {
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  font-weight: 700;
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.affirmation-submenu-btn:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary-dark);
+}
+
+.affirmation-submenu-btn.active {
+  background: var(--color-primary);
+  color: var(--color-text-on-green);
+  border-color: var(--color-primary-dark);
+}
+
+.affirmation-submenu-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.affirmation-back-preview {
+  display: inline-block;
+  margin-bottom: var(--spacing-md);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-weight: 700;
+  font-size: var(--font-size-body-small);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.affirmation-back-preview:hover {
+  color: var(--color-primary-dark);
+}
+
+.affirmation-preview-main {
+  margin-top: var(--spacing-sm);
+}
+
+.affirmation-placeholder-panel {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.affirmation-placeholder-panel code {
+  font-size: 0.85em;
+}
+
+/* A-7 選択タブ：一覧表 */
+.affirmation-select-panel {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.affirmation-select-table-wrap {
+  overflow-x: auto;
+  margin-bottom: var(--spacing-md);
+}
+
+.affirmation-select-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.affirmation-select-table th,
+.affirmation-select-table td {
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.affirmation-select-table th {
+  background: rgba(0, 0, 0, 0.04);
+  font-weight: 600;
+}
+
+.affirmation-select-table tr.is-table-selected {
+  background: rgba(59, 130, 246, 0.12);
+  outline: 2px solid rgba(37, 99, 235, 0.45);
+  outline-offset: -2px;
+  cursor: pointer;
+}
+
+.affirmation-select-table tbody tr[role='button'] {
+  cursor: pointer;
+}
+
+.affirmation-select-table tbody tr[role='button']:hover:not(.is-table-selected) {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.affirmation-select-check-col,
+.affirmation-select-check-cell {
+  width: 3rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.affirmation-select-check-icon {
+  font-size: 1.25rem;
+  color: var(--color-primary, #2563eb);
+  font-variation-settings: 'FILL' 1;
+}
+
+.affirmation-select-title {
+  font-weight: 500;
+}
+
+.affirmation-select-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.affirmation-select-rename-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.affirmation-select-rename-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.affirmation-select-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.affirmation-select-action-btn {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  cursor: pointer;
+}
+
+.affirmation-select-action-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.affirmation-select-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.affirmation-select-action-btn.primary {
+  border-color: var(--color-primary, #2563eb);
+  color: var(--color-primary, #2563eb);
+  font-weight: 600;
+}
+
+.affirmation-select-action-btn.danger {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.affirmation-rename-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.affirmation-rename-input {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.affirmation-select-panel-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px dashed var(--color-border);
+}
+
+.affirmation-select-footer-hint {
+  margin: 0;
+}
+
+/* A-7 選択：モーダル（一覧は横スクロール前提で最小幅を確保） */
+.affirmation-create-modal.affirmation-select-modal {
+  max-width: min(920px, 100vw - 2rem);
+}
+
+.affirmation-select-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.affirmation-create-modal.affirmation-select-modal .affirmation-select-panel--modal {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.affirmation-select-modal-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: min(58vh, 520px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+}
+
+.affirmation-select-modal-table-scroll .affirmation-select-table-wrap {
+  margin-bottom: 0;
+}
+
+.affirmation-select-modal .affirmation-select-table {
+  min-width: 44rem;
+  width: max(100%, 44rem);
+  font-size: var(--font-size-body-small);
+}
+
+.affirmation-select-modal .affirmation-select-table th,
+.affirmation-select-modal .affirmation-select-table td {
+  padding: 0.35rem 0.5rem;
+  line-height: 1.35;
+}
+
+.affirmation-select-modal .affirmation-select-title {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 18rem;
+}
+
+.affirmation-select-modal-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  flex-wrap: nowrap;
+}
+
+.affirmation-select-modal-footer-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.affirmation-select-modal-footer-row .affirmation-select-footer-actions {
+  flex-wrap: nowrap;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.affirmation-modal-help-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.affirmation-modal-help-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.affirmation-modal-help-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.affirmation-modal-help-btn:hover {
+  background: var(--color-background-secondary);
+  color: var(--color-primary);
+}
+
+.affirmation-modal-help-bubble {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 3rem));
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-caption);
+  line-height: 1.6;
+}
+
+.affirmation-modal-help-bubble-right {
+  left: auto;
+  right: 0;
+}
+
+@media (max-width: 720px) {
+  .affirmation-select-modal-footer-row {
+    gap: var(--spacing-xs);
+  }
+}
+
+/* アファメーション「作成」モーダル（オーバーレイで背面ブロック） */
+.affirmation-create-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+}
+
+.affirmation-create-modal {
+  width: 100%;
+  max-width: min(720px, 100vw - 2rem);
+  max-height: min(90vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.affirmation-create-modal-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background-secondary);
+}
+
+.affirmation-create-modal-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.affirmation-create-modal.affirmation-select-modal .affirmation-create-modal-header-text {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.affirmation-create-modal-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: -4px -8px 0 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.affirmation-create-modal-close:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--color-text-primary);
+}
+
+.affirmation-create-modal-close:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.affirmation-create-modal-close .material-symbols-outlined {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.affirmation-create-modal-title {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: var(--font-size-h4);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.affirmation-create-modal.affirmation-select-modal .affirmation-create-modal-title {
+  margin: 0;
+}
+
+.affirmation-create-modal-lead {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.affirmation-create-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+.affirmation-create-modal-preview {
+  margin-top: var(--spacing-lg);
+}
+
+/* 発行済み本文編集モーダル（A-8）：本文＋プレビュー横並び */
+.affirmation-edit-modal {
+  max-width: min(960px, 100vw - 2rem);
+}
+
+.affirmation-edit-modal-body-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .affirmation-edit-modal-body-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A-9：履歴閲覧モーダル（参照のみ） */
+.affirmation-history-read-modal {
+  max-width: min(720px, 100vw - 2rem);
+}
+
+.affirmation-history-read-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.affirmation-history-read-meta {
+  margin: 0;
+  display: grid;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-caption);
+}
+
+.affirmation-history-read-meta > div {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: var(--spacing-sm);
+  align-items: baseline;
+}
+
+.affirmation-history-read-meta dt {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.affirmation-history-read-meta dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.affirmation-history-read-preview {
+  margin-top: 0;
+  text-align: left;
+}
+
+.affirmation-history-action-col,
+.affirmation-history-action-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.affirmation-edit-modal-editor-col {
+  min-width: 0;
+}
+
+.affirmation-edit-body-textarea {
+  width: 100%;
+  min-height: 280px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body-small);
+  font-family: ui-monospace, monospace;
+  line-height: 1.5;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.affirmation-edit-char-hint {
+  margin: 0;
+}
+
+.affirmation-edit-modal-preview-col {
+  margin-top: 0;
+  min-height: 200px;
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+}
+
+.affirmation-create-modal-footer {
+  flex-shrink: 0;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  background: #fafafa;
+}
+
+.affirmation-create-modal-name-row {
+  margin-bottom: var(--spacing-md);
+}
+
+.affirmation-create-modal-label {
+  display: block;
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 6px;
+}
+
+.affirmation-create-modal-title-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body-small);
+}
+
+.affirmation-create-modal-hint {
+  margin: 6px 0 0 0;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.affirmation-create-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.affirmation-publish-btn {
+  background: var(--color-primary-dark);
+  color: var(--color-text-on-green);
+  border: 1px solid var(--color-primary-dark);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.affirmation-publish-btn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.affirmation-publish-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.affirmation-cancel-btn {
+  background: #fff;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.affirmation-cancel-btn:hover:not(:disabled) {
+  background: var(--color-background-secondary);
+}
+
+.affirmation-cancel-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.affirmation-profile-name {
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.affirmation-preview-main + .affirmation-profile-name {
+  margin-top: var(--spacing-md);
+}
+
+.affirmation-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.affirmation-section-heading {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: var(--font-size-h4);
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.affirmation-section-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  line-height: 1.8;
+  color: var(--color-text-primary);
+}
+
+.affirmation-text {
+  white-space: pre-wrap;
+}
+
+/**
+ * プロファイルの `text: '\n…'` のように先頭改行のブロックは、
+ * flex 行をまたいで次の行から並べる（作成モーダル .affirmation-section-body が flex のため）
+ */
+.affirmation-text--row-break {
+  flex-basis: 100%;
+  width: 100%;
+}
+
+.affirmation-slot {
+  min-width: 220px;
+  max-width: 100%;
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  font-size: var(--font-size-body-small);
+}
+
+.affirmation-slot.textarea {
+  resize: vertical;
+  min-height: 76px;
+  line-height: 1.6;
+}
+
+.affirmation-slot:focus {
+  outline: 2px solid rgba(66, 97, 59, 0.25);
+  border-color: var(--color-primary);
+}
+
+.affirmation-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin: var(--spacing-md) 0 var(--spacing-xl);
+}
+
+.affirmation-save-btn {
+  background: var(--color-primary);
+  color: var(--color-text-on-green);
+  border: 1px solid var(--color-primary-dark);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.affirmation-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.affirmation-saved-at {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.affirmation-preview {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #fff;
+}
+
+.affirmation-preview-title {
+  background: var(--color-background-accent);
+  padding: 10px 12px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.affirmation-preview-body {
+  margin: 0;
+  padding: 12px;
+  word-break: break-word;
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-primary);
+}
+
+/* AffirmationMarkdownView（react-markdown 共通・A-10） */
+.affirmation-markdown-view.affirmation-preview-body {
+  white-space: normal;
+}
+
+.affirmation-markdown-view p {
+  margin: 0 0 0.75em;
+  line-height: 1.7;
+}
+
+.affirmation-markdown-view p:last-child {
+  margin-bottom: 0;
+}
+
+.affirmation-markdown-view h1,
+.affirmation-markdown-view h2,
+.affirmation-markdown-view h3 {
+  margin: 1em 0 0.5em;
+  font-size: var(--font-size-body);
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.affirmation-markdown-view h1:first-child,
+.affirmation-markdown-view h2:first-child,
+.affirmation-markdown-view h3:first-child {
+  margin-top: 0;
+}
+
+.affirmation-markdown-view ul,
+.affirmation-markdown-view ol {
+  margin: 0 0 0.75em 1.25em;
+  padding: 0;
+}
+
+.affirmation-markdown-view li {
+  margin-bottom: 0.35em;
+}
+
+.affirmation-markdown-view strong {
+  font-weight: 800;
+}
+
+.affirmation-markdown-view code {
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .action-sub-section { margin-bottom: var(--spacing-xxl); }
@@ -1041,8 +2538,8 @@
     width: 100%;
   }
 
-  /* トライアル: メニュー項目はアイコンのみ表示可（必要なら .trial-menu-item .menu-text を残す） */
-  .trial-menu-item span:last-child {
+  /* トライアル: 狭いタブレット幅ではラベルをやや小さく（アイコンのみは max-width:425px 側） */
+  .trial-menu-item .menu-text {
     font-size: var(--font-size-body-small);
   }
 }

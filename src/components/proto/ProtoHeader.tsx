@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/context/ViewModeContext';
+import { useRouter } from 'next/navigation';
 
 interface ProtoHeaderProps {
   /** ログイン風表示（モック） */
@@ -20,6 +21,7 @@ export default function ProtoHeader({
 }: ProtoHeaderProps) {
   const { userProfile, user, signOut } = useAuth();
   const { mode, availableModes, setMode } = useViewMode();
+  const router = useRouter();
   const roleLabel = userProfile?.role ?? 'guest';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -48,6 +50,7 @@ export default function ProtoHeader({
   const handleSignOut = async () => {
     await signOut();
     setMenuOpen(false);
+    router.push('/');
   };
 
   return (

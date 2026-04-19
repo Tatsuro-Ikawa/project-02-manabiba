@@ -291,7 +291,17 @@ users/
     │   │   └── step8 (WS11アファメーション、完了状態)
     │   └── 28day-trial/ (28日間トライアル記録)
     │       └── {date} (日次記録: 朝/夜)
+    ├── affirmation_drafts/ (アファメーション穴埋め下書き・暗号化)
+    │   └── {profileId}
+    ├── affirmation_profiles/ (ユーザー定義プロファイル・将来)
+    │   └── {profileId}
+    ├── affirmations/ (発行済アファメーション文書・履歴)
+    │   └── {affirmationId}
+    │       └── history/{historyId}
     └── progress (進捗データ)
+
+affirmation_profiles/
+  └── {profileId} (システム定義テンプレート・管理者編集)
 
 pdca_entries/
   └── {entryId} (PDCAエントリ)
