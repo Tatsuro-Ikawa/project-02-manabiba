@@ -37,6 +37,9 @@ export default function TrialMorningEvening() {
   const [data, setData] = useState<Trial4wDailyPlain | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (dateParam) setDateKey(dateParam);
@@ -60,17 +63,28 @@ export default function TrialMorningEvening() {
         tz: 'Asia/Tokyo',
         morningAffirmationDeclaration: null,
         morningTodayActionText: null,
+        morningActionGoalText: null,
+        morningActionContentText: null,
         morningImagingDone: null,
         eveningExecution: null,
         eveningSpecificActionsText: null,
         eveningResultText: null,
+        eveningResultExecutionText: null,
+        eveningResultGoalProgressText: null,
         eveningSatisfaction: null,
         eveningEmotionThoughtText: null,
         eveningBrake: null,
         eveningRebuttalText: null,
+        eveningBrakeWorkedText: null,
+        eveningBrakeRebuttedText: null,
+        eveningBrakeWordsText: null,
         eveningInsightText: null,
+        eveningImprovementText: null,
         eveningMessageToSelfText: null,
         eveningTomorrowActionSeedText: null,
+        eveningTomorrowGoalText: null,
+        eveningTomorrowActionContentText: null,
+        eveningTomorrowImagingDone: null,
       });
     }
   }, [user, effectiveDateKey]);
@@ -106,6 +120,41 @@ export default function TrialMorningEvening() {
     url.searchParams.set('date', nextKey);
     window.history.replaceState({}, '', url.pathname + url.search);
   }, []);
+
+  const aiInputText = (data?.eveningResultExecutionText ?? data?.eveningResultText ?? '').trim();
+  const canRunAiSuggestion = aiInputText.length >= 10 && !aiLoading;
+
+  const handleGenerateAiSuggestion = async () => {
+    if (!canRunAiSuggestion) {
+      setAiError('「行動の結果」を10文字以上入力してから実行してください。');
+      return;
+    }
+    setAiLoading(true);
+    setAiError(null);
+    setAiSuggestion(null);
+    try {
+      const res = await fetch('/api/ai/improvement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionResultText: aiInputText }),
+      });
+      const json = (await res.json()) as { suggestion?: string; error?: string };
+      if (!res.ok) throw new Error(json.error || 'AI改善提案の生成に失敗しました。');
+      if (!json.suggestion || typeof json.suggestion !== 'string') {
+        throw new Error('AI改善提案の形式が不正です。');
+      }
+      setAiSuggestion(json.suggestion);
+    } catch (e) {
+      console.error(e);
+      setAiError(
+        e instanceof Error
+          ? e.message
+          : 'AI改善提案の生成に失敗しました。時間をおいて再実行してください。'
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   if (!user && !loading) {
     return (
@@ -295,6 +344,24 @@ export default function TrialMorningEvening() {
               onBlur={() => void savePatch({ eveningResultText: data.eveningResultText })}
               placeholder="入力してください"
             />
+            <button
+              type="button"
+              className={`trial-action-btn ${canRunAiSuggestion && !saving ? 'ai-action-btn-ready' : ''}`}
+              disabled={!canRunAiSuggestion || saving}
+              onClick={() => void handleGenerateAiSuggestion()}
+            >
+              Ai改善提案
+            </button>
+            {!canRunAiSuggestion ? (
+              <p className="text-xs text-gray-600">「行動の結果」を10文字以上入力すると実行できます。</p>
+            ) : null}
+            {aiLoading ? <p className="text-xs text-gray-600">改善提案を生成中です…</p> : null}
+            {aiError ? <p className="text-xs text-red-600">{aiError}</p> : null}
+            {aiSuggestion ? (
+              <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-2 whitespace-pre-wrap">
+                {aiSuggestion}
+              </p>
+            ) : null}
           </div>
 
           <div className="form-row">
