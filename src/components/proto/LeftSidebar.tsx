@@ -24,6 +24,7 @@ export default function LeftSidebar({
   const pathname = usePathname();
   const isHome = pathname === '/';
   const isTrial = pathname.startsWith('/trial_4w');
+  const isTrialSettings = pathname === '/trial_4w/settings';
   const isMypage = pathname.startsWith('/mypage');
 
   const handleNav = () => onClose?.();
@@ -41,13 +42,24 @@ export default function LeftSidebar({
       </Link>
       <Link
         href="/trial_4w"
-        className={`sidebar-btn ${isTrial ? 'active' : ''}`}
+        className={`sidebar-btn ${isTrial && !isTrialSettings ? 'active' : ''}`}
         aria-label="スタート"
         onClick={handleNav}
       >
         <span className="material-symbols-outlined" aria-hidden>play_circle</span>
         <span>スタート</span>
       </Link>
+      {pathname.startsWith('/trial_4w') && (
+        <Link
+          href="/trial_4w/settings"
+          className={`sidebar-btn ${isTrialSettings ? 'active' : ''}`}
+          aria-label="学び帳の表示設定"
+          onClick={handleNav}
+        >
+          <span className="material-symbols-outlined" aria-hidden>tune</span>
+          <span>学び帳設定</span>
+        </Link>
+      )}
       <Link
         href="/mypage"
         className={`sidebar-btn ${isMypage ? 'active' : ''}`}

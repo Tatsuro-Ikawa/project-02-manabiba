@@ -333,18 +333,29 @@ export type Trial4wDailyPlain = {
   tz: 'Asia/Tokyo';
   morningAffirmationDeclaration: Trial4wMorningAffirmationDeclaration | null;
   morningTodayActionText: string | null;
+  morningActionGoalText: string | null;
+  morningActionContentText: string | null;
   morningImagingDone: boolean | null;
 
   eveningExecution: Trial4wEveningExecution | null;
   eveningSpecificActionsText: string | null;
   eveningResultText: string | null;
+  eveningResultExecutionText: string | null;
+  eveningResultGoalProgressText: string | null;
   eveningSatisfaction: number | null; // 0..10
   eveningEmotionThoughtText: string | null;
   eveningBrake: Trial4wEveningBrake | null;
   eveningRebuttalText: string | null;
+  eveningBrakeWorkedText: string | null;
+  eveningBrakeRebuttedText: string | null;
+  eveningBrakeWordsText: string | null;
   eveningInsightText: string | null;
+  eveningImprovementText: string | null;
   eveningMessageToSelfText: string | null;
   eveningTomorrowActionSeedText: string | null;
+  eveningTomorrowGoalText: string | null;
+  eveningTomorrowActionContentText: string | null;
+  eveningTomorrowImagingDone: boolean | null;
 };
 
 export type Trial4wDailyEncrypted = {
@@ -352,18 +363,29 @@ export type Trial4wDailyEncrypted = {
   tz: 'Asia/Tokyo';
   morningAffirmationDeclaration: Trial4wMorningAffirmationDeclaration | null;
   morningTodayActionTextEncrypted: string | null;
+  morningActionGoalTextEncrypted: string | null;
+  morningActionContentTextEncrypted: string | null;
   morningImagingDone: boolean | null;
 
   eveningExecution: Trial4wEveningExecution | null;
   eveningSpecificActionsTextEncrypted: string | null;
   eveningResultTextEncrypted: string | null;
+  eveningResultExecutionTextEncrypted: string | null;
+  eveningResultGoalProgressTextEncrypted: string | null;
   eveningSatisfaction: number | null;
   eveningEmotionThoughtTextEncrypted: string | null;
   eveningBrake: Trial4wEveningBrake | null;
   eveningRebuttalTextEncrypted: string | null;
+  eveningBrakeWorkedTextEncrypted: string | null;
+  eveningBrakeRebuttedTextEncrypted: string | null;
+  eveningBrakeWordsTextEncrypted: string | null;
   eveningInsightTextEncrypted: string | null;
+  eveningImprovementTextEncrypted: string | null;
   eveningMessageToSelfTextEncrypted: string | null;
   eveningTomorrowActionSeedTextEncrypted: string | null;
+  eveningTomorrowGoalTextEncrypted: string | null;
+  eveningTomorrowActionContentTextEncrypted: string | null;
+  eveningTomorrowImagingDone: boolean | null;
 
   createdAt?: Timestamp | FieldValue;
   updatedAt?: Timestamp | FieldValue;
@@ -415,17 +437,28 @@ export async function getTrial4wDailyPlain(
       tz: 'Asia/Tokyo',
       morningAffirmationDeclaration: null,
       morningTodayActionText: null,
+      morningActionGoalText: null,
+      morningActionContentText: null,
       morningImagingDone: null,
       eveningExecution: null,
       eveningSpecificActionsText: null,
       eveningResultText: null,
+      eveningResultExecutionText: null,
+      eveningResultGoalProgressText: null,
       eveningSatisfaction: null,
       eveningEmotionThoughtText: null,
       eveningBrake: null,
       eveningRebuttalText: null,
+      eveningBrakeWorkedText: null,
+      eveningBrakeRebuttedText: null,
+      eveningBrakeWordsText: null,
       eveningInsightText: null,
+      eveningImprovementText: null,
       eveningMessageToSelfText: null,
       eveningTomorrowActionSeedText: null,
+      eveningTomorrowGoalText: null,
+      eveningTomorrowActionContentText: null,
+      eveningTomorrowImagingDone: null,
     };
   }
   const data = snap.data() as Trial4wDailyEncrypted;
@@ -437,6 +470,19 @@ export async function getTrial4wDailyPlain(
       return null;
     }
   };
+  const morningTodayActionText = await decryptOrNull(data.morningTodayActionTextEncrypted);
+  const morningActionGoalText = (await decryptOrNull(data.morningActionGoalTextEncrypted)) ?? morningTodayActionText;
+  const eveningResultText = await decryptOrNull(data.eveningResultTextEncrypted);
+  const eveningResultExecutionText =
+    (await decryptOrNull(data.eveningResultExecutionTextEncrypted)) ?? eveningResultText;
+  const eveningRebuttalText = await decryptOrNull(data.eveningRebuttalTextEncrypted);
+  const eveningBrakeRebuttedText =
+    (await decryptOrNull(data.eveningBrakeRebuttedTextEncrypted)) ?? eveningRebuttalText;
+  const eveningBrakeWordsText = (await decryptOrNull(data.eveningBrakeWordsTextEncrypted)) ?? eveningRebuttalText;
+  const eveningTomorrowGoalText =
+    (await decryptOrNull(data.eveningTomorrowGoalTextEncrypted)) ??
+    (await decryptOrNull(data.eveningTomorrowActionSeedTextEncrypted));
+
   return {
     dateKey: dk,
     tz: 'Asia/Tokyo',
@@ -444,7 +490,9 @@ export async function getTrial4wDailyPlain(
       data.morningAffirmationDeclaration === 'done' || data.morningAffirmationDeclaration === 'undone'
         ? data.morningAffirmationDeclaration
         : null,
-    morningTodayActionText: await decryptOrNull(data.morningTodayActionTextEncrypted),
+    morningTodayActionText,
+    morningActionGoalText,
+    morningActionContentText: await decryptOrNull(data.morningActionContentTextEncrypted),
     morningImagingDone: typeof data.morningImagingDone === 'boolean' ? data.morningImagingDone : null,
 
     eveningExecution:
@@ -452,17 +500,27 @@ export async function getTrial4wDailyPlain(
         ? data.eveningExecution
         : null,
     eveningSpecificActionsText: await decryptOrNull(data.eveningSpecificActionsTextEncrypted),
-    eveningResultText: await decryptOrNull(data.eveningResultTextEncrypted),
+    eveningResultText,
+    eveningResultExecutionText,
+    eveningResultGoalProgressText: await decryptOrNull(data.eveningResultGoalProgressTextEncrypted),
     eveningSatisfaction: typeof data.eveningSatisfaction === 'number' ? clampSatisfaction(data.eveningSatisfaction) : null,
     eveningEmotionThoughtText: await decryptOrNull(data.eveningEmotionThoughtTextEncrypted),
     eveningBrake:
       data.eveningBrake === 'yes' || data.eveningBrake === 'partial' || data.eveningBrake === 'no'
         ? data.eveningBrake
         : null,
-    eveningRebuttalText: await decryptOrNull(data.eveningRebuttalTextEncrypted),
+    eveningRebuttalText,
+    eveningBrakeWorkedText: await decryptOrNull(data.eveningBrakeWorkedTextEncrypted),
+    eveningBrakeRebuttedText,
+    eveningBrakeWordsText,
     eveningInsightText: await decryptOrNull(data.eveningInsightTextEncrypted),
+    eveningImprovementText: await decryptOrNull(data.eveningImprovementTextEncrypted),
     eveningMessageToSelfText: await decryptOrNull(data.eveningMessageToSelfTextEncrypted),
     eveningTomorrowActionSeedText: await decryptOrNull(data.eveningTomorrowActionSeedTextEncrypted),
+    eveningTomorrowGoalText,
+    eveningTomorrowActionContentText: await decryptOrNull(data.eveningTomorrowActionContentTextEncrypted),
+    eveningTomorrowImagingDone:
+      typeof data.eveningTomorrowImagingDone === 'boolean' ? data.eveningTomorrowImagingDone : null,
   };
 }
 
@@ -497,6 +555,19 @@ export async function listJournalDailyPlainInRange(params: {
   for (const snap of snaps.docs) {
     const raw = snap.data() as Partial<Trial4wDailyEncrypted>;
     const dk = typeof raw.dateKey === 'string' ? raw.dateKey : snap.id;
+    const morningTodayActionText = await decryptOrNull(raw.morningTodayActionTextEncrypted);
+    const morningActionGoalText = (await decryptOrNull(raw.morningActionGoalTextEncrypted)) ?? morningTodayActionText;
+    const eveningResultText = await decryptOrNull(raw.eveningResultTextEncrypted);
+    const eveningResultExecutionText =
+      (await decryptOrNull(raw.eveningResultExecutionTextEncrypted)) ?? eveningResultText;
+    const eveningRebuttalText = await decryptOrNull(raw.eveningRebuttalTextEncrypted);
+    const eveningBrakeRebuttedText =
+      (await decryptOrNull(raw.eveningBrakeRebuttedTextEncrypted)) ?? eveningRebuttalText;
+    const eveningBrakeWordsText = (await decryptOrNull(raw.eveningBrakeWordsTextEncrypted)) ?? eveningRebuttalText;
+    const eveningTomorrowGoalText =
+      (await decryptOrNull(raw.eveningTomorrowGoalTextEncrypted)) ??
+      (await decryptOrNull(raw.eveningTomorrowActionSeedTextEncrypted));
+
     out[dk] = {
       dateKey: dk,
       tz: 'Asia/Tokyo',
@@ -504,24 +575,36 @@ export async function listJournalDailyPlainInRange(params: {
         raw.morningAffirmationDeclaration === 'done' || raw.morningAffirmationDeclaration === 'undone'
           ? raw.morningAffirmationDeclaration
           : null,
-      morningTodayActionText: await decryptOrNull(raw.morningTodayActionTextEncrypted),
+      morningTodayActionText,
+      morningActionGoalText,
+      morningActionContentText: await decryptOrNull(raw.morningActionContentTextEncrypted),
       morningImagingDone: typeof raw.morningImagingDone === 'boolean' ? raw.morningImagingDone : null,
       eveningExecution:
         raw.eveningExecution === 'done' || raw.eveningExecution === 'partial' || raw.eveningExecution === 'none'
           ? raw.eveningExecution
           : null,
       eveningSpecificActionsText: await decryptOrNull(raw.eveningSpecificActionsTextEncrypted),
-      eveningResultText: await decryptOrNull(raw.eveningResultTextEncrypted),
+      eveningResultText,
+      eveningResultExecutionText,
+      eveningResultGoalProgressText: await decryptOrNull(raw.eveningResultGoalProgressTextEncrypted),
       eveningSatisfaction: typeof raw.eveningSatisfaction === 'number' ? clampSatisfaction(raw.eveningSatisfaction) : null,
       eveningEmotionThoughtText: await decryptOrNull(raw.eveningEmotionThoughtTextEncrypted),
       eveningBrake:
         raw.eveningBrake === 'yes' || raw.eveningBrake === 'partial' || raw.eveningBrake === 'no'
           ? raw.eveningBrake
           : null,
-      eveningRebuttalText: await decryptOrNull(raw.eveningRebuttalTextEncrypted),
+      eveningRebuttalText,
+      eveningBrakeWorkedText: await decryptOrNull(raw.eveningBrakeWorkedTextEncrypted),
+      eveningBrakeRebuttedText,
+      eveningBrakeWordsText,
       eveningInsightText: await decryptOrNull(raw.eveningInsightTextEncrypted),
+      eveningImprovementText: await decryptOrNull(raw.eveningImprovementTextEncrypted),
       eveningMessageToSelfText: await decryptOrNull(raw.eveningMessageToSelfTextEncrypted),
       eveningTomorrowActionSeedText: await decryptOrNull(raw.eveningTomorrowActionSeedTextEncrypted),
+      eveningTomorrowGoalText,
+      eveningTomorrowActionContentText: await decryptOrNull(raw.eveningTomorrowActionContentTextEncrypted),
+      eveningTomorrowImagingDone:
+        typeof raw.eveningTomorrowImagingDone === 'boolean' ? raw.eveningTomorrowImagingDone : null,
     };
   }
   return out;
@@ -557,10 +640,22 @@ export async function saveTrial4wDailyPlain(params: {
   if ('eveningSatisfaction' in params.patch) {
     payload.eveningSatisfaction = clampSatisfaction(params.patch.eveningSatisfaction);
   }
+  if ('eveningTomorrowImagingDone' in params.patch) {
+    payload.eveningTomorrowImagingDone =
+      typeof params.patch.eveningTomorrowImagingDone === 'boolean'
+        ? params.patch.eveningTomorrowImagingDone
+        : null;
+  }
 
   const encFields: Array<[keyof Trial4wDailyEncrypted, string | null]> = [];
   if ('morningTodayActionText' in params.patch) {
     encFields.push(['morningTodayActionTextEncrypted', normalizeText(params.patch.morningTodayActionText)]);
+  }
+  if ('morningActionGoalText' in params.patch) {
+    encFields.push(['morningActionGoalTextEncrypted', normalizeText(params.patch.morningActionGoalText)]);
+  }
+  if ('morningActionContentText' in params.patch) {
+    encFields.push(['morningActionContentTextEncrypted', normalizeText(params.patch.morningActionContentText)]);
   }
   if ('eveningSpecificActionsText' in params.patch) {
     encFields.push(['eveningSpecificActionsTextEncrypted', normalizeText(params.patch.eveningSpecificActionsText)]);
@@ -568,14 +663,32 @@ export async function saveTrial4wDailyPlain(params: {
   if ('eveningResultText' in params.patch) {
     encFields.push(['eveningResultTextEncrypted', normalizeText(params.patch.eveningResultText)]);
   }
+  if ('eveningResultExecutionText' in params.patch) {
+    encFields.push(['eveningResultExecutionTextEncrypted', normalizeText(params.patch.eveningResultExecutionText)]);
+  }
+  if ('eveningResultGoalProgressText' in params.patch) {
+    encFields.push(['eveningResultGoalProgressTextEncrypted', normalizeText(params.patch.eveningResultGoalProgressText)]);
+  }
   if ('eveningEmotionThoughtText' in params.patch) {
     encFields.push(['eveningEmotionThoughtTextEncrypted', normalizeText(params.patch.eveningEmotionThoughtText)]);
   }
   if ('eveningRebuttalText' in params.patch) {
     encFields.push(['eveningRebuttalTextEncrypted', normalizeText(params.patch.eveningRebuttalText)]);
   }
+  if ('eveningBrakeWorkedText' in params.patch) {
+    encFields.push(['eveningBrakeWorkedTextEncrypted', normalizeText(params.patch.eveningBrakeWorkedText)]);
+  }
+  if ('eveningBrakeRebuttedText' in params.patch) {
+    encFields.push(['eveningBrakeRebuttedTextEncrypted', normalizeText(params.patch.eveningBrakeRebuttedText)]);
+  }
+  if ('eveningBrakeWordsText' in params.patch) {
+    encFields.push(['eveningBrakeWordsTextEncrypted', normalizeText(params.patch.eveningBrakeWordsText)]);
+  }
   if ('eveningInsightText' in params.patch) {
     encFields.push(['eveningInsightTextEncrypted', normalizeText(params.patch.eveningInsightText)]);
+  }
+  if ('eveningImprovementText' in params.patch) {
+    encFields.push(['eveningImprovementTextEncrypted', normalizeText(params.patch.eveningImprovementText)]);
   }
   if ('eveningMessageToSelfText' in params.patch) {
     encFields.push(['eveningMessageToSelfTextEncrypted', normalizeText(params.patch.eveningMessageToSelfText)]);
@@ -586,34 +699,67 @@ export async function saveTrial4wDailyPlain(params: {
       normalizeText(params.patch.eveningTomorrowActionSeedText),
     ]);
   }
+  if ('eveningTomorrowGoalText' in params.patch) {
+    encFields.push(['eveningTomorrowGoalTextEncrypted', normalizeText(params.patch.eveningTomorrowGoalText)]);
+  }
+  if ('eveningTomorrowActionContentText' in params.patch) {
+    encFields.push([
+      'eveningTomorrowActionContentTextEncrypted',
+      normalizeText(params.patch.eveningTomorrowActionContentText),
+    ]);
+  }
 
   for (const [k, t] of encFields) {
     (payload as any)[k] = t ? await encrypt(t, params.uid) : null;
   }
 
   // 翌日の「今日の行動内容（目標）」へコピー（未入力のときのみ）
-  const seed = normalizeText(params.patch.eveningTomorrowActionSeedText);
-  if (seed) {
+  const seedGoal = normalizeText(params.patch.eveningTomorrowGoalText) ?? normalizeText(params.patch.eveningTomorrowActionSeedText);
+  const seedContent = normalizeText(params.patch.eveningTomorrowActionContentText);
+  if (seedGoal || seedContent) {
     const nextKey = addDaysDateKey(params.dateKey, 1);
     const nextRef = doc(db, 'users', params.uid, JOURNAL_DAILY_SUBCOLLECTION, nextKey);
     await runTransaction(db, async (tx: Transaction) => {
       const nextSnap = await tx.get(nextRef);
       const nextData = nextSnap.exists() ? (nextSnap.data() as Trial4wDailyEncrypted) : null;
       const already = typeof nextData?.morningTodayActionTextEncrypted === 'string' && nextData.morningTodayActionTextEncrypted;
+      const alreadyGoal = typeof nextData?.morningActionGoalTextEncrypted === 'string' && nextData.morningActionGoalTextEncrypted;
+      const alreadyContent =
+        typeof nextData?.morningActionContentTextEncrypted === 'string' && nextData.morningActionContentTextEncrypted;
+
+      const morningTodayActionTextEncrypted =
+        already || !seedGoal ? nextData?.morningTodayActionTextEncrypted ?? null : await encrypt(seedGoal, params.uid);
+      const morningActionGoalTextEncrypted =
+        alreadyGoal || !seedGoal ? nextData?.morningActionGoalTextEncrypted ?? null : await encrypt(seedGoal, params.uid);
+      const morningActionContentTextEncrypted =
+        alreadyContent || !seedContent
+          ? nextData?.morningActionContentTextEncrypted ?? null
+          : await encrypt(seedContent, params.uid);
 
       if (!nextSnap.exists()) {
         tx.set(nextRef, {
           dateKey: nextKey,
           tz: 'Asia/Tokyo',
-          morningTodayActionTextEncrypted: already ? nextData!.morningTodayActionTextEncrypted : await encrypt(seed, params.uid),
+          morningTodayActionTextEncrypted,
+          morningActionGoalTextEncrypted,
+          morningActionContentTextEncrypted,
           createdAt: now as FieldValue,
           updatedAt: now as FieldValue,
         } as any);
-      } else if (!already) {
-        tx.update(nextRef, {
-          morningTodayActionTextEncrypted: await encrypt(seed, params.uid),
-          updatedAt: now as FieldValue,
-        } as any);
+      } else {
+        const nextPatch: Record<string, unknown> = { updatedAt: now as FieldValue };
+        if (!already && morningTodayActionTextEncrypted) {
+          nextPatch.morningTodayActionTextEncrypted = morningTodayActionTextEncrypted;
+        }
+        if (!alreadyGoal && morningActionGoalTextEncrypted) {
+          nextPatch.morningActionGoalTextEncrypted = morningActionGoalTextEncrypted;
+        }
+        if (!alreadyContent && morningActionContentTextEncrypted) {
+          nextPatch.morningActionContentTextEncrypted = morningActionContentTextEncrypted;
+        }
+        if (Object.keys(nextPatch).length > 1) {
+          tx.update(nextRef, nextPatch as any);
+        }
       }
       tx.set(ref, { ...payload, createdAt: now as FieldValue } as any, { merge: true });
     });

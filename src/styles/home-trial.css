@@ -1004,6 +1004,43 @@
   flex: 1 1 auto;
 }
 
+/* 学び帳: 入力表示レベル（簡易・普通・詳細） */
+.trial-menu-level-switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.35rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--radius-md);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.trial-menu-level-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.trial-menu-level-option input {
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+@media (max-width: 425px) {
+  .trial-menu-level-switch {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.25rem;
+  }
+}
+
 .trial-menu-share-btn {
   display: inline-flex;
   align-items: center;
@@ -1341,6 +1378,33 @@
 .trial-monthly-container .trial-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* 朝・晩: AI改善提案ボタン */
+.morning-evening-container .trial-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #f3f4f6;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.morning-evening-container .trial-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.morning-evening-container .trial-action-btn.ai-action-btn-ready {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
 }
 
 /* 月次: 行動の結果（月間カレンダーグリッド） */
@@ -2376,6 +2440,133 @@
   color: var(--color-primary);
   padding-bottom: var(--spacing-sm);
   border-bottom: 2px solid var(--color-border);
+}
+
+/* 朝・晩フォーム: 一覧表に準拠した見出しレベル（L1=h3、L2=◇、L3=・） */
+.morning-evening-container .trial-form-heading-l2 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: var(--spacing-lg) 0 var(--spacing-sm);
+  padding-left: 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.35;
+}
+.morning-evening-container .action-sub-section[data-section='morning'] > .trial-form-heading-l2:first-of-type,
+.morning-evening-container .action-sub-section[data-section='evening'] > .trial-form-heading-l2:first-of-type {
+  margin-top: 0;
+}
+.morning-evening-container .trial-form-heading-l2 .trial-heading-mark {
+  flex-shrink: 0;
+  color: var(--color-primary);
+  font-weight: 800;
+}
+.morning-evening-container .trial-form-block-l3 {
+  padding-left: 1.35rem;
+  margin-bottom: var(--spacing-md);
+}
+.morning-evening-container .trial-form-block-l3 .form-row {
+  margin-bottom: var(--spacing-sm);
+}
+.morning-evening-container .trial-form-block-l3 .form-row:last-child {
+  margin-bottom: 0;
+}
+.morning-evening-container .trial-l3-label {
+  display: block;
+  margin: 0.35rem 0 0.25rem;
+  padding-left: 0.85rem;
+  position: relative;
+  font-size: var(--font-size-body-small);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+.morning-evening-container .trial-l3-label::before {
+  content: '・';
+  position: absolute;
+  left: 0;
+  color: var(--color-text-primary);
+}
+/* 朝・晩: セグメンテッドコントロール（2〜3択・横幅均等。:hover が選択中を潰さないよう分岐） */
+.morning-evening-container .trial-segmented-toggle {
+  display: flex;
+  width: min(80%, 600px);
+  margin-inline: auto;
+  gap: 0.35rem;
+  box-sizing: border-box;
+}
+.morning-evening-container .trial-segmented-toggle__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.45rem 0.3rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body-small);
+  font-weight: 600;
+  line-height: 1.25;
+  background-color: #ffffff;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.morning-evening-container .trial-segmented-toggle__btn:hover:not(:disabled):not(.trial-segmented-toggle__btn--active) {
+  background-color: var(--color-background-secondary, #f3f4f6);
+}
+.morning-evening-container .trial-segmented-toggle__btn--active {
+  background-color: var(--color-primary);
+  color: var(--color-text-on-green, #fff);
+  border-color: var(--color-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.morning-evening-container .trial-segmented-toggle__btn--active:hover:not(:disabled) {
+  background-color: var(--color-primary);
+  color: var(--color-text-on-green, #fff);
+  filter: brightness(0.96);
+}
+.morning-evening-container .trial-segmented-toggle__btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.morning-evening-container .trial-segmented-toggle__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 1ボタン利用時（アファメーション宣言）も 60% 幅に揃える */
+.morning-evening-container .trial-form-block-l3 .form-row > .trial-segmented-toggle__btn {
+  display: block;
+  width: min(60%, 420px);
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.morning-evening-container .satisfaction-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-start;
+  width: 100%;
+}
+.morning-evening-container .satisfaction-input--compact .trial-satisfaction-score {
+  flex: 0 0 auto;
+  width: 4ch;
+  min-width: 3rem;
+  max-width: 3.5rem;
+  text-align: center;
+  min-height: 40px;
+  padding: 0.35rem 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  box-sizing: border-box;
+}
+.morning-evening-container .satisfaction-input--compact .trial-satisfaction-suffix {
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-secondary);
 }
 
 .date-nav {

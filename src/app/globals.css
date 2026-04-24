@@ -72,3 +72,15 @@ input, textarea, select {
 /* レスポンシブタイポグラフィー */
 /* フォントサイズはTailwindのレスポンシブクラスで指定 */
 /* 例: className="text-base md:text-lg lg:text-xl" */
+
+/*
+ * Tailwind Preflight が `button { background-color: transparent }` を当てるため、
+ * 朝・晩のセグメンテッドコントロールはここで地色を再指定（:hover 競合対策は home-trial.css）。
+ */
+html body .morning-evening-container .trial-segmented-toggle__btn {
+  background-color: #ffffff;
+}
+html body .morning-evening-container .trial-segmented-toggle__btn--active {
+  background-color: var(--color-primary);
+  color: var(--color-text-on-green, #ffffff);
+}

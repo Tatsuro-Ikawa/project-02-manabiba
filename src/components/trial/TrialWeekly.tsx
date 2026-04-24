@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
-  formatWeekRangeLabelJa,
+  formatWeekRangeShortJa,
   getWeekStartDateKeyForToday,
   getTodayDateKeyTokyo,
   getWeekStartDateKeyForDateKey,
@@ -13,6 +13,15 @@ import {
   resolveJournalWeekStartsOn,
   shiftWeekStartDateKey,
 } from '@/lib/journalWeek';
+import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
+import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
+import {
+  journalShowWeeklyActionContentAndOutcome,
+  journalShowWeeklyEmotionAndThought,
+  journalShowWeeklyImprovementSummary,
+  journalShowWeeklyNextWeekGoal,
+  journalShowWeeklySatisfactionChart,
+} from '@/lib/journalDetailLevel';
 import {
   addDaysDateKey,
   carryOverNextWeekGoalToNextThisWeek,
@@ -58,6 +67,7 @@ function WeeklyTextRow({
 
 export default function TrialWeekly() {
   const { user, userProfile, loading } = useAuth();
+  const { level } = useJournalDetailLevel();
   const searchParams = useSearchParams();
   const [weekStartKey, setWeekStartKey] = useState('');
   const [data, setData] = useState<JournalWeeklyPlain | null>(null);
@@ -308,7 +318,7 @@ export default function TrialWeekly() {
           >
             ◁
           </button>
-          <span className="week-nav-label">{formatWeekRangeLabelJa(displayWeekStartKey)}</span>
+          <span className="week-nav-label">{formatWeekRangeShortJa(displayWeekStartKey)}</span>
           <button
             type="button"
             className="week-nav-btn"
@@ -320,7 +330,7 @@ export default function TrialWeekly() {
           </button>
         </div>
 
-        {msg && <p className="text-sm text-gray-700 mb-3">{msg}</p>}
+        <TrialSaveStatusLine message={msg} />
 
         <div className="action-sub-section" data-section="weekly-goal">
           <h3>今週の行動目標</h3>
@@ -377,44 +387,50 @@ export default function TrialWeekly() {
               </div>
             </div>
 
-            <div className="weekly-satisfaction-chart" aria-label="満足度（折れ線）">
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={satisfactionChartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} />
-                  <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} allowDecimals={false} />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="satisfaction"
-                    stroke="var(--color-primary)"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    connectNulls={false}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {journalShowWeeklySatisfactionChart(level) ? (
+              <div className="weekly-satisfaction-chart" aria-label="満足度（折れ線）">
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={satisfactionChartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} />
+                    <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} allowDecimals={false} />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="satisfaction"
+                      stroke="var(--color-primary)"
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      connectNulls={false}
+                      isAnimationActive={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : null}
           </div>
 
-          <WeeklyTextRow
-            label="行動内容と成果"
-            value={data.actionContentAndOutcomeText ?? ''}
-            disabled={saving}
-            onChange={(v) =>
-              setData((prev) => (prev ? { ...prev, actionContentAndOutcomeText: v } : prev))
-            }
-            onBlur={() => void savePatch({ actionContentAndOutcomeText: data.actionContentAndOutcomeText })}
-            placeholder="どのような行動を実施し、目標指標に対してどの程度できたか"
-          />
-          <WeeklyTextRow
-            label="行動時の思考・感情"
-            value={data.emotionAndThoughtText ?? ''}
-            disabled={saving}
-            onChange={(v) => setData((prev) => (prev ? { ...prev, emotionAndThoughtText: v } : prev))}
-            onBlur={() => void savePatch({ emotionAndThoughtText: data.emotionAndThoughtText })}
-            placeholder="入力してください"
-          />
+          {journalShowWeeklyActionContentAndOutcome(level) ? (
+            <WeeklyTextRow
+              label="行動内容と成果"
+              value={data.actionContentAndOutcomeText ?? ''}
+              disabled={saving}
+              onChange={(v) =>
+                setData((prev) => (prev ? { ...prev, actionContentAndOutcomeText: v } : prev))
+              }
+              onBlur={() => void savePatch({ actionContentAndOutcomeText: data.actionContentAndOutcomeText })}
+              placeholder="どのような行動を実施し、目標指標に対してどの程度できたか"
+            />
+          ) : null}
+          {journalShowWeeklyEmotionAndThought(level) ? (
+            <WeeklyTextRow
+              label="行動時の思考・感情"
+              value={data.emotionAndThoughtText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, emotionAndThoughtText: v } : prev))}
+              onBlur={() => void savePatch({ emotionAndThoughtText: data.emotionAndThoughtText })}
+              placeholder="入力してください"
+            />
+          ) : null}
           <WeeklyTextRow
             label="今週の気づき・感動・学び"
             value={data.insightAndLearningText ?? ''}
@@ -425,31 +441,35 @@ export default function TrialWeekly() {
             onBlur={() => void savePatch({ insightAndLearningText: data.insightAndLearningText })}
             placeholder="入力してください"
           />
-          <WeeklyTextRow
-            label="今週の改善まとめ"
-            value={data.improvementSummaryText ?? ''}
-            disabled={saving}
-            onChange={(v) =>
-              setData((prev) => (prev ? { ...prev, improvementSummaryText: v } : prev))
-            }
-            onBlur={() => void savePatch({ improvementSummaryText: data.improvementSummaryText })}
-            placeholder="入力してください"
-          />
+          {journalShowWeeklyImprovementSummary(level) ? (
+            <WeeklyTextRow
+              label="今週の改善まとめ"
+              value={data.improvementSummaryText ?? ''}
+              disabled={saving}
+              onChange={(v) =>
+                setData((prev) => (prev ? { ...prev, improvementSummaryText: v } : prev))
+              }
+              onBlur={() => void savePatch({ improvementSummaryText: data.improvementSummaryText })}
+              placeholder="入力してください"
+            />
+          ) : null}
         </div>
 
-        <div className="action-sub-section" data-section="next-week-goal">
-          <h3>来週の行動目標</h3>
-          <WeeklyTextRow
-            label="来週の目標"
-            value={data.nextWeekActionGoalText ?? ''}
-            disabled={saving}
-            onChange={(v) =>
-              setData((prev) => (prev ? { ...prev, nextWeekActionGoalText: v } : prev))
-            }
-            onBlur={() => void savePatch({ nextWeekActionGoalText: data.nextWeekActionGoalText })}
-            placeholder="入力してください（翌週へ進むときの繰り越しは後続フェーズ）"
-          />
-        </div>
+        {journalShowWeeklyNextWeekGoal(level) ? (
+          <div className="action-sub-section" data-section="next-week-goal">
+            <h3>来週の行動目標</h3>
+            <WeeklyTextRow
+              label="来週の目標"
+              value={data.nextWeekActionGoalText ?? ''}
+              disabled={saving}
+              onChange={(v) =>
+                setData((prev) => (prev ? { ...prev, nextWeekActionGoalText: v } : prev))
+              }
+              onBlur={() => void savePatch({ nextWeekActionGoalText: data.nextWeekActionGoalText })}
+              placeholder="入力してください（翌週へ進むときの繰り越しは後続フェーズ）"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -12,6 +12,15 @@ import {
   type Trial4wDailyPlain,
 } from '@/lib/firestore';
 import { getTodayDateKeyTokyo } from '@/lib/journalWeek';
+import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
+import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
+import {
+  journalShowMonthlyActionGoal,
+  journalShowMonthlyActionSummary,
+  journalShowMonthlyImprovementPoints,
+  journalShowMonthlyNextMonthGoal,
+  journalShowMonthlyOutcomeGoal,
+} from '@/lib/journalDetailLevel';
 
 function shiftMonthKey(monthKey: string, deltaMonths: number): string {
   const [yy, mm] = monthKey.split('-').map((x) => Number(x));
@@ -22,10 +31,11 @@ function shiftMonthKey(monthKey: string, deltaMonths: number): string {
   return `${y2}-${String(m2).padStart(2, '0')}`;
 }
 
-function formatMonthLabelJa(monthKey: string): string {
+/** 月ナビ用の短い表記（例: 2026/04） */
+function formatMonthNavShort(monthKey: string): string {
   const [yy, mm] = monthKey.split('-').map((x) => Number(x));
   if (!yy || !mm) return monthKey;
-  return `${yy}年${mm}月`;
+  return `${yy}/${String(mm).padStart(2, '0')}`;
 }
 
 function pad2(n: number): string {
@@ -77,6 +87,7 @@ function MonthlyTextRow({
 
 export default function TrialMonthly() {
   const { user, userProfile, loading } = useAuth();
+  const { level } = useJournalDetailLevel();
   const searchParams = useSearchParams();
   const [monthKey, setMonthKey] = useState('');
   const [data, setData] = useState<JournalMonthlyPlain | null>(null);
@@ -181,7 +192,7 @@ export default function TrialMonthly() {
     [displayMonthKey]
   );
 
-  const monthLabel = useMemo(() => formatMonthLabelJa(displayMonthKey), [displayMonthKey]);
+  const monthNavShort = useMemo(() => formatMonthNavShort(displayMonthKey), [displayMonthKey]);
 
   const gotoDaily = useCallback((dateKey: string) => {
     const url = new URL(window.location.href);
@@ -242,7 +253,7 @@ export default function TrialMonthly() {
           >
             ◁
           </button>
-          <div className="week-nav-label">{monthLabel}</div>
+          <div className="week-nav-label">{monthNavShort}</div>
           <button
             type="button"
             className="week-nav-btn"
@@ -260,11 +271,7 @@ export default function TrialMonthly() {
           </p>
         )}
 
-        {msg && (
-          <div style={{ marginBottom: 'var(--spacing-md)', color: 'var(--color-text-secondary)', fontSize: 12 }}>
-            {msg} {saving ? '（保存中）' : ''}
-          </div>
-        )}
+        <TrialSaveStatusLine message={msg} saving={saving} variant="compact-secondary" />
 
         <section className="monthly-section">
           <h3>行動の結果</h3>
@@ -345,29 +352,35 @@ export default function TrialMonthly() {
 
         <div className="action-sub-section">
           <h3>今月の振り返り</h3>
-          <MonthlyTextRow
-            label="今月成果目標"
-            value={local.thisMonthOutcomeGoalText ?? ''}
-            disabled={!canEdit}
-            onChange={(v) => setField('thisMonthOutcomeGoalText', v)}
-            onBlur={() => patchAndSave({ thisMonthOutcomeGoalText: local.thisMonthOutcomeGoalText ?? '' })}
-          />
-          <MonthlyTextRow
-            label="今月行動目標"
-            value={local.thisMonthActionGoalText ?? ''}
-            disabled={!canEdit}
-            onChange={(v) => setField('thisMonthActionGoalText', v)}
-            onBlur={() => patchAndSave({ thisMonthActionGoalText: local.thisMonthActionGoalText ?? '' })}
-          />
-          <MonthlyTextRow
-            label="行動概要と成果達成状況"
-            value={local.actionSummaryAndOutcomeProgressText ?? ''}
-            disabled={!canEdit}
-            onChange={(v) => setField('actionSummaryAndOutcomeProgressText', v)}
-            onBlur={() =>
-              patchAndSave({ actionSummaryAndOutcomeProgressText: local.actionSummaryAndOutcomeProgressText ?? '' })
-            }
-          />
+          {journalShowMonthlyOutcomeGoal(level) ? (
+            <MonthlyTextRow
+              label="今月成果目標"
+              value={local.thisMonthOutcomeGoalText ?? ''}
+              disabled={!canEdit}
+              onChange={(v) => setField('thisMonthOutcomeGoalText', v)}
+              onBlur={() => patchAndSave({ thisMonthOutcomeGoalText: local.thisMonthOutcomeGoalText ?? '' })}
+            />
+          ) : null}
+          {journalShowMonthlyActionGoal(level) ? (
+            <MonthlyTextRow
+              label="今月行動目標"
+              value={local.thisMonthActionGoalText ?? ''}
+              disabled={!canEdit}
+              onChange={(v) => setField('thisMonthActionGoalText', v)}
+              onBlur={() => patchAndSave({ thisMonthActionGoalText: local.thisMonthActionGoalText ?? '' })}
+            />
+          ) : null}
+          {journalShowMonthlyActionSummary(level) ? (
+            <MonthlyTextRow
+              label="行動概要と成果達成状況"
+              value={local.actionSummaryAndOutcomeProgressText ?? ''}
+              disabled={!canEdit}
+              onChange={(v) => setField('actionSummaryAndOutcomeProgressText', v)}
+              onBlur={() =>
+                patchAndSave({ actionSummaryAndOutcomeProgressText: local.actionSummaryAndOutcomeProgressText ?? '' })
+              }
+            />
+          ) : null}
           <MonthlyTextRow
             label="気づき・感動・学び"
             value={local.insightAndLearningText ?? ''}
@@ -375,25 +388,29 @@ export default function TrialMonthly() {
             onChange={(v) => setField('insightAndLearningText', v)}
             onBlur={() => patchAndSave({ insightAndLearningText: local.insightAndLearningText ?? '' })}
           />
-          <MonthlyTextRow
-            label="改善点"
-            value={local.improvementPointsText ?? ''}
-            disabled={!canEdit}
-            onChange={(v) => setField('improvementPointsText', v)}
-            onBlur={() => patchAndSave({ improvementPointsText: local.improvementPointsText ?? '' })}
-          />
+          {journalShowMonthlyImprovementPoints(level) ? (
+            <MonthlyTextRow
+              label="改善点"
+              value={local.improvementPointsText ?? ''}
+              disabled={!canEdit}
+              onChange={(v) => setField('improvementPointsText', v)}
+              onBlur={() => patchAndSave({ improvementPointsText: local.improvementPointsText ?? '' })}
+            />
+          ) : null}
         </div>
 
-        <div className="action-sub-section">
-          <h3>来月の目標</h3>
-          <MonthlyTextRow
-            label="来月の行動目標"
-            value={local.nextMonthActionGoalText ?? ''}
-            disabled={!canEdit}
-            onChange={(v) => setField('nextMonthActionGoalText', v)}
-            onBlur={() => patchAndSave({ nextMonthActionGoalText: local.nextMonthActionGoalText ?? '' })}
-          />
-        </div>
+        {journalShowMonthlyNextMonthGoal(level) ? (
+          <div className="action-sub-section">
+            <h3>来月の目標</h3>
+            <MonthlyTextRow
+              label="来月の行動目標"
+              value={local.nextMonthActionGoalText ?? ''}
+              disabled={!canEdit}
+              onChange={(v) => setField('nextMonthActionGoalText', v)}
+              onBlur={() => patchAndSave({ nextMonthActionGoalText: local.nextMonthActionGoalText ?? '' })}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

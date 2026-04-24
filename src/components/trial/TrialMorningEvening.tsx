@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import {
   addDaysDateKey,
   getTrial4wDailyPlain,
@@ -12,6 +13,15 @@ import {
   type Trial4wMorningAffirmationDeclaration,
   type Trial4wDailyPlain,
 } from '@/lib/firestore';
+import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
+import {
+  journalShowEveningBrakeRebutted,
+  journalShowEveningEmotionThought,
+  journalShowEveningSelfMessage,
+  journalShowEveningSpecificActions,
+  journalShowMorningImaging,
+  journalShowSupplementaryDetails,
+} from '@/lib/journalDetailLevel';
 
 function formatDateLabelJa(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map((x) => Number(x));
@@ -28,8 +38,41 @@ function InfoDetails({ title, body }: { title: string; body: string }) {
   );
 }
 
+function TrialSegmentedToggle<T extends string>({
+  value,
+  options,
+  onPick,
+  disabled,
+}: {
+  value: T | null;
+  options: readonly { value: T; label: string }[];
+  onPick: (v: T) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="trial-segmented-toggle" role="group" aria-label="選択">
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            className={`trial-segmented-toggle__btn${active ? ' trial-segmented-toggle__btn--active' : ''}`}
+            disabled={disabled}
+            aria-pressed={active}
+            onClick={() => onPick(opt.value)}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function TrialMorningEvening() {
   const { user, loading } = useAuth();
+  const { level } = useJournalDetailLevel();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date'); // YYYY-MM-DD
 
@@ -121,7 +164,8 @@ export default function TrialMorningEvening() {
     window.history.replaceState({}, '', url.pathname + url.search);
   }, []);
 
-  const aiInputText = (data?.eveningResultExecutionText ?? data?.eveningResultText ?? '').trim();
+  const aiInputText =
+    ((data?.eveningResultExecutionText ?? '').trim() || (data?.eveningResultText ?? '').trim());
   const canRunAiSuggestion = aiInputText.length >= 10 && !aiLoading;
 
   const handleGenerateAiSuggestion = async () => {
@@ -208,305 +252,326 @@ export default function TrialMorningEvening() {
           </button>
         </div>
 
-        {msg && <p className="text-sm text-gray-700 mb-3">{msg}</p>}
+        <TrialSaveStatusLine message={msg} saving={saving} />
 
         {/* 朝コンテナ */}
         <div className="action-sub-section" data-section="morning">
           <h3>朝のアクション</h3>
 
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>アファメーションの宣言</span>
-            </div>
-            <div className="checkbox-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={data.morningAffirmationDeclaration === 'done'}
-                  disabled={saving}
-                  onChange={(e) =>
-                    void savePatch({
-                      morningAffirmationDeclaration: (e.target.checked
-                        ? 'done'
-                        : 'undone') as Trial4wMorningAffirmationDeclaration,
-                    })
-                  }
-                />{' '}
-                完了
-              </label>
+          <h4 className="trial-form-heading-l2">
+            <span className="trial-heading-mark" aria-hidden="true">◇</span>
+            アファメーション宣言
+          </h4>
+          <div className="trial-form-block-l3">
+            <div className="form-row">
+              <button
+                type="button"
+                className={`trial-segmented-toggle__btn${data.morningAffirmationDeclaration === 'done' ? ' trial-segmented-toggle__btn--active' : ''}`}
+                disabled={saving}
+                aria-pressed={data.morningAffirmationDeclaration === 'done'}
+                onClick={() =>
+                  void savePatch({
+                    morningAffirmationDeclaration:
+                      data.morningAffirmationDeclaration === 'done' ? 'undone' : 'done',
+                  })
+                }
+              >
+                実施
+              </button>
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>今日の行動内容（目標）</span>
+          <h4 className="trial-form-heading-l2">
+            <span className="trial-heading-mark" aria-hidden="true">◇</span>
+            今日の行動目標
+          </h4>
+          <div className="trial-form-block-l3">
+            {journalShowSupplementaryDetails(level) ? (
+              <InfoDetails
+                title="補足（クリックで表示）"
+                body={`昨日と同様の行動であっても、昨日の改善点やうまくできたことなどを踏まえた行動内容にすることが重要です。\n○○を◇◇にかえて行ってみる。\n昨日うまくできた○○を今日もできるようにする\nなど。`}
+              />
+            ) : null}
+            <div className="form-row">
+              <span className="trial-l3-label">行動目標：何を実行する（1文で）</span>
+              <textarea
+                className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                value={data.morningTodayActionText ?? ''}
+                disabled={saving}
+                onChange={(e) => setData((prev) => (prev ? { ...prev, morningTodayActionText: e.target.value } : prev))}
+                onBlur={() => void savePatch({ morningTodayActionText: data.morningTodayActionText })}
+                placeholder="入力してください"
+              />
             </div>
-            <InfoDetails
-              title="補足（クリックで表示）"
-              body={`昨日と同様の行動であっても、昨日の改善点やうまくできたことなどを踏まえた行動内容にすることが重要です。\n○○を◇◇にかえて行ってみる。\n昨日うまくできた○○を今日もできるようにする\nなど。`}
-            />
-            <textarea
-              className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
-              value={data.morningTodayActionText ?? ''}
-              disabled={saving}
-              onChange={(e) => setData((prev) => (prev ? { ...prev, morningTodayActionText: e.target.value } : prev))}
-              onBlur={() => void savePatch({ morningTodayActionText: data.morningTodayActionText })}
-              placeholder="入力してください"
-            />
           </div>
 
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>今日の行動のイメージング</span>
-            </div>
-            <InfoDetails
-              title="補足（クリックで表示）"
-              body={`今日の行動内容を実際に行う場面を想定し、うまくできるようにイメージングします。\nどのように体を動かすのか、どのように話をするなど、より具体的にイメージしあたまの中でシミュレーションすることが大切です。`}
-            />
-            <div className="checkbox-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={data.morningImagingDone === true}
-                  disabled={saving}
-                  onChange={(e) => void savePatch({ morningImagingDone: e.target.checked })}
-                />{' '}
-                完了
-              </label>
-            </div>
-          </div>
+          {journalShowMorningImaging(level) ? (
+            <>
+              <h4 className="trial-form-heading-l2">
+                <span className="trial-heading-mark" aria-hidden="true">◇</span>
+                今日の行動のイメージング
+              </h4>
+              <div className="trial-form-block-l3">
+                {journalShowSupplementaryDetails(level) ? (
+                  <InfoDetails
+                    title="補足（クリックで表示）"
+                    body={`今日の行動内容を実際に行う場面を想定し、うまくできるようにイメージングします。\nどのように体を動かすのか、どのように話をするなど、より具体的にイメージしあたまの中でシミュレーションすることが大切です。`}
+                  />
+                ) : null}
+                <div className="form-row">
+                  <button
+                    type="button"
+                    className={`trial-segmented-toggle__btn${data.morningImagingDone === true ? ' trial-segmented-toggle__btn--active' : ''}`}
+                    disabled={saving}
+                    aria-pressed={data.morningImagingDone === true}
+                    onClick={() =>
+                      void savePatch({
+                        morningImagingDone: data.morningImagingDone === true ? false : true,
+                      })
+                    }
+                  >
+                    実施
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
         </div>
 
         {/* 晩コンテナ */}
         <div className="action-sub-section" data-section="evening">
           <h3>晩のアクション</h3>
 
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>今日の行動内容（目標）の実行</span>
+          <h4 className="trial-form-heading-l2">
+            <span className="trial-heading-mark" aria-hidden="true">◇</span>
+            行動の実行状況
+          </h4>
+          <div className="trial-form-block-l3">
+            <div className="form-row">
+              <TrialSegmentedToggle<Trial4wEveningExecution>
+                value={data.eveningExecution}
+                disabled={saving}
+                options={[
+                  { value: 'done', label: 'できた' },
+                  { value: 'partial', label: '一部できた' },
+                  { value: 'none', label: 'できなかった' },
+                ]}
+                onPick={(v) => void savePatch({ eveningExecution: v })}
+              />
             </div>
-            <div className="radio-group">
-              {(
-                [
-                  ['done', '実行できた'],
-                  ['partial', '一部できた'],
-                  ['none', 'できなかった'],
-                ] as const
-              ).map(([v, label]) => (
-                <label key={v}>
-                  <input
-                    type="radio"
-                    name="eveningExecution"
-                    value={v}
-                    checked={data.eveningExecution === v}
-                    disabled={saving}
-                    onChange={() => void savePatch({ eveningExecution: v as Trial4wEveningExecution })}
-                  />{' '}
-                  {label}
-                </label>
-              ))}
+            {journalShowEveningSpecificActions(level) &&
+            (data.eveningExecution === 'done' || data.eveningExecution === 'partial') && (
+              <div className="form-row">
+                <span className="trial-l3-label">具体的な行動内容</span>
+                <textarea
+                  className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  value={data.eveningSpecificActionsText ?? ''}
+                  disabled={saving}
+                  onChange={(e) =>
+                    setData((prev) =>
+                      prev ? { ...prev, eveningSpecificActionsText: e.target.value } : prev
+                    )
+                  }
+                  onBlur={() => void savePatch({ eveningSpecificActionsText: data.eveningSpecificActionsText })}
+                  placeholder="入力してください"
+                />
+              </div>
+            )}
+          </div>
+
+          <h4 className="trial-form-heading-l2">
+            <span className="trial-heading-mark" aria-hidden="true">◇</span>
+            行動の結果
+          </h4>
+          <div className="trial-form-block-l3">
+            {journalShowSupplementaryDetails(level) ? (
+              <InfoDetails
+                title="補足（クリックで表示）"
+                body={`行動の成果とは、実際に行ってみてどの程度達成できたか\nあるいは、最終目標にどの程度近づいたかを振り返ります。\n行動のし方に焦点をあてます。\n具体的に言語化することで、現在の行動のし方がどの程度\n成果につながっていけるかのヒントになります。`}
+              />
+            ) : null}
+            <div className="form-row">
+              <span className="trial-l3-label">どのように行いどの程度できたか</span>
+              <textarea
+                className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                value={data.eveningResultText ?? ''}
+                disabled={saving}
+                onChange={(e) => setData((prev) => (prev ? { ...prev, eveningResultText: e.target.value } : prev))}
+                onBlur={() => void savePatch({ eveningResultText: data.eveningResultText })}
+                placeholder="入力してください"
+              />
+              <button
+                type="button"
+                className={`trial-action-btn ${canRunAiSuggestion && !saving ? 'ai-action-btn-ready' : ''}`}
+                disabled={!canRunAiSuggestion || saving}
+                onClick={() => void handleGenerateAiSuggestion()}
+              >
+                Ai改善提案
+              </button>
+              {!canRunAiSuggestion ? (
+                <p className="text-xs text-gray-600">「行動の結果」を10文字以上入力すると実行できます。</p>
+              ) : null}
+              {aiLoading ? <p className="text-xs text-gray-600">改善提案を生成中です…</p> : null}
+              {aiError ? <p className="text-xs text-red-600">{aiError}</p> : null}
+              {aiSuggestion ? (
+                <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-2 whitespace-pre-wrap">
+                  {aiSuggestion}
+                </p>
+              ) : null}
+            </div>
+            <div className="form-row">
+              <span className="trial-l3-label">満足度：10点満点での評価</span>
+              <div className="satisfaction-input">
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={data.eveningSatisfaction ?? ''}
+                  disabled={saving}
+                  onChange={(e) =>
+                    setData((prev) =>
+                      prev
+                        ? { ...prev, eveningSatisfaction: e.target.value === '' ? null : Number(e.target.value) }
+                        : prev
+                    )
+                  }
+                  onBlur={() => void savePatch({ eveningSatisfaction: data.eveningSatisfaction })}
+                  aria-label="満足度"
+                />
+                <span>点/10点</span>
+              </div>
             </div>
           </div>
 
-          {(data.eveningExecution === 'done' || data.eveningExecution === 'partial') && (
-            <div className="form-row">
-              <div className="label-wrap">
-                <span>具体的な行動内容</span>
+          {journalShowEveningEmotionThought(level) ? (
+            <>
+              <h4 className="trial-form-heading-l2">
+                <span className="trial-heading-mark" aria-hidden="true">◇</span>
+                行動時の感情・思考
+              </h4>
+              <div className="trial-form-block-l3">
+                <div className="form-row">
+                  <textarea
+                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                    value={data.eveningEmotionThoughtText ?? ''}
+                    disabled={saving}
+                    onChange={(e) =>
+                      setData((prev) =>
+                        prev ? { ...prev, eveningEmotionThoughtText: e.target.value } : prev
+                      )
+                    }
+                    onBlur={() => void savePatch({ eveningEmotionThoughtText: data.eveningEmotionThoughtText })}
+                    placeholder="入力してください"
+                  />
+                </div>
               </div>
+            </>
+          ) : null}
+
+          <h4 className="trial-form-heading-l2">
+            <span className="trial-heading-mark" aria-hidden="true">◇</span>
+            こころのブレーキ
+          </h4>
+          <div className="trial-form-block-l3">
+            <div className="form-row">
+              <TrialSegmentedToggle<Trial4wEveningBrake>
+                value={data.eveningBrake}
+                disabled={saving}
+                options={[
+                  { value: 'yes', label: '働いた' },
+                  { value: 'partial', label: '一部働いた' },
+                  { value: 'no', label: '働かなかった' },
+                ]}
+                onPick={(v) => void savePatch({ eveningBrake: v })}
+              />
+            </div>
+            {journalShowEveningBrakeRebutted(level) &&
+            (data.eveningBrake === 'yes' || data.eveningBrake === 'partial') && (
+              <div className="form-row">
+                <span className="trial-l3-label">その時に反論できたか？ できた時の反論の言葉は何か</span>
+                <textarea
+                  className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  value={data.eveningRebuttalText ?? ''}
+                  disabled={saving}
+                  onChange={(e) =>
+                    setData((prev) =>
+                      prev ? { ...prev, eveningRebuttalText: e.target.value } : prev
+                    )
+                  }
+                  onBlur={() => void savePatch({ eveningRebuttalText: data.eveningRebuttalText })}
+                  placeholder="入力してください"
+                />
+              </div>
+            )}
+          </div>
+
+          <h4 className="trial-form-heading-l2">
+            <span className="trial-heading-mark" aria-hidden="true">◇</span>
+            今日の気づき・感動・学び
+          </h4>
+          <div className="trial-form-block-l3">
+            <div className="form-row">
               <textarea
                 className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
-                value={data.eveningSpecificActionsText ?? ''}
+                value={data.eveningInsightText ?? ''}
                 disabled={saving}
-                onChange={(e) =>
-                  setData((prev) =>
-                    prev ? { ...prev, eveningSpecificActionsText: e.target.value } : prev
-                  )
-                }
-                onBlur={() => void savePatch({ eveningSpecificActionsText: data.eveningSpecificActionsText })}
+                onChange={(e) => setData((prev) => (prev ? { ...prev, eveningInsightText: e.target.value } : prev))}
+                onBlur={() => void savePatch({ eveningInsightText: data.eveningInsightText })}
                 placeholder="入力してください"
               />
             </div>
-          )}
+          </div>
 
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>行動の成果への振り返り</span>
-            </div>
-            <InfoDetails
-              title="補足（クリックで表示）"
-              body={`行動の成果とは、実際に行ってみてどの程度達成できたか\nあるいは、最終目標にどの程度近づいたかを振り返ります。\n行動のし方に焦点をあてます。\n具体的に言語化することで、現在の行動のし方がどの程度\n成果につながっていけるかのヒントになります。`}
-            />
-            <textarea
-              className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
-              value={data.eveningResultText ?? ''}
-              disabled={saving}
-              onChange={(e) => setData((prev) => (prev ? { ...prev, eveningResultText: e.target.value } : prev))}
-              onBlur={() => void savePatch({ eveningResultText: data.eveningResultText })}
-              placeholder="入力してください"
-            />
-            <button
-              type="button"
-              className={`trial-action-btn ${canRunAiSuggestion && !saving ? 'ai-action-btn-ready' : ''}`}
-              disabled={!canRunAiSuggestion || saving}
-              onClick={() => void handleGenerateAiSuggestion()}
-            >
-              Ai改善提案
-            </button>
-            {!canRunAiSuggestion ? (
-              <p className="text-xs text-gray-600">「行動の結果」を10文字以上入力すると実行できます。</p>
-            ) : null}
-            {aiLoading ? <p className="text-xs text-gray-600">改善提案を生成中です…</p> : null}
-            {aiError ? <p className="text-xs text-red-600">{aiError}</p> : null}
-            {aiSuggestion ? (
-              <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-2 whitespace-pre-wrap">
-                {aiSuggestion}
+          <h4 className="trial-form-heading-l2">
+            <span className="trial-heading-mark" aria-hidden="true">◇</span>
+            明日の行動
+          </h4>
+          <div className="trial-form-block-l3">
+            <div className="form-row">
+              <span className="trial-l3-label">目標（一文で）</span>
+              <textarea
+                className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                value={data.eveningTomorrowActionSeedText ?? ''}
+                disabled={saving}
+                onChange={(e) =>
+                  setData((prev) =>
+                    prev ? { ...prev, eveningTomorrowActionSeedText: e.target.value } : prev
+                  )
+                }
+                onBlur={() => void savePatch({ eveningTomorrowActionSeedText: data.eveningTomorrowActionSeedText })}
+                placeholder="入力してください（保存すると翌日の朝「今日の行動内容（目標）」に反映されます）"
+              />
+              <p className="text-xs text-gray-600">
+                保存時、翌日の「今日の行動内容（目標）」が未入力なら自動でコピーします。
               </p>
-            ) : null}
-          </div>
-
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>満足度</span>
-            </div>
-            <div className="satisfaction-input">
-              <input
-                type="number"
-                min={0}
-                max={10}
-                step={1}
-                value={data.eveningSatisfaction ?? ''}
-                disabled={saving}
-                onChange={(e) =>
-                  setData((prev) =>
-                    prev
-                      ? { ...prev, eveningSatisfaction: e.target.value === '' ? null : Number(e.target.value) }
-                      : prev
-                  )
-                }
-                onBlur={() => void savePatch({ eveningSatisfaction: data.eveningSatisfaction })}
-                aria-label="満足度"
-              />
-              <span>点/10点</span>
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>行動時の感情・思考</span>
-            </div>
-            <textarea
-              className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
-              value={data.eveningEmotionThoughtText ?? ''}
-              disabled={saving}
-              onChange={(e) =>
-                setData((prev) =>
-                  prev ? { ...prev, eveningEmotionThoughtText: e.target.value } : prev
-                )
-              }
-              onBlur={() => void savePatch({ eveningEmotionThoughtText: data.eveningEmotionThoughtText })}
-              placeholder="入力してください"
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>こころのブレーキの作動</span>
-            </div>
-            <div className="radio-group">
-              {(
-                [
-                  ['yes', 'あった'],
-                  ['partial', '一部あった'],
-                  ['no', 'なかった'],
-                ] as const
-              ).map(([v, label]) => (
-                <label key={v}>
-                  <input
-                    type="radio"
-                    name="eveningBrake"
-                    value={v}
-                    checked={data.eveningBrake === v}
+          {journalShowEveningSelfMessage(level) ? (
+            <>
+              <h4 className="trial-form-heading-l2">
+                <span className="trial-heading-mark" aria-hidden="true">◇</span>
+                今日の自分へのねぎらいの一言
+              </h4>
+              <div className="trial-form-block-l3">
+                <div className="form-row">
+                  <textarea
+                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                    value={data.eveningMessageToSelfText ?? ''}
                     disabled={saving}
-                    onChange={() => void savePatch({ eveningBrake: v as Trial4wEveningBrake })}
-                  />{' '}
-                  {label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {(data.eveningBrake === 'yes' || data.eveningBrake === 'partial') && (
-            <div className="form-row">
-              <div className="label-wrap">
-                <span>その時に反論できたか？　できた時の反論の言葉は何か</span>
+                    onChange={(e) =>
+                      setData((prev) =>
+                        prev ? { ...prev, eveningMessageToSelfText: e.target.value } : prev
+                      )
+                    }
+                    onBlur={() => void savePatch({ eveningMessageToSelfText: data.eveningMessageToSelfText })}
+                    placeholder="入力してください"
+                  />
+                </div>
               </div>
-              <textarea
-                className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
-                value={data.eveningRebuttalText ?? ''}
-                disabled={saving}
-                onChange={(e) =>
-                  setData((prev) =>
-                    prev ? { ...prev, eveningRebuttalText: e.target.value } : prev
-                  )
-                }
-                onBlur={() => void savePatch({ eveningRebuttalText: data.eveningRebuttalText })}
-                placeholder="入力してください"
-              />
-            </div>
-          )}
-
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>今日の気づき・感動・学び</span>
-            </div>
-            <textarea
-              className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
-              value={data.eveningInsightText ?? ''}
-              disabled={saving}
-              onChange={(e) => setData((prev) => (prev ? { ...prev, eveningInsightText: e.target.value } : prev))}
-              onBlur={() => void savePatch({ eveningInsightText: data.eveningInsightText })}
-              placeholder="入力してください"
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>今日の自分へのねぎらいの一言</span>
-            </div>
-            <textarea
-              className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
-              value={data.eveningMessageToSelfText ?? ''}
-              disabled={saving}
-              onChange={(e) =>
-                setData((prev) =>
-                  prev ? { ...prev, eveningMessageToSelfText: e.target.value } : prev
-                )
-              }
-              onBlur={() => void savePatch({ eveningMessageToSelfText: data.eveningMessageToSelfText })}
-              placeholder="入力してください"
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="label-wrap">
-              <span>今日の振り返りを踏まえた あすの行動内容（目標）</span>
-            </div>
-            <textarea
-              className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
-              value={data.eveningTomorrowActionSeedText ?? ''}
-              disabled={saving}
-              onChange={(e) =>
-                setData((prev) =>
-                  prev ? { ...prev, eveningTomorrowActionSeedText: e.target.value } : prev
-                )
-              }
-              onBlur={() => void savePatch({ eveningTomorrowActionSeedText: data.eveningTomorrowActionSeedText })}
-              placeholder="入力してください（保存すると翌日の朝「今日の行動内容（目標）」に反映されます）"
-            />
-            <p className="text-xs text-gray-600">
-              保存時、翌日の「今日の行動内容（目標）」が未入力なら自動でコピーします。
-            </p>
-          </div>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

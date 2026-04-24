@@ -167,6 +167,10 @@
 6. **セキュリティの整理** → セキュリティ設計書
 7. **将来の拡張** → その他の設計書
 
+## 参照: Vertex AI（実装済み内部 API）
+
+4週間トライアル「AI改善提案」用の **`POST /api/ai/improvement`** の GCP 設定・環境変数・REST 仕様・トラブルシュートは、実装ドキュメント **[VERTEX_AI_TRIAL_IMPROVEMENT.md](./VERTEX_AI_TRIAL_IMPROVEMENT.md)** に集約している。
+
 ## 🔄 設計書の更新方針
 
 - **バージョン管理**: Gitで管理し、変更履歴を追跡

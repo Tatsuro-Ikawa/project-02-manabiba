@@ -96,6 +96,19 @@ export function formatWeekRangeLabelJa(weekStartKey: string): string {
   return `${fmt(weekStartKey)} ～ ${fmt(endKey)}`;
 }
 
+/** 週ナビ用の短い日付表記（例: 4/14–4/20） */
+export function formatWeekRangeShortJa(weekStartKey: string): string {
+  const endKey = addDaysToDateKey(weekStartKey, 6);
+  const fmt = (key: string) => {
+    const parts = key.split('-').map((x) => Number(x));
+    const m = parts[1];
+    const d = parts[2];
+    if (!m || !d) return key;
+    return `${m}/${d}`;
+  };
+  return `${fmt(weekStartKey)}–${fmt(endKey)}`;
+}
+
 /** 週ナビ: weekStartKey を delta 週だけずらす */
 export function shiftWeekStartDateKey(weekStartKey: string, deltaWeeks: number): string {
   return addDaysToDateKey(weekStartKey, deltaWeeks * 7);

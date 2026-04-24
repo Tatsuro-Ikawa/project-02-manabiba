@@ -11,6 +11,7 @@ import TrialMorningEvening from '@/components/trial/TrialMorningEvening';
 import TrialWeekly from '@/components/trial/TrialWeekly';
 import TrialMonthly from '@/components/trial/TrialMonthly';
 import CoachClientPickerModal from '@/components/trial/CoachClientPickerModal';
+import JournalDetailLevelSwitch from '@/components/trial/JournalDetailLevelSwitch';
 import { getUserProfile } from '@/lib/firestore';
 
 const TAB_KEYS = ['affirmation', 'morning_evening', 'weekly', 'monthly'] as const;
@@ -161,9 +162,10 @@ function Trial4wContent() {
                 </span>
               </button>
             ))}
+            <div className="trial-menu-spacer" aria-hidden="true" />
+            <JournalDetailLevelSwitch />
             {isCoachView && (
               <>
-                <div className="trial-menu-spacer" aria-hidden="true" />
                 <button
                   type="button"
                   className={`trial-menu-share-btn${coachClientUid ? ' trial-menu-share-btn--active' : ''}`}
