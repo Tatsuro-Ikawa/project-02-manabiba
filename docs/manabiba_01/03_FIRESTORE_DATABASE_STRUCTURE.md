@@ -90,18 +90,32 @@
 | dateKey | string | `YYYY-MM-DD` |
 | tz | string | 固定 `Asia/Tokyo` |
 | morningAffirmationDeclaration | string \| null | `'done' \| 'undone'`（画面は「完了」チェックのみ。未チェックは `undone`） |
-| morningTodayActionTextEncrypted | string \| null | 「今日の行動内容（目標）」 |
+| morningTodayActionTextEncrypted | string \| null | 朝「今日の行動」の統合欄（下位の目標・内容欄と併存し得る。実装の正本は `src/lib/firestore.ts` の `Trial4wDaily*`） |
+| morningActionGoalTextEncrypted | string \| null | 今日の行動 — 目標 |
+| morningActionContentTextEncrypted | string \| null | 今日の行動 — 行動内容 |
 | morningImagingDone | bool \| null | 「今日の行動のイメージング」完了 |
 | eveningExecution | string \| null | `'done' \| 'partial' \| 'none'`（「今日の行動内容（目標）の実行」） |
 | eveningSpecificActionsTextEncrypted | string \| null | 「具体的な行動内容」（execution が done/partial のとき表示） |
 | eveningResultTextEncrypted | string \| null | 「行動の成果への振り返り」 |
+| eveningResultExecutionTextEncrypted | string \| null | 行動の実行状況の補足 |
+| eveningResultGoalProgressTextEncrypted | string \| null | 目標に対する進捗・結果 |
 | eveningSatisfaction | number \| null | 0〜10 |
 | eveningEmotionThoughtTextEncrypted | string \| null | 「行動時の感情・思考」 |
 | eveningBrake | string \| null | `'yes' \| 'partial' \| 'no'`（「こころのブレーキの作動」） |
-| eveningRebuttalTextEncrypted | string \| null | 「その時に反論できたか？できた時の反論の言葉は何か」（brake が yes/partial のとき表示） |
-| eveningInsightTextEncrypted | string \| null | 「今日の気づき・感動・学び」 |
+| eveningBrakeRebuttalChoice | string \| null | `'done' \| 'partial' \| 'none'`（ブレーキ作動時の反論可否の選択） |
+| eveningRebuttalTextEncrypted | string \| null | 旧・反論まとめ欄（移行・互換。新 UI では分割欄を優先） |
+| eveningBrakeWorkedTextEncrypted | string \| null | ブレーキがどう働いたか |
+| eveningBrakeRebuttedTextEncrypted | string \| null | 反論の有無・内容 |
+| eveningBrakeWordsTextEncrypted | string \| null | 反論の言葉 |
+| eveningInsightTextEncrypted | string \| null | 「今日の気づき・感動・学びと課題」 |
+| eveningImprovementTextEncrypted | string \| null | 「明日への改善点」 |
+| eveningAiSuggestionTextEncrypted | string \| null | Vertex 生成の「Aiコーチからのコメント」（ユーザーが保存したテキストのみ永続化） |
+| eveningAiSuggestionRunCount | number \| null | 上記コメントの生成実行回数（同日 UI 上限と併用。平文数値で保存） |
 | eveningMessageToSelfTextEncrypted | string \| null | 「今日の自分へのねぎらいの一言」 |
-| eveningTomorrowActionSeedTextEncrypted | string \| null | 「今日の振り返りを踏まえた あすの行動内容（目標）」→ 翌日の `morningTodayActionTextEncrypted` にコピー（未入力時のみ） |
+| eveningTomorrowActionSeedTextEncrypted | string \| null | 「今日の振り返りを踏まえた あすの行動内容（目標）」→ 翌日の朝入力にコピー（未入力時のみ） |
+| eveningTomorrowGoalTextEncrypted | string \| null | 明日の目標 |
+| eveningTomorrowActionContentTextEncrypted | string \| null | 明日の行動内容 |
+| eveningTomorrowImagingDone | bool \| null | 明日の行動のイメージング |
 | createdAt, updatedAt | Timestamp | 監査用 |
 
 ### 2.x-2 users / {uid} / journal_weekly / {weekStartKey}（マネジメント日誌: 週次）

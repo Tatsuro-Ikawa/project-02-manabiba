@@ -90,7 +90,7 @@ export function journalShowEveningBrakeWords(level: JournalDetailLevel): boolean
   return level === 'detailed';
 }
 
-/** 晩：明日への改善点・Ai改善提案 */
+/** 晩：明日への改善点・Aiコーチからのコメント（簡易では非表示＝AIも利用不可で詳細入力を促す） */
 export function journalShowEveningImprovement(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }

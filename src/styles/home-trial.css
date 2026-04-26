@@ -1380,7 +1380,7 @@
   cursor: not-allowed;
 }
 
-/* 朝・晩: AI改善提案ボタン */
+/* 朝・晩: Aiコーチからのコメントボタン */
 .morning-evening-container .trial-action-btn {
   display: inline-flex;
   align-items: center;

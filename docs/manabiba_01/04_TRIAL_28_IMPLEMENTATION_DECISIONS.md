@@ -131,7 +131,9 @@
 ### 朝（morning）
 
 - **アファメーションの宣言**: `morningAffirmationDeclaration: 'done'|'undone'|null`（画面は「完了」チェックのみ。未チェックは `undone`）
-- **今日の行動内容（目標）**: `morningTodayActionTextEncrypted: string|null`
+- **今日の行動（統合欄）**: `morningTodayActionTextEncrypted: string|null`（目標・行動内容の分割欄と併存し得る）
+- **今日の行動 — 目標**: `morningActionGoalTextEncrypted: string|null`
+- **今日の行動 — 行動内容**: `morningActionContentTextEncrypted: string|null`
 - **今日の行動のイメージング**: `morningImagingDone: boolean|null`
 
 ### 晩（evening）
@@ -139,14 +141,20 @@
 - **今日の行動内容（目標）の実行**: `eveningExecution: 'done'|'partial'|'none'|null`
 - **具体的な行動内容**: `eveningSpecificActionsTextEncrypted: string|null`（execution が done/partial のとき表示）
 - **行動の成果への振り返り**: `eveningResultTextEncrypted: string|null`
+- **行動の実行状況の補足**: `eveningResultExecutionTextEncrypted: string|null`
+- **目標に対する進捗・結果**: `eveningResultGoalProgressTextEncrypted: string|null`
 - **満足度**: `eveningSatisfaction: number|null`（0〜10）
 - **行動時の感情・思考**: `eveningEmotionThoughtTextEncrypted: string|null`
 - **こころのブレーキの作動**: `eveningBrake: 'yes'|'partial'|'no'|null`
-- **その時に反論できたか？できた時の反論の言葉は何か**: `eveningRebuttalTextEncrypted: string|null`（brake が yes/partial のとき表示）
-- **今日の気づき・感動・学び**: `eveningInsightTextEncrypted: string|null`
+- **反論可否の選択**: `eveningBrakeRebuttalChoice: 'done'|'partial'|'none'|null`（ブレーキ作動時）
+- **ブレーキ・反論の記述**: `eveningBrakeWorkedTextEncrypted` / `eveningBrakeRebuttedTextEncrypted` / `eveningBrakeWordsTextEncrypted: string|null`（UI ラベルに準拠。旧単一欄は `eveningRebuttalTextEncrypted` で互換）
+- **今日の気づき・感動・学びと課題**: `eveningInsightTextEncrypted: string|null`
+- **明日への改善点**: `eveningImprovementTextEncrypted: string|null`
+- **Aiコーチからのコメント**（Vertex 生成・任意保存）: `eveningAiSuggestionTextEncrypted: string|null`、**同日の生成回数**: `eveningAiSuggestionRunCount: number|null`（UI は同日 3 回まで等。API 仕様は [VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)）
 - **今日の自分へのねぎらいの一言**: `eveningMessageToSelfTextEncrypted: string|null`
 - **今日の振り返りを踏まえた あすの行動内容（目標）**: `eveningTomorrowActionSeedTextEncrypted: string|null`
-  - 保存時、翌日の `morningTodayActionTextEncrypted` が未入力なら自動コピー（上書きはしない）
+- **明日の目標・行動内容・イメージング**: `eveningTomorrowGoalTextEncrypted` / `eveningTomorrowActionContentTextEncrypted` / `eveningTomorrowImagingDone`
+  - 保存時、翌日の朝の行動欄が未入力なら `eveningTomorrowActionSeedTextEncrypted` から自動コピー（上書きはしない）
 
 ### 日付ナビ（前日/翌日）
 

@@ -1,18 +1,27 @@
-# Vertex AI — トライアル「AI改善提案」（開発者向け）
+# Vertex AI — トライアル「Aiコーチからのコメント」（開発者向け）
 
 ## 1. 概要
 
-4週間トライアル（`/trial_4w`）の**朝・晩**タブで、ユーザーが入力した「行動の結果」をもとに **Vertex AI（Gemini）** で短文の改善提案を生成する PoC です。
+4週間トライアル（`/trial_4w`）の**朝・晩**タブで、当日の振り返り入力（複数欄を連結したテキスト）をもとに **Vertex AI（Gemini）** でコーチング風のコメントを生成する PoC です。画面上の表記は **「Aiコーチからのコメント」** です。
 
 - **画面・クライアント**: `src/components/trial/TrialMorningEvening.tsx`  
-  - 入力ソース: `eveningResultExecutionText` を優先、なければ `eveningResultText`  
-  - **10文字未満**のときは実行不可（API でも 400）  
-  - `POST /api/ai/improvement` を `fetch` で呼び出す（相対パス）
+  - 入力は `buildAiReflectionInputText` で複数フィールドをラベル付きブロックに連結し、リクエストボディの `actionResultText` に載せる（キー名は後方互換のためそのまま）。  
+  - **合計10文字未満**のときは実行不可（API でも 400）。  
+  - **同一日あたり 3 回**まで実行（`eveningAiSuggestionRunCount` を Firestore に保存。API 単体の強制ではない）。  
+  - 生成結果は任意で **「Aiコーチからのコメントを保存」** により `eveningAiSuggestionText` に永続化。  
+  - `POST /api/ai/improvement` を `fetch` で呼び出す（相対パス）。
 - **API ルート**: `src/app/api/ai/improvement/route.ts`  
   - `runtime = 'nodejs'`  
-  - **Vertex AI REST** の `generateContent` を `google-auth-library` のアクセストークンで呼び出す（Turbopack と Vertex Node SDK の相性問題を避けるため、SDK 直利用はしていない）
+  - **Vertex AI REST** の `generateContent` を `google-auth-library` のアクセストークンで呼び出す（Turbopack と Vertex Node SDK の相性問題を避けるため、SDK 直利用はしていない）。  
+  - 本文は **100〜300 文字**を目安にし、**160〜300 文字**をプロンプトで指示。短文時は **最大 1 回**だけ拡張用の追いプロンプトで再呼び出しする。  
+  - 応答末尾に、Vertex の `usageMetadata.totalTokenCount` を集計した **`（使用トークン合計: N）`** をサーバー側で付与（初回＋拡張の 2 回呼び出し時は合算）。  
+  - `generationConfig.maxOutputTokens` は **4000**（内部推論 `thoughtsTokenCount` 等で `MAX_TOKENS` 打切りを減らすため。出力本文が常に 4000 トークンになるわけではない）。
 
 プロダクト上の役割分担の正本は [manabiba_01/03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./manabiba_01/03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md) を参照してください。
+
+### 1.1 開発用コンソールログ
+
+検証用に `prompt` / 応答本文 / `aiJson` を `console.info` するコードがあるが、**現在は `ENABLE_AI_PROMPT_LOG = false` で無効**。再有効化する場合は `src/app/api/ai/improvement/route.ts` 内の定数を編集する（個人情報がログに出るため本番ではオフ推奨）。
 
 ---
 
@@ -88,24 +97,38 @@ JSON 内の `"client_email"` が、IAM でロールを付けた SA と**同じ**
 - **Body**:
 
 ```json
-{ "actionResultText": "ユーザーが入力した行動の結果（10文字以上）" }
+{ "actionResultText": "本日の振り返り（複数欄を連結したテキスト。合計10文字以上）" }
 ```
+
+実装では `TrialMorningEvening` が朝の目標・実行状況・結果・感情・ブレーキ・気づき・明日への改善点などを `【…】` 見出し付きで連結して渡す。
 
 ### 5.2 成功レスポンス
 
 ```json
-{ "suggestion": "日本語の改善提案テキスト（1段落）" }
+{
+  "suggestion": "見出し+本文（160〜300文字目安）。末尾に改行で（使用トークン合計: N）が付く場合あり",
+  "charCount": 0,
+  "usageTotalTokenCount": 0
+}
 ```
+
+- `suggestion` … 本文の後に、取得できた場合のみ `（使用トークン合計: N）` が続く（`N` は当該 API 呼び出し内の Vertex `usageMetadata.totalTokenCount` の合算）。  
+- `charCount` … `suggestion` 全体の Unicode コードポイント数。  
+- `usageTotalTokenCount` … 上記 `N` と同値。取得できない場合はフィールド省略可。
 
 ### 5.3 エラー時（例）
 
 - **400**: 本文欠如、10文字未満、JSON 不正  
 - **422**: ポリシーによるブロック（`promptFeedback.blockReason` あり）  
 - **500**: `GOOGLE_CLOUD_PROJECT` 未設定、鍵ファイル不正・未検出（メッセージにパスが含まれる場合あり）  
-- **502**: Vertex からのエラー本文、空の candidates、想定外例外（開発時は `Error.message` を返すことがある）  
+- **502**: Vertex からのエラー本文、空の candidates、**本文が最小文字数未満**、想定外例外（開発時は `Error.message` を返すことがある）  
 - **504**: タイムアウト（`AbortSignal` 約 20 秒）
 
 クライアントは `res.json()` の `error` を表示します。
+
+### 5.4 補足: `finishReason: "MAX_TOKENS"` と `usageMetadata`
+
+Vertex 応答の `candidates[0].finishReason` が **`MAX_TOKENS`** のときは、**出力トークン上限に達して生成が打ち切られた**ことを意味する。`usageMetadata.thoughtsTokenCount`（内部推論）が大きいと、本文 `candidatesTokenCount` が短くなることがある。対策として `maxOutputTokens` を上げたり、プロンプトを短くしたり、短文時の再生成ロジックを併用する。
 
 ---
 
@@ -118,6 +141,7 @@ JSON 内の `"client_email"` が、IAM でロールを付けた SA と**同じ**
 | **403** `aiplatform.endpoints.predict` denied | SA に Vertex 呼び出し権限がない | **`Vertex AI ユーザー`** を該当 SA に付与。Vertex AI API 有効化を確認 |
 | **404** Publisher Model not found | 退役モデル／未提供リージョン／誤ったモデル ID | [モデル一覧](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions)で現行 ID に変更。`VERTEX_AI_GEMINI_MODEL` を更新 |
 | 502（汎用メッセージ） | 例外の詳細が隠れている | サーバーログの `ai/improvement` を確認。クライアントの `error` 全文を確認 |
+| 本文が極端に短い／途中で切れる | `finishReason: MAX_TOKENS` や `thoughtsTokenCount` の消費 | §5.4 を参照。`maxOutputTokens`・再生成ロジックは `route.ts` を確認 |
 | 504 | ネットワーク遅延・Vertex 側の遅延 | 再実行、タイムアウト延長（コード変更が必要） |
 
 LAN（例: `http://192.168.11.10:3000`）からブラウザで開いていても、**Vertex への通信は Next を動かしているマシンから**行われます。鍵とネットワークはそのマシン基準で成立させてください。

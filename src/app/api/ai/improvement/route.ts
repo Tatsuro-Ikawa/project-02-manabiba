@@ -7,6 +7,58 @@ type ImprovementRequestBody = {
 
 export const runtime = 'nodejs';
 
+/** 本文（トークン注記の前）の最大文字数（Unicode コードポイント単位） */
+const MAX_SUGGESTION_CHARS = 300;
+/** 本文の最小文字数（短すぎる応答の抑止） */
+const MIN_SUGGESTION_CHARS = 100;
+/** プロンプト検証ログを出すか（true/1/on で有効） */
+const ENABLE_AI_PROMPT_LOG = false;
+
+function clampSuggestionText(text: string, maxChars: number): string {
+  const chars = [...text];
+  if (chars.length <= maxChars) return text;
+  if (maxChars <= 1) return '…';
+  return `${chars.slice(0, maxChars - 1).join('')}…`;
+}
+
+function countChars(text: string): number {
+  return [...text].length;
+}
+
+const AI_JSON_LOG_MAX_CHARS = 16000;
+
+function safeJsonForLog(obj: unknown, maxLen: number): string {
+  try {
+    const s = JSON.stringify(obj, null, 2);
+    return s.length > maxLen ? `${s.slice(0, maxLen)}…(truncated)` : s;
+  } catch {
+    return String(obj);
+  }
+}
+
+function readUsageTotalTokenCount(aiJson: unknown): number | undefined {
+  const u = (aiJson as { usageMetadata?: { totalTokenCount?: unknown } }).usageMetadata;
+  const n = u?.totalTokenCount;
+  return typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : undefined;
+}
+
+function trimToSentenceBoundary(text: string, maxChars: number): string {
+  const chars = [...text];
+  if (chars.length <= maxChars) return text;
+  const clipped = chars.slice(0, maxChars).join('');
+  const punctuationMatches = [...clipped.matchAll(/[。！？]/g)];
+  const last = punctuationMatches.length > 0 ? punctuationMatches[punctuationMatches.length - 1] : null;
+  if (last && typeof last.index === 'number') {
+    const keepLen = last.index + 1;
+    // 末尾側で句点が取れるときは、途中切れを避けてそこまで返す。
+    if (keepLen >= Math.floor(maxChars * 0.6)) {
+      return [...clipped].slice(0, keepLen).join('');
+    }
+  }
+  if (maxChars <= 1) return '…';
+  return `${chars.slice(0, maxChars - 1).join('')}…`;
+}
+
 function isFetchAbortOrTimeout(e: unknown): boolean {
   if (e instanceof DOMException && e.name === 'AbortError') return true;
   if (e instanceof Error) {
@@ -34,7 +86,7 @@ export async function POST(request: NextRequest) {
   }
   if (actionResultText.length < 10) {
     return NextResponse.json(
-      { error: '「行動の結果」は10文字以上で入力してください。' },
+      { error: '振り返りの入力は合わせて10文字以上にしてください。' },
       { status: 400 }
     );
   }
@@ -53,15 +105,36 @@ export async function POST(request: NextRequest) {
 
   const prompt = [
     'あなたは行動改善を支援する日本語コーチです。',
-    '入力された「行動の結果」をもとに、次回に向けた改善提案を1段落で作成してください。',
-    '制約:',
-    '- 出力は日本語の短文1段落のみ',
-    '- 箇条書きは禁止',
-    '- 100〜180文字程度',
-    '- 否定や断定を避け、実行しやすい提案にする',
+    '以下の【本日の振り返り入力】は、クライアントが複数の欄を改行区切りで連結したものです。',
+    '【含まれうる項目】',
+    '朝の目標、実行状況、行動の結果（どのようにできたか・目標への近づき等）、行動時の感情・思考、こころのブレーキ（種類・反論できたか・反論の言葉）、気づき・感動・学びと課題、利用者が先に書いた「明日への改善点」。',
+    '【ブレーキと反論】',
+    'こころのブレーキ（行動を抑制する働き）が働いた場合は、記述されている「どんなブレーキか」「反論の有無」「反論で使った言葉」を特に重視し、受容したうえで次の一歩に活かす提案をする。',
     '',
-    `行動の結果: ${actionResultText}`,
+    '出力は次の2つの意図を見出しと文章の構成で書いてください。',
+    '　- 内容の優先順位',
+    '実行状況と行動の結果 → 感情・思考と気づき・感動・学びと課題 → ブレーキと反論の言葉 →（あれば）利用者の明日への改善点。余裕があれば朝の目標との整合にも触れてよい。',
+    '　- 構成の目安',
+    '合計は160〜300文字。見出し+文章の形で出力する。',
+    '前半: 受容・共感・承認。できたこと・努力・ブレーキに対する反論など事実を踏まえて1〜3文（目安 50〜100文字）。',
+    '後半: 明日への改善の機会。思考（別の捉え方）・行動（小さく試せる一歩）・感情（和らげ方や気づき）を自然な文に溶かす（目安 100〜200文字）。',
+    '【制約】',
+    '- 日本語のみ。',
+    '- 否定や断定を避け、実行しやすい提案にする',
+    '- 100文字未満の短文にしない',
+    '- 文末は必ず完結した文（「。」または「！」や「？」）で終える',
+    '- 300文字に近づく場合は、最後の1文を省略しても文を途中で切らない',
+    '- 300文字を超えないよう、前半と後半のバランスを調整する',
+    '',
+    '---',
+    '【本日の振り返り入力】',
+    actionResultText,
   ].join('\n');
+
+  if (ENABLE_AI_PROMPT_LOG) {
+    console.info('ai/improvement prompt chars:', countChars(prompt));
+    console.info('ai/improvement prompt begin\n' + prompt + '\nai/improvement prompt end');
+  }
 
   try {
     const auth = new GoogleAuth({
@@ -83,87 +156,155 @@ export async function POST(request: NextRequest) {
     const modelResource = `projects/${project}/locations/${location}/publishers/google/models/${model}`;
     const endpoint = `https://aiplatform.googleapis.com/v1/${modelResource}:generateContent`;
 
-    const aiRes = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: 220,
-          temperature: 0.4,
-          topP: 0.9,
+    const generateSuggestion = async (promptText: string): Promise<{
+      suggestion: string;
+      charCount: number;
+      blockReason?: string;
+      httpError?: string;
+      usageTotalTokenCount?: number;
+    }> => {
+      const aiRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
-      }),
-      signal: AbortSignal.timeout(20000),
-      cache: 'no-store',
-    });
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: promptText }] }],
+          generationConfig: {
+            // 日本語 300 文字前後の本文 + 内部推論に余裕（モデル・内容により変動）
+            maxOutputTokens: 4000,
+            temperature: 0.4,
+            topP: 0.9,
+          },
+        }),
+        signal: AbortSignal.timeout(20000),
+        cache: 'no-store',
+      });
 
-    const rawBody = await aiRes.text();
-    let aiJson: {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      promptFeedback?: { blockReason?: string };
-      error?: { message?: string; code?: number; status?: string };
+      const rawBody = await aiRes.text();
+      let aiJson: {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+        promptFeedback?: { blockReason?: string };
+        error?: { message?: string; code?: number; status?: string };
+        usageMetadata?: { totalTokenCount?: number };
+      };
+      try {
+        aiJson = rawBody ? (JSON.parse(rawBody) as typeof aiJson) : {};
+      } catch {
+        if (ENABLE_AI_PROMPT_LOG) {
+          console.info(
+            'ai/improvement: JSON parse failed, rawBody head:',
+            rawBody.length > 2000 ? `${rawBody.slice(0, 2000)}…` : rawBody
+          );
+        }
+        return {
+          suggestion: '',
+          charCount: 0,
+          httpError: `Vertex AI からの応答を解釈できませんでした（HTTP ${aiRes.status}）。サーバログを確認してください。`,
+        };
+      }
+
+      if (ENABLE_AI_PROMPT_LOG) {
+        console.info(
+          `ai/improvement aiJson (HTTP ${aiRes.status}):`,
+          safeJsonForLog(aiJson, AI_JSON_LOG_MAX_CHARS)
+        );
+      }
+
+      const vertexErrMsg =
+        typeof aiJson.error?.message === 'string' ? aiJson.error.message : '';
+      if (!aiRes.ok) {
+        const detail =
+          vertexErrMsg ||
+          (rawBody.length > 280 ? `${rawBody.slice(0, 280)}…` : rawBody) ||
+          'Vertex AI API の呼び出しに失敗しました。';
+        return { suggestion: '', charCount: 0, httpError: `Vertex AI エラー（${aiRes.status}）: ${detail}` };
+      }
+
+      const blockReason = aiJson.promptFeedback?.blockReason;
+      const usageTotalTokenCount = readUsageTotalTokenCount(aiJson);
+      const suggestion =
+        aiJson.candidates?.[0]?.content?.parts
+          ?.map((part) => (typeof part.text === 'string' ? part.text : ''))
+          .join('')
+          .trim() || '';
+      const trimmed = trimToSentenceBoundary(suggestion, MAX_SUGGESTION_CHARS);
+      return {
+        suggestion: trimmed,
+        charCount: countChars(trimmed),
+        blockReason,
+        usageTotalTokenCount,
+      };
     };
-    try {
-      aiJson = rawBody ? (JSON.parse(rawBody) as typeof aiJson) : {};
-    } catch {
-      console.error(
-        'ai/improvement: Vertex応答がJSONではありません',
-        aiRes.status,
-        rawBody.slice(0, 500)
-      );
-      return NextResponse.json(
-        {
-          error: `Vertex AI からの応答を解釈できませんでした（HTTP ${aiRes.status}）。サーバログを確認してください。`,
-        },
-        { status: 502 }
-      );
+
+    let usageSum = 0;
+    let generated = await generateSuggestion(prompt);
+    if (typeof generated.usageTotalTokenCount === 'number') {
+      usageSum += generated.usageTotalTokenCount;
     }
-
-    const vertexErrMsg =
-      typeof aiJson.error?.message === 'string' ? aiJson.error.message : '';
-
-    if (!aiRes.ok) {
-      const detail =
-        vertexErrMsg ||
-        (rawBody.length > 280 ? `${rawBody.slice(0, 280)}…` : rawBody) ||
-        'Vertex AI API の呼び出しに失敗しました。';
-      console.error('ai/improvement: Vertex HTTP error', aiRes.status, detail);
-      return NextResponse.json(
-        {
-          error: `Vertex AI エラー（${aiRes.status}）: ${detail}`,
-        },
-        { status: 502 }
-      );
+    if (generated.httpError) {
+      console.error('ai/improvement: first generation error', generated.httpError);
+      return NextResponse.json({ error: generated.httpError }, { status: 502 });
     }
-
-    const blockReason = aiJson.promptFeedback?.blockReason;
-    if (blockReason) {
-      console.warn('ai/improvement: prompt blocked', blockReason);
+    if (generated.blockReason) {
+      console.warn('ai/improvement: prompt blocked', generated.blockReason);
       return NextResponse.json(
-        { error: `入力がポリシーにより処理されませんでした（${blockReason}）。表現を変えて再試行してください。` },
+        { error: `入力がポリシーにより処理されませんでした（${generated.blockReason}）。表現を変えて再試行してください。` },
         { status: 422 }
       );
     }
-
-    const suggestion =
-      aiJson.candidates?.[0]?.content?.parts
-        ?.map((part) => (typeof part.text === 'string' ? part.text : ''))
-        .join('')
-        .trim() || '';
-
-    if (!suggestion) {
-      console.error('ai/improvement: empty candidates', JSON.stringify(aiJson).slice(0, 800));
+    if (!generated.suggestion) {
       return NextResponse.json(
-        { error: 'AI改善提案を生成できませんでした（空の応答）。モデル名・権限・リージョンを確認してください。' },
+        { error: 'Aiコーチからのコメントを生成できませんでした（空の応答）。モデル名・権限・リージョンを確認してください。' },
         { status: 502 }
       );
     }
 
-    return NextResponse.json({ suggestion });
+    // 短すぎる応答は、同内容を保持したまま拡張生成を1回だけ試みる
+    if (generated.charCount < MIN_SUGGESTION_CHARS) {
+      const expandPrompt = [
+        prompt,
+        '',
+        '---',
+        '前回の下書き（短すぎたため拡張してください）:',
+        generated.suggestion,
+        '',
+        'この下書きを土台に、意味を変えず、情報を補って160〜300文字、見出し+文章の形で拡張してください。',
+      ].join('\n');
+      const expanded = await generateSuggestion(expandPrompt);
+      if (typeof expanded.usageTotalTokenCount === 'number') {
+        usageSum += expanded.usageTotalTokenCount;
+      }
+      if (!expanded.httpError && !expanded.blockReason && expanded.charCount >= MIN_SUGGESTION_CHARS) {
+        generated = expanded;
+      }
+    }
+
+    const charCount = generated.charCount;
+    const tokenNote =
+      usageSum > 0 ? `\n（使用トークン合計: ${usageSum}）` : '';
+    const suggestionOut = `${generated.suggestion}${tokenNote}`;
+    const charCountOut = countChars(suggestionOut);
+
+    if (ENABLE_AI_PROMPT_LOG) {
+      console.info('ai/improvement response body chars:', charCount);
+      console.info('ai/improvement response total tokens:', usageSum || '(none)');
+      console.info('ai/improvement response begin\n' + suggestionOut + '\nai/improvement response end');
+    }
+    if (charCount < MIN_SUGGESTION_CHARS) {
+      return NextResponse.json(
+        {
+          error: `Aiコーチからのコメントの文字数が短すぎました（${charCount}文字）。入力内容を少し具体化して再実行してください。`,
+        },
+        { status: 502 }
+      );
+    }
+    return NextResponse.json({
+      suggestion: suggestionOut,
+      charCount: charCountOut,
+      usageTotalTokenCount: usageSum > 0 ? usageSum : undefined,
+    });
   } catch (e) {
     console.error('ai/improvement route error:', e);
     if (
@@ -182,7 +323,7 @@ export async function POST(request: NextRequest) {
     }
     if (isFetchAbortOrTimeout(e)) {
       return NextResponse.json(
-        { error: 'AI改善提案の生成がタイムアウトしました。再実行してください。' },
+        { error: 'Aiコーチからのコメントの生成がタイムアウトしました。再実行してください。' },
         { status: 504 }
       );
     }
@@ -211,7 +352,7 @@ export async function POST(request: NextRequest) {
     console.error('ai/improvement route error detail:', detail);
     return NextResponse.json(
       {
-        error: `AI改善提案の生成に失敗しました: ${detail}`,
+        error: `Aiコーチからのコメントの生成に失敗しました: ${detail}`,
       },
       { status: 502 }
     );

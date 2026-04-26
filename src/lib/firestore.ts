@@ -345,12 +345,16 @@ export type Trial4wDailyPlain = {
   eveningSatisfaction: number | null; // 0..10
   eveningEmotionThoughtText: string | null;
   eveningBrake: Trial4wEveningBrake | null;
+  /** 反論できたか（できた／一部できた／できなかった）。旧 free text は eveningBrakeRebuttedText */
+  eveningBrakeRebuttalChoice: Trial4wEveningExecution | null;
   eveningRebuttalText: string | null;
   eveningBrakeWorkedText: string | null;
   eveningBrakeRebuttedText: string | null;
   eveningBrakeWordsText: string | null;
   eveningInsightText: string | null;
   eveningImprovementText: string | null;
+  eveningAiSuggestionText: string | null;
+  eveningAiSuggestionRunCount: number | null;
   eveningMessageToSelfText: string | null;
   eveningTomorrowActionSeedText: string | null;
   eveningTomorrowGoalText: string | null;
@@ -375,12 +379,15 @@ export type Trial4wDailyEncrypted = {
   eveningSatisfaction: number | null;
   eveningEmotionThoughtTextEncrypted: string | null;
   eveningBrake: Trial4wEveningBrake | null;
+  eveningBrakeRebuttalChoice: Trial4wEveningExecution | null;
   eveningRebuttalTextEncrypted: string | null;
   eveningBrakeWorkedTextEncrypted: string | null;
   eveningBrakeRebuttedTextEncrypted: string | null;
   eveningBrakeWordsTextEncrypted: string | null;
   eveningInsightTextEncrypted: string | null;
   eveningImprovementTextEncrypted: string | null;
+  eveningAiSuggestionTextEncrypted: string | null;
+  eveningAiSuggestionRunCount: number | null;
   eveningMessageToSelfTextEncrypted: string | null;
   eveningTomorrowActionSeedTextEncrypted: string | null;
   eveningTomorrowGoalTextEncrypted: string | null;
@@ -448,12 +455,15 @@ export async function getTrial4wDailyPlain(
       eveningSatisfaction: null,
       eveningEmotionThoughtText: null,
       eveningBrake: null,
+      eveningBrakeRebuttalChoice: null,
       eveningRebuttalText: null,
       eveningBrakeWorkedText: null,
       eveningBrakeRebuttedText: null,
       eveningBrakeWordsText: null,
       eveningInsightText: null,
       eveningImprovementText: null,
+      eveningAiSuggestionText: null,
+      eveningAiSuggestionRunCount: null,
       eveningMessageToSelfText: null,
       eveningTomorrowActionSeedText: null,
       eveningTomorrowGoalText: null,
@@ -509,12 +519,23 @@ export async function getTrial4wDailyPlain(
       data.eveningBrake === 'yes' || data.eveningBrake === 'partial' || data.eveningBrake === 'no'
         ? data.eveningBrake
         : null,
+    eveningBrakeRebuttalChoice:
+      data.eveningBrakeRebuttalChoice === 'done' ||
+      data.eveningBrakeRebuttalChoice === 'partial' ||
+      data.eveningBrakeRebuttalChoice === 'none'
+        ? data.eveningBrakeRebuttalChoice
+        : null,
     eveningRebuttalText,
     eveningBrakeWorkedText: await decryptOrNull(data.eveningBrakeWorkedTextEncrypted),
     eveningBrakeRebuttedText,
     eveningBrakeWordsText,
     eveningInsightText: await decryptOrNull(data.eveningInsightTextEncrypted),
     eveningImprovementText: await decryptOrNull(data.eveningImprovementTextEncrypted),
+    eveningAiSuggestionText: await decryptOrNull(data.eveningAiSuggestionTextEncrypted),
+    eveningAiSuggestionRunCount:
+      typeof data.eveningAiSuggestionRunCount === 'number'
+        ? Math.max(0, Math.floor(data.eveningAiSuggestionRunCount))
+        : null,
     eveningMessageToSelfText: await decryptOrNull(data.eveningMessageToSelfTextEncrypted),
     eveningTomorrowActionSeedText: await decryptOrNull(data.eveningTomorrowActionSeedTextEncrypted),
     eveningTomorrowGoalText,
@@ -593,12 +614,23 @@ export async function listJournalDailyPlainInRange(params: {
         raw.eveningBrake === 'yes' || raw.eveningBrake === 'partial' || raw.eveningBrake === 'no'
           ? raw.eveningBrake
           : null,
+      eveningBrakeRebuttalChoice:
+        raw.eveningBrakeRebuttalChoice === 'done' ||
+        raw.eveningBrakeRebuttalChoice === 'partial' ||
+        raw.eveningBrakeRebuttalChoice === 'none'
+          ? raw.eveningBrakeRebuttalChoice
+          : null,
       eveningRebuttalText,
       eveningBrakeWorkedText: await decryptOrNull(raw.eveningBrakeWorkedTextEncrypted),
       eveningBrakeRebuttedText,
       eveningBrakeWordsText,
       eveningInsightText: await decryptOrNull(raw.eveningInsightTextEncrypted),
       eveningImprovementText: await decryptOrNull(raw.eveningImprovementTextEncrypted),
+      eveningAiSuggestionText: await decryptOrNull(raw.eveningAiSuggestionTextEncrypted),
+      eveningAiSuggestionRunCount:
+        typeof raw.eveningAiSuggestionRunCount === 'number'
+          ? Math.max(0, Math.floor(raw.eveningAiSuggestionRunCount))
+          : null,
       eveningMessageToSelfText: await decryptOrNull(raw.eveningMessageToSelfTextEncrypted),
       eveningTomorrowActionSeedText: await decryptOrNull(raw.eveningTomorrowActionSeedTextEncrypted),
       eveningTomorrowGoalText,
@@ -637,8 +669,18 @@ export async function saveTrial4wDailyPlain(params: {
   if ('eveningBrake' in params.patch) {
     payload.eveningBrake = params.patch.eveningBrake ?? null;
   }
+  if ('eveningBrakeRebuttalChoice' in params.patch) {
+    const c = params.patch.eveningBrakeRebuttalChoice;
+    payload.eveningBrakeRebuttalChoice =
+      c === 'done' || c === 'partial' || c === 'none' ? c : null;
+  }
   if ('eveningSatisfaction' in params.patch) {
     payload.eveningSatisfaction = clampSatisfaction(params.patch.eveningSatisfaction);
+  }
+  if ('eveningAiSuggestionRunCount' in params.patch) {
+    const n = params.patch.eveningAiSuggestionRunCount;
+    payload.eveningAiSuggestionRunCount =
+      typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
   }
   if ('eveningTomorrowImagingDone' in params.patch) {
     payload.eveningTomorrowImagingDone =
@@ -689,6 +731,9 @@ export async function saveTrial4wDailyPlain(params: {
   }
   if ('eveningImprovementText' in params.patch) {
     encFields.push(['eveningImprovementTextEncrypted', normalizeText(params.patch.eveningImprovementText)]);
+  }
+  if ('eveningAiSuggestionText' in params.patch) {
+    encFields.push(['eveningAiSuggestionTextEncrypted', normalizeText(params.patch.eveningAiSuggestionText)]);
   }
   if ('eveningMessageToSelfText' in params.patch) {
     encFields.push(['eveningMessageToSelfTextEncrypted', normalizeText(params.patch.eveningMessageToSelfText)]);

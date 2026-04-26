@@ -169,7 +169,7 @@
 
 ## 参照: Vertex AI（実装済み内部 API）
 
-4週間トライアル「AI改善提案」用の **`POST /api/ai/improvement`** の GCP 設定・環境変数・REST 仕様・トラブルシュートは、実装ドキュメント **[VERTEX_AI_TRIAL_IMPROVEMENT.md](./VERTEX_AI_TRIAL_IMPROVEMENT.md)** に集約している。
+4週間トライアル「Aiコーチからのコメント」用の **`POST /api/ai/improvement`** の GCP 設定・環境変数・REST 仕様・トラブルシュートは、実装ドキュメント **[VERTEX_AI_TRIAL_IMPROVEMENT.md](./VERTEX_AI_TRIAL_IMPROVEMENT.md)** に集約している。
 
 ## 🔄 設計書の更新方針
 

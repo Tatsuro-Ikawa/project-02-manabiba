@@ -5,7 +5,7 @@
 マネジメント日誌（`journal_daily` / `journal_weekly` / 将来 `journal_monthly`）について、**人間パーソナルコーチ**と **AI コーチ**の役割を区別し、**サブスクのコース（プラン）**で ON/OFF を切り替えるための**正本**とする。
 
 - **関連**: [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)（アファメーション共有）、[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §5、[01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)
-- **実装（Vertex・トライアル朝晩の AI 改善提案 PoC）**: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)（環境変数・IAM・モデル ID・REST エンドポイント）
+- **実装（Vertex・トライアル朝晩の「Aiコーチからのコメント」PoC）**: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)（環境変数・IAM・モデル ID・REST エンドポイント・短文時の再生成・トークン付記）
 
 ---
 

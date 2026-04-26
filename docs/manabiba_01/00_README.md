@@ -44,7 +44,7 @@
 5. **[A-11 コーチ共有データ構造（現状案）](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)**
    - 割当 `coach_client_assignments`、共有メタ・`coach_share_rounds` / `coach_comment_versions`、フィールド名クイックリファレンス（[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) A-11 と同期）
 
-6. **Vertex AI（トライアル「AI改善提案」）開発者向け** — [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)（`docs/` 直下。GCP 設定・環境変数・REST 仕様・トラブルシュート）
+6. **Vertex AI（トライアル「Aiコーチからのコメント」）開発者向け** — [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)（`docs/` 直下。GCP 設定・環境変数・REST 仕様・トラブルシュート）
 
 ### 同梱ファイル一覧（層別・接頭語）
 
