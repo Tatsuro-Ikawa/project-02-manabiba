@@ -32,10 +32,12 @@
 | 変数名 | 必須 | 説明 |
 |--------|------|------|
 | `GOOGLE_CLOUD_PROJECT` | はい | GCP プロジェクト ID（例: `plandosee-project-01`） |
-| `GOOGLE_APPLICATION_CREDENTIALS` | はい | **サービスアカウント鍵の JSON ファイル**への絶対パス。**ディレクトリやプロジェクトルートは不可** |
+| `GCP_SA_KEY_JSON` | 推奨（Vercel） | サービスアカウント鍵 JSON の**全文文字列**。設定時はこれを優先して認証する |
+| `GOOGLE_APPLICATION_CREDENTIALS` | ローカルで推奨 | **サービスアカウント鍵の JSON ファイル**への絶対パス。**ディレクトリやプロジェクトルートは不可** |
 | `GOOGLE_CLOUD_LOCATION` | いいえ | 既定: `asia-northeast1`。モデルリソース名の `locations/...` に使う |
 | `VERTEX_AI_GEMINI_MODEL` | いいえ | 既定: `gemini-2.5-flash`（コード側フォールバックと一致） |
 
+認証の優先順位は **`GCP_SA_KEY_JSON` → `GOOGLE_APPLICATION_CREDENTIALS`**。  
 `.env.local` を変更したら **Next の dev サーバーを再起動**してください。
 
 ---

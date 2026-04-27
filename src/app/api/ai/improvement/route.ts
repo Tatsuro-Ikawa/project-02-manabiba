@@ -26,6 +26,7 @@ function countChars(text: string): number {
 }
 
 const AI_JSON_LOG_MAX_CHARS = 16000;
+const GCP_SA_KEY_JSON_ENV = 'GCP_SA_KEY_JSON';
 
 function safeJsonForLog(obj: unknown, maxLen: number): string {
   try {
@@ -65,6 +66,46 @@ function isFetchAbortOrTimeout(e: unknown): boolean {
     if (e.name === 'TimeoutError' || e.name === 'AbortError') return true;
   }
   return false;
+}
+
+function buildGoogleAuth(): GoogleAuth {
+  const json = process.env[GCP_SA_KEY_JSON_ENV];
+  if (!json || !json.trim()) {
+    return new GoogleAuth({
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    });
+  }
+
+  type ServiceAccountJson = {
+    client_email?: string;
+    private_key?: string;
+    project_id?: string;
+  };
+
+  let parsed: ServiceAccountJson;
+  try {
+    parsed = JSON.parse(json) as ServiceAccountJson;
+  } catch {
+    throw new Error(
+      `${GCP_SA_KEY_JSON_ENV} は有効な JSON 文字列ではありません。サービスアカウント鍵 JSON 全文を設定してください。`
+    );
+  }
+
+  if (
+    typeof parsed.client_email !== 'string' ||
+    !parsed.client_email ||
+    typeof parsed.private_key !== 'string' ||
+    !parsed.private_key
+  ) {
+    throw new Error(
+      `${GCP_SA_KEY_JSON_ENV} に必要なキー（client_email/private_key）が不足しています。`
+    );
+  }
+
+  return new GoogleAuth({
+    credentials: parsed,
+    scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -137,9 +178,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const auth = new GoogleAuth({
-      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-    });
+    const auth = buildGoogleAuth();
     const client = await auth.getClient();
     const token = await client.getAccessToken();
     const accessToken = token.token;
@@ -316,7 +355,7 @@ export async function POST(request: NextRequest) {
       const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || '(未設定)';
       return NextResponse.json(
         {
-          error: `認証鍵ファイルが見つかりません。GOOGLE_APPLICATION_CREDENTIALS を確認してください: ${credPath}`,
+          error: `認証鍵ファイルが見つかりません。GOOGLE_APPLICATION_CREDENTIALS を確認してください: ${credPath}。Vercel では ${GCP_SA_KEY_JSON_ENV} の利用を推奨します。`,
         },
         { status: 500 }
       );
@@ -337,6 +376,7 @@ export async function POST(request: NextRequest) {
           error: [
             'GOOGLE_APPLICATION_CREDENTIALS の値が無効です。',
             'サービスアカウントの「.json 鍵ファイル」へのフルパスを指定してください（プロジェクトフォルダやディレクトリは不可）。',
+            `Vercel では ${GCP_SA_KEY_JSON_ENV} に JSON 全文を設定する方法を推奨します。`,
             `現在の値: ${credPath}`,
           ].join(' '),
         },
