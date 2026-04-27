@@ -40,6 +40,50 @@
 認証の優先順位は **`GCP_SA_KEY_JSON` → `GOOGLE_APPLICATION_CREDENTIALS`**。  
 `.env.local` を変更したら **Next の dev サーバーを再起動**してください。
 
+### 2.1 Vercel の Branch / Environment 運用ルール
+
+このプロジェクトでは、Vercel の本番運用を次の前提で整理する。
+
+- **Production Branch**: `main`
+- `main` への push は **Production Deployment**（本番 URL）
+- `main` 以外（例: `feature/*`）への push は **Preview Deployment**（検証 URL）
+
+> Environment（`Production` / `Preview` / `Development`）は「実行環境の種類」、  
+> Branch は「どの Environment にデプロイされるか」を決めるトリガー。
+
+### 2.2 Vercel 環境変数の推奨配置（本プロジェクト）
+
+| 変数名 | Production | Preview | Development |
+|--------|------------|---------|-------------|
+| `GOOGLE_CLOUD_PROJECT` | 必須 | AI を検証するなら設定 | 任意 |
+| `GCP_SA_KEY_JSON` | 必須（推奨） | AI を検証するなら設定 | 任意 |
+| `GOOGLE_CLOUD_LOCATION` | 任意 | 任意 | 任意 |
+| `VERTEX_AI_GEMINI_MODEL` | 任意 | 任意 | 任意 |
+
+- **本番で AI を動かす最小要件**: `Production` に `GOOGLE_CLOUD_PROJECT` と `GCP_SA_KEY_JSON`
+- **ローカル開発中心**なら `Development` は未設定でもよい（`.env.local` を利用）
+- `GOOGLE_APPLICATION_CREDENTIALS` はローカル向け。Vercel では通常 `GCP_SA_KEY_JSON` を使う
+
+### 2.3 Vercel 設定手順（UI）
+
+1. Vercel の対象プロジェクトを開く
+2. **Settings → Git** で `Production Branch = main` を確認
+3. **Settings → Environment Variables** で `Production` に以下を登録
+   - `GOOGLE_CLOUD_PROJECT`
+   - `GCP_SA_KEY_JSON`（サービスアカウント鍵 JSON 全文）
+4. 必要なら `Preview` にも同じ値を登録（検証環境でも AI を使う場合）
+5. 保存後、`main` の最新デプロイを **Redeploy**
+
+### 2.4 反映確認チェックリスト（ADC エラー回避）
+
+`Could not load the default credentials` が出る場合、次を上から順に確認する。
+
+1. 変数名が **`GCP_SA_KEY_JSON`** と完全一致している
+2. `Environment = Production` に設定されている
+3. Branch Filter が `main`（または未指定）になっている
+4. 変数保存後に本番デプロイを Redeploy 済み
+5. デプロイ対象コミットが `GCP_SA_KEY_JSON` 対応コードを含んでいる
+
 ---
 
 ## 3. GCP 側の準備
