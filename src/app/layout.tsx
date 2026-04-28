@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { SubscriptionProvider } from "@/context/SubscriptionContext";
 import { ViewModeProvider } from "@/context/ViewModeContext";
+import { PwaRegister } from "@/components/PwaRegister";
 
 const inter = Inter({ subsets: ["latin"] });
 const notoSansJP = Noto_Sans_JP({
@@ -15,6 +16,17 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "人生学び場 こころ道場",
   description: "AI×セルフマネジメント×伴走コーチングで、「なりたい自分」へ確実に歩むための場",
+  appleWebApp: {
+    capable: true,
+    title: "こころ道場",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1a1a2e",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -31,6 +43,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} ${notoSansJP.variable}`}>
+        <PwaRegister />
         <AuthProvider>
           <SubscriptionProvider>
             <ViewModeProvider>
