@@ -821,29 +821,68 @@ const JOURNAL_WEEKLY_SUBCOLLECTION = 'journal_weekly';
 export type JournalWeeklyPlain = {
   weekStartKey: string;
   tz: 'Asia/Tokyo';
-  /** 今週の行動目標 */
+  /** 今週の行動（目標） */
   thisWeekActionGoalText: string | null;
-  /** 行動内容と成果 */
-  actionContentAndOutcomeText: string | null;
-  /** 行動時の思考・感情 */
-  emotionAndThoughtText: string | null;
-  /** 今週の気づき・感動・学び */
+  /** 今週の行動（内容） */
+  thisWeekActionContentText: string | null;
+  /** 今週の振り返り：行動面（手動入力 or AI 出力先） */
+  weeklyActionReviewText: string | null;
+  /** 今週の振り返り：成果面（手動入力 or AI 出力先） */
+  weeklyOutcomeReviewText: string | null;
+  /** 今週の振り返り：指標の達成度（テキスト） */
+  weeklyMetricAchievementText: string | null;
+  /** 今週の振り返り：心理面（行動時の思考・感情の変化） */
+  weeklyPsychologyText: string | null;
+  /** 気づき・学び・成長 */
   insightAndLearningText: string | null;
-  /** 今週の改善まとめ */
-  improvementSummaryText: string | null;
-  /** 来週の行動目標 */
-  nextWeekActionGoalText: string | null;
+  /** 課題と原因の深掘り */
+  weeklyIssueRootCauseText: string | null;
+  /** 来週への改善点 */
+  nextWeekImprovementText: string | null;
+  /** Ai改善提案（任意。生成ロジックは別途） */
+  aiImprovementSuggestionText: string | null;
+  /** 来週の行動：目標（一文で） */
+  nextWeekGoalText: string | null;
+  /** 来週の行動：行動内容（具体的に） */
+  nextWeekActionContentText: string | null;
+  /** 今週の自分へのねぎらいの言葉 */
+  weeklySelfPraiseText: string | null;
+
+  /**
+   * 互換（旧）: 以前の週次UIで使っていた統合欄。
+   * 既存ドキュメントの読み出し互換のため残す（新UIでは原則使用しない）。
+   */
+  actionContentAndOutcomeText?: string | null;
+  /** 互換（旧）: 今週の改善まとめ */
+  improvementSummaryText?: string | null;
+  /** 互換（旧）: 来週の行動目標（単一欄） */
+  nextWeekActionGoalText?: string | null;
+  /** 互換（旧）: 行動時の思考・感情（単一欄） */
+  emotionAndThoughtText?: string | null;
 };
 
 export type JournalWeeklyEncrypted = {
   weekStartKey: string;
   tz: 'Asia/Tokyo';
   thisWeekActionGoalTextEncrypted: string | null;
-  actionContentAndOutcomeTextEncrypted: string | null;
-  emotionAndThoughtTextEncrypted: string | null;
+  thisWeekActionContentTextEncrypted: string | null;
+  weeklyActionReviewTextEncrypted: string | null;
+  weeklyOutcomeReviewTextEncrypted: string | null;
+  weeklyMetricAchievementTextEncrypted: string | null;
+  weeklyPsychologyTextEncrypted: string | null;
   insightAndLearningTextEncrypted: string | null;
-  improvementSummaryTextEncrypted: string | null;
-  nextWeekActionGoalTextEncrypted: string | null;
+  weeklyIssueRootCauseTextEncrypted: string | null;
+  nextWeekImprovementTextEncrypted: string | null;
+  aiImprovementSuggestionTextEncrypted: string | null;
+  nextWeekGoalTextEncrypted: string | null;
+  nextWeekActionContentTextEncrypted: string | null;
+  weeklySelfPraiseTextEncrypted: string | null;
+
+  // 互換（旧）: 過去フィールド（残して読み出し可能にする）
+  actionContentAndOutcomeTextEncrypted?: string | null;
+  improvementSummaryTextEncrypted?: string | null;
+  nextWeekActionGoalTextEncrypted?: string | null;
+  emotionAndThoughtTextEncrypted?: string | null;
   createdAt?: Timestamp | FieldValue;
   updatedAt?: Timestamp | FieldValue;
 };
@@ -853,11 +892,18 @@ export function journalWeeklyPlainEmpty(weekStartKey: string): JournalWeeklyPlai
     weekStartKey,
     tz: 'Asia/Tokyo',
     thisWeekActionGoalText: null,
-    actionContentAndOutcomeText: null,
-    emotionAndThoughtText: null,
+    thisWeekActionContentText: null,
+    weeklyActionReviewText: null,
+    weeklyOutcomeReviewText: null,
+    weeklyMetricAchievementText: null,
+    weeklyPsychologyText: null,
     insightAndLearningText: null,
-    improvementSummaryText: null,
-    nextWeekActionGoalText: null,
+    weeklyIssueRootCauseText: null,
+    nextWeekImprovementText: null,
+    aiImprovementSuggestionText: null,
+    nextWeekGoalText: null,
+    nextWeekActionContentText: null,
+    weeklySelfPraiseText: null,
   };
 }
 
@@ -884,9 +930,22 @@ export async function getJournalWeeklyPlain(
     weekStartKey,
     tz: 'Asia/Tokyo',
     thisWeekActionGoalText: await decryptOrNull(data.thisWeekActionGoalTextEncrypted),
+    thisWeekActionContentText: await decryptOrNull(data.thisWeekActionContentTextEncrypted),
+    weeklyActionReviewText: await decryptOrNull(data.weeklyActionReviewTextEncrypted),
+    weeklyOutcomeReviewText: await decryptOrNull(data.weeklyOutcomeReviewTextEncrypted),
+    weeklyMetricAchievementText: await decryptOrNull(data.weeklyMetricAchievementTextEncrypted),
+    weeklyPsychologyText: await decryptOrNull(data.weeklyPsychologyTextEncrypted),
+    insightAndLearningText: await decryptOrNull(data.insightAndLearningTextEncrypted),
+    weeklyIssueRootCauseText: await decryptOrNull(data.weeklyIssueRootCauseTextEncrypted),
+    nextWeekImprovementText: await decryptOrNull(data.nextWeekImprovementTextEncrypted),
+    aiImprovementSuggestionText: await decryptOrNull(data.aiImprovementSuggestionTextEncrypted),
+    nextWeekGoalText: await decryptOrNull(data.nextWeekGoalTextEncrypted),
+    nextWeekActionContentText: await decryptOrNull(data.nextWeekActionContentTextEncrypted),
+    weeklySelfPraiseText: await decryptOrNull(data.weeklySelfPraiseTextEncrypted),
+
+    // 互換（旧）
     actionContentAndOutcomeText: await decryptOrNull(data.actionContentAndOutcomeTextEncrypted),
     emotionAndThoughtText: await decryptOrNull(data.emotionAndThoughtTextEncrypted),
-    insightAndLearningText: await decryptOrNull(data.insightAndLearningTextEncrypted),
     improvementSummaryText: await decryptOrNull(data.improvementSummaryTextEncrypted),
     nextWeekActionGoalText: await decryptOrNull(data.nextWeekActionGoalTextEncrypted),
   };
@@ -911,20 +970,41 @@ export async function saveJournalWeeklyPlain(params: {
   if ('thisWeekActionGoalText' in params.patch) {
     encPairs.push(['thisWeekActionGoalTextEncrypted', normalizeText(params.patch.thisWeekActionGoalText)]);
   }
-  if ('actionContentAndOutcomeText' in params.patch) {
-    encPairs.push(['actionContentAndOutcomeTextEncrypted', normalizeText(params.patch.actionContentAndOutcomeText)]);
+  if ('thisWeekActionContentText' in params.patch) {
+    encPairs.push(['thisWeekActionContentTextEncrypted', normalizeText(params.patch.thisWeekActionContentText)]);
   }
-  if ('emotionAndThoughtText' in params.patch) {
-    encPairs.push(['emotionAndThoughtTextEncrypted', normalizeText(params.patch.emotionAndThoughtText)]);
+  if ('weeklyActionReviewText' in params.patch) {
+    encPairs.push(['weeklyActionReviewTextEncrypted', normalizeText(params.patch.weeklyActionReviewText)]);
+  }
+  if ('weeklyOutcomeReviewText' in params.patch) {
+    encPairs.push(['weeklyOutcomeReviewTextEncrypted', normalizeText(params.patch.weeklyOutcomeReviewText)]);
+  }
+  if ('weeklyMetricAchievementText' in params.patch) {
+    encPairs.push(['weeklyMetricAchievementTextEncrypted', normalizeText(params.patch.weeklyMetricAchievementText)]);
+  }
+  if ('weeklyPsychologyText' in params.patch) {
+    encPairs.push(['weeklyPsychologyTextEncrypted', normalizeText(params.patch.weeklyPsychologyText)]);
   }
   if ('insightAndLearningText' in params.patch) {
     encPairs.push(['insightAndLearningTextEncrypted', normalizeText(params.patch.insightAndLearningText)]);
   }
-  if ('improvementSummaryText' in params.patch) {
-    encPairs.push(['improvementSummaryTextEncrypted', normalizeText(params.patch.improvementSummaryText)]);
+  if ('weeklyIssueRootCauseText' in params.patch) {
+    encPairs.push(['weeklyIssueRootCauseTextEncrypted', normalizeText(params.patch.weeklyIssueRootCauseText)]);
   }
-  if ('nextWeekActionGoalText' in params.patch) {
-    encPairs.push(['nextWeekActionGoalTextEncrypted', normalizeText(params.patch.nextWeekActionGoalText)]);
+  if ('nextWeekImprovementText' in params.patch) {
+    encPairs.push(['nextWeekImprovementTextEncrypted', normalizeText(params.patch.nextWeekImprovementText)]);
+  }
+  if ('aiImprovementSuggestionText' in params.patch) {
+    encPairs.push(['aiImprovementSuggestionTextEncrypted', normalizeText(params.patch.aiImprovementSuggestionText)]);
+  }
+  if ('nextWeekGoalText' in params.patch) {
+    encPairs.push(['nextWeekGoalTextEncrypted', normalizeText(params.patch.nextWeekGoalText)]);
+  }
+  if ('nextWeekActionContentText' in params.patch) {
+    encPairs.push(['nextWeekActionContentTextEncrypted', normalizeText(params.patch.nextWeekActionContentText)]);
+  }
+  if ('weeklySelfPraiseText' in params.patch) {
+    encPairs.push(['weeklySelfPraiseTextEncrypted', normalizeText(params.patch.weeklySelfPraiseText)]);
   }
 
   for (const [k, t] of encPairs) {
@@ -944,10 +1024,12 @@ export async function saveJournalWeeklyPlain(params: {
 export async function carryOverNextWeekGoalToNextThisWeek(params: {
   uid: string;
   targetWeekStartKey: string;
-  nextWeekActionGoalText: string | null | undefined;
+  nextWeekGoalText: string | null | undefined;
+  nextWeekActionContentText?: string | null | undefined;
 }): Promise<void> {
-  const goal = normalizeText(params.nextWeekActionGoalText);
-  if (!goal) return;
+  const goal = normalizeText(params.nextWeekGoalText);
+  const content = normalizeText(params.nextWeekActionContentText);
+  if (!goal && !content) return;
   if (!params.targetWeekStartKey) return;
 
   const ref = doc(db, 'users', params.uid, JOURNAL_WEEKLY_SUBCOLLECTION, params.targetWeekStartKey);
@@ -956,35 +1038,42 @@ export async function carryOverNextWeekGoalToNextThisWeek(params: {
   await runTransaction(db, async (tx: Transaction) => {
     const snap = await tx.get(ref);
     const existing = snap.exists() ? (snap.data() as Partial<JournalWeeklyEncrypted>) : null;
-    const already =
+    const alreadyGoal =
       typeof existing?.thisWeekActionGoalTextEncrypted === 'string' && !!existing.thisWeekActionGoalTextEncrypted;
+    const alreadyContent =
+      typeof existing?.thisWeekActionContentTextEncrypted === 'string' && !!existing.thisWeekActionContentTextEncrypted;
 
     if (!snap.exists()) {
+      const patch: Partial<JournalWeeklyEncrypted> = {
+        weekStartKey: params.targetWeekStartKey,
+        tz: 'Asia/Tokyo',
+        createdAt: now as FieldValue,
+        updatedAt: now as FieldValue,
+      };
+      if (goal) patch.thisWeekActionGoalTextEncrypted = await encrypt(goal, params.uid);
+      if (content) patch.thisWeekActionContentTextEncrypted = await encrypt(content, params.uid);
       tx.set(
         ref,
-        {
-          weekStartKey: params.targetWeekStartKey,
-          tz: 'Asia/Tokyo',
-          thisWeekActionGoalTextEncrypted: already ? existing!.thisWeekActionGoalTextEncrypted : await encrypt(goal, params.uid),
-          createdAt: now as FieldValue,
-          updatedAt: now as FieldValue,
-        } as Record<string, unknown>,
+        patch as Record<string, unknown>,
         { merge: true }
       );
       return;
     }
 
-    if (!already) {
-      tx.set(
-        ref,
-        {
-          tz: 'Asia/Tokyo',
-          thisWeekActionGoalTextEncrypted: await encrypt(goal, params.uid),
-          updatedAt: now as FieldValue,
-        } as Record<string, unknown>,
-        { merge: true }
-      );
+    const update: Partial<JournalWeeklyEncrypted> = {
+      tz: 'Asia/Tokyo',
+      updatedAt: now as FieldValue,
+    };
+    let changed = false;
+    if (!alreadyGoal && goal) {
+      update.thisWeekActionGoalTextEncrypted = await encrypt(goal, params.uid);
+      changed = true;
     }
+    if (!alreadyContent && content) {
+      update.thisWeekActionContentTextEncrypted = await encrypt(content, params.uid);
+      changed = true;
+    }
+    if (changed) tx.set(ref, update as Record<string, unknown>, { merge: true });
   });
 }
 

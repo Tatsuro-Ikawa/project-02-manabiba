@@ -16,10 +16,6 @@ import {
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
 import {
-  journalShowWeeklyActionContentAndOutcome,
-  journalShowWeeklyEmotionAndThought,
-  journalShowWeeklyImprovementSummary,
-  journalShowWeeklyNextWeekGoal,
   journalShowWeeklySatisfactionChart,
 } from '@/lib/journalDetailLevel';
 import {
@@ -198,6 +194,40 @@ export default function TrialWeekly() {
     [user, data]
   );
 
+  const generateAiWeeklyReport = useCallback(async () => {
+    if (!user || !data) return;
+    const doneDays = weekDates.filter((dk) => dk <= todayKey && dailyByDateKey[dk]?.eveningExecution === 'done').length;
+    const partialDays = weekDates.filter((dk) => dk <= todayKey && dailyByDateKey[dk]?.eveningExecution === 'partial').length;
+    const noneDays = weekDates.filter((dk) => dk <= todayKey && dailyByDateKey[dk]?.eveningExecution === 'none').length;
+
+    const actionText = [
+      '【行動面】',
+      `今週は「できた」${doneDays}日、「一部できた」${partialDays}日、「できなかった」${noneDays}日でした。`,
+      'できた日の条件（時間帯・環境・きっかけ）を1つ特定し、来週はその条件を再現してみましょう。',
+    ].join('\n');
+
+    const outcomeText = [
+      '【成果面】',
+      `満足度の平均は ${satisfactionStats.avg == null ? '—' : satisfactionStats.avg.toFixed(1)} / 10 でした。`,
+      '満足度が高い日/低い日の差を1つだけ言語化し、来週は「高い日」の要素を小さく足してみましょう。',
+    ].join('\n');
+
+    const psychologyText = [
+      '【心理面】',
+      '行動前・行動中・行動後で、思考（捉え方）と感情がどう変化したかを1〜2行でまとめましょう。',
+      'つまずきがあった場合は「どんなブレーキが働いたか」「反論の言葉」を来週の支えとして再利用できる形に整えるのがおすすめです。',
+    ].join('\n');
+
+    const patch: Partial<JournalWeeklyPlain> = {
+      weeklyActionReviewText: actionText,
+      weeklyOutcomeReviewText: outcomeText,
+      weeklyPsychologyText: psychologyText,
+    };
+
+    setData((prev) => (prev ? { ...prev, ...patch } : prev));
+    await savePatch(patch);
+  }, [user, data, weekDates, todayKey, dailyByDateKey, satisfactionStats, savePatch]);
+
   const getBaseWeekStartKey = useCallback(() => {
     return (
       weekStartKey ||
@@ -221,7 +251,8 @@ export default function TrialWeekly() {
       await carryOverNextWeekGoalToNextThisWeek({
         uid: user.uid,
         targetWeekStartKey: nextKey,
-        nextWeekActionGoalText: data.nextWeekActionGoalText,
+        nextWeekGoalText: data.nextWeekGoalText,
+        nextWeekActionContentText: data.nextWeekActionContentText,
       });
       setWeekStartKey(nextKey);
     } catch (e) {
@@ -332,144 +363,230 @@ export default function TrialWeekly() {
 
         <TrialSaveStatusLine message={msg} />
 
-        <div className="action-sub-section" data-section="weekly-goal">
-          <h3>今週の行動目標</h3>
+        <div className="action-sub-section" data-section="weekly-action">
+          <h3>今週の行動</h3>
           <WeeklyTextRow
-            label="目標"
+            label="◇行動目標：何を実行する（1文で）"
             value={data.thisWeekActionGoalText ?? ''}
             disabled={saving}
             onChange={(v) => setData((prev) => (prev ? { ...prev, thisWeekActionGoalText: v } : prev))}
             onBlur={() => void savePatch({ thisWeekActionGoalText: data.thisWeekActionGoalText })}
-            placeholder="入力してください"
+            placeholder="例：毎朝10分、振り返りを書く"
+          />
+          <WeeklyTextRow
+            label="◇行動内容：どのように"
+            value={data.thisWeekActionContentText ?? ''}
+            disabled={saving}
+            onChange={(v) => setData((prev) => (prev ? { ...prev, thisWeekActionContentText: v } : prev))}
+            onBlur={() => void savePatch({ thisWeekActionContentText: data.thisWeekActionContentText })}
+            placeholder="例：起床後すぐに机に座り、昨日の行動と気づきを3行で書く"
           />
         </div>
 
-        <div className="action-sub-section" data-section="weekly-results">
-          <h3>行動の結果</h3>
-          <p className="text-sm text-gray-600 mb-3">各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。</p>
-          <div className="weekly-result-grid" role="grid" aria-label="行動の結果（7日）">
-            {weekDates.map((dk) => {
-              const d = dailyByDateKey[dk];
-              const m = computeMorningSymbol(d, dk);
-              const e = computeEveningSymbol(d, dk);
-              const [yy, mm, dd] = dk.split('-').map((x) => Number(x));
-              const wd = getJsWeekdayInTokyo(dk);
-              return (
-                <div key={dk} className="weekly-result-cell" role="row">
-                  <div className="weekly-result-date">{mm}/{dd}</div>
-                  <div className="weekly-result-dow">{dowJa[wd]}</div>
-                  <div className="weekly-result-symbols">
-                    <button type="button" className={`weekly-symbol ${m.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 朝`}>
-                      {m.sym}
-                    </button>
-                    <button type="button" className={`weekly-symbol ${e.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 晩`}>
-                      {e.sym}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="action-sub-section" data-section="weekly-review">
+        <div className="action-sub-section" data-section="weekly-reflection">
           <h3>今週の振り返り</h3>
-          <div className="weekly-satisfaction">
-            <div className="weekly-satisfaction-row">
+
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-2">
               <div className="label-wrap">
-                <span>満足度（今週の朝・晩の平均）</span>
+                <span>◇Ai レポート作成</span>
               </div>
-              <div className="weekly-satisfaction-value">
-                {satisfactionStats.avg == null ? '—' : satisfactionStats.avg.toFixed(1)} 点/10点
-                {satisfactionStats.count > 0 ? (
-                  <span className="weekly-satisfaction-note">（{satisfactionStats.count}日分）</span>
-                ) : null}
-              </div>
+              <button
+                type="button"
+                className="trial-ai-btn"
+                disabled={saving}
+                onClick={() => void generateAiWeeklyReport()}
+              >
+                Aiレポート作成
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">
+              ボタンを押すと「行動面」「成果面」「心理面」の入力欄に下書きを自動で出力します（手動で編集できます）。
+            </p>
+          </div>
+
+          <div className="action-sub-section" data-section="weekly-action-aspect">
+            <h4>◇行動面</h4>
+            <p className="text-sm text-gray-600 mb-3">各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。</p>
+            <div className="weekly-result-grid" role="grid" aria-label="行動の結果（7日）">
+              {weekDates.map((dk) => {
+                const d = dailyByDateKey[dk];
+                const m = computeMorningSymbol(d, dk);
+                const e = computeEveningSymbol(d, dk);
+                const [, mm, dd] = dk.split('-').map((x) => Number(x));
+                const wd = getJsWeekdayInTokyo(dk);
+                return (
+                  <div key={dk} className="weekly-result-cell" role="row">
+                    <div className="weekly-result-date">{mm}/{dd}</div>
+                    <div className="weekly-result-dow">{dowJa[wd]}</div>
+                    <div className="weekly-result-symbols">
+                      <button type="button" className={`weekly-symbol ${m.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 朝`}>
+                        {m.sym}
+                      </button>
+                      <button type="button" className={`weekly-symbol ${e.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 晩`}>
+                        {e.sym}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            {journalShowWeeklySatisfactionChart(level) ? (
-              <div className="weekly-satisfaction-chart" aria-label="満足度（折れ線）">
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={satisfactionChartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} />
-                    <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} allowDecimals={false} />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="satisfaction"
-                      stroke="var(--color-primary)"
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                      connectNulls={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+            <WeeklyTextRow
+              label="・行動の振り返り"
+              value={data.weeklyActionReviewText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, weeklyActionReviewText: v } : prev))}
+              onBlur={() => void savePatch({ weeklyActionReviewText: data.weeklyActionReviewText })}
+              placeholder="ここに、Aiレポート作成のアウトプット（行動面）を入力します。手動入力も可能です。"
+            />
+          </div>
+
+          <div className="action-sub-section" data-section="weekly-outcome-aspect">
+            <h4>◇成果面</h4>
+            <div className="weekly-satisfaction">
+              <div className="weekly-satisfaction-row">
+                <div className="label-wrap">
+                  <span>満足度（今週の朝・晩の平均）</span>
+                </div>
+                <div className="weekly-satisfaction-value">
+                  {satisfactionStats.avg == null ? '—' : satisfactionStats.avg.toFixed(1)} 点/10点
+                  {satisfactionStats.count > 0 ? (
+                    <span className="weekly-satisfaction-note">（{satisfactionStats.count}日分）</span>
+                  ) : null}
+                </div>
               </div>
-            ) : null}
+
+              {journalShowWeeklySatisfactionChart(level) ? (
+                <div className="weekly-satisfaction-chart" aria-label="満足度の変化（折れ線）">
+                  <div className="text-sm text-gray-600 mb-2">満足度の変化</div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={satisfactionChartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+                      <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} />
+                      <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} allowDecimals={false} />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="satisfaction"
+                        stroke="var(--color-primary)"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        connectNulls={false}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : null}
+            </div>
+
+            <WeeklyTextRow
+              label="・行動の振り返り"
+              value={data.weeklyOutcomeReviewText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, weeklyOutcomeReviewText: v } : prev))}
+              onBlur={() => void savePatch({ weeklyOutcomeReviewText: data.weeklyOutcomeReviewText })}
+              placeholder="ここに、Aiレポート作成のアウトプット（成果面）を入力します。手動入力も可能です。"
+            />
+
+            <WeeklyTextRow
+              label="・指標の達成度"
+              value={data.weeklyMetricAchievementText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, weeklyMetricAchievementText: v } : prev))}
+              onBlur={() => void savePatch({ weeklyMetricAchievementText: data.weeklyMetricAchievementText })}
+              placeholder="例：今週の指標（回数・時間・成果など）と達成度を記載してください。"
+            />
           </div>
 
-          {journalShowWeeklyActionContentAndOutcome(level) ? (
+          <div className="action-sub-section" data-section="weekly-psychology-aspect">
+            <h4>◇心理面</h4>
             <WeeklyTextRow
-              label="行動内容と成果"
-              value={data.actionContentAndOutcomeText ?? ''}
+              label="行動時の思考・感情の変化"
+              value={data.weeklyPsychologyText ?? ''}
               disabled={saving}
-              onChange={(v) =>
-                setData((prev) => (prev ? { ...prev, actionContentAndOutcomeText: v } : prev))
-              }
-              onBlur={() => void savePatch({ actionContentAndOutcomeText: data.actionContentAndOutcomeText })}
-              placeholder="どのような行動を実施し、目標指標に対してどの程度できたか"
+              onChange={(v) => setData((prev) => (prev ? { ...prev, weeklyPsychologyText: v } : prev))}
+              onBlur={() => void savePatch({ weeklyPsychologyText: data.weeklyPsychologyText })}
+              placeholder="思考・感情の変化について記載してください。"
             />
-          ) : null}
-          {journalShowWeeklyEmotionAndThought(level) ? (
+          </div>
+
+          <div className="action-sub-section" data-section="weekly-insight-growth">
+            <h4>◇気づき・学び・成長</h4>
             <WeeklyTextRow
-              label="行動時の思考・感情"
-              value={data.emotionAndThoughtText ?? ''}
+              label="内容"
+              value={data.insightAndLearningText ?? ''}
               disabled={saving}
-              onChange={(v) => setData((prev) => (prev ? { ...prev, emotionAndThoughtText: v } : prev))}
-              onBlur={() => void savePatch({ emotionAndThoughtText: data.emotionAndThoughtText })}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, insightAndLearningText: v } : prev))}
+              onBlur={() => void savePatch({ insightAndLearningText: data.insightAndLearningText })}
               placeholder="入力してください"
             />
-          ) : null}
-          <WeeklyTextRow
-            label="今週の気づき・感動・学び"
-            value={data.insightAndLearningText ?? ''}
-            disabled={saving}
-            onChange={(v) =>
-              setData((prev) => (prev ? { ...prev, insightAndLearningText: v } : prev))
-            }
-            onBlur={() => void savePatch({ insightAndLearningText: data.insightAndLearningText })}
-            placeholder="入力してください"
-          />
-          {journalShowWeeklyImprovementSummary(level) ? (
+          </div>
+
+          <div className="action-sub-section" data-section="weekly-root-cause">
+            <h4>◇課題と原因の深掘り</h4>
             <WeeklyTextRow
-              label="今週の改善まとめ"
-              value={data.improvementSummaryText ?? ''}
+              label="内容"
+              value={data.weeklyIssueRootCauseText ?? ''}
               disabled={saving}
-              onChange={(v) =>
-                setData((prev) => (prev ? { ...prev, improvementSummaryText: v } : prev))
-              }
-              onBlur={() => void savePatch({ improvementSummaryText: data.improvementSummaryText })}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, weeklyIssueRootCauseText: v } : prev))}
+              onBlur={() => void savePatch({ weeklyIssueRootCauseText: data.weeklyIssueRootCauseText })}
+              placeholder="課題（何が起きたか）と原因（なぜ起きたか）を分けて整理してください。"
+            />
+          </div>
+
+          <div className="action-sub-section" data-section="weekly-next-improvement">
+            <h4>◇来週への改善点</h4>
+            <WeeklyTextRow
+              label="内容"
+              value={data.nextWeekImprovementText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, nextWeekImprovementText: v } : prev))}
+              onBlur={() => void savePatch({ nextWeekImprovementText: data.nextWeekImprovementText })}
+              placeholder="来週に向けて改善したい点を記載してください。"
+            />
+            <WeeklyTextRow
+              label="・Ai改善提案"
+              value={data.aiImprovementSuggestionText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, aiImprovementSuggestionText: v } : prev))}
+              onBlur={() => void savePatch({ aiImprovementSuggestionText: data.aiImprovementSuggestionText })}
+              placeholder="（準備中）Ai改善提案の出力先です。現段階では手動入力してください。"
+            />
+          </div>
+
+          <div className="action-sub-section" data-section="weekly-next-week-action">
+            <h4>◇来週の行動</h4>
+            <WeeklyTextRow
+              label="・目標（一文で）"
+              value={data.nextWeekGoalText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, nextWeekGoalText: v } : prev))}
+              onBlur={() => void savePatch({ nextWeekGoalText: data.nextWeekGoalText })}
+              placeholder="入力してください（次週へ進むとき、今週の行動へ繰り越されます）"
+            />
+            <WeeklyTextRow
+              label="・行動内容（具体的に）"
+              value={data.nextWeekActionContentText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, nextWeekActionContentText: v } : prev))}
+              onBlur={() => void savePatch({ nextWeekActionContentText: data.nextWeekActionContentText })}
+              placeholder="入力してください（次週へ進むとき、今週の行動へ繰り越されます）"
+            />
+          </div>
+
+          <div className="action-sub-section" data-section="weekly-self-praise">
+            <h4>◇今週の自分へのねぎらいの言葉</h4>
+            <WeeklyTextRow
+              label="内容"
+              value={data.weeklySelfPraiseText ?? ''}
+              disabled={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, weeklySelfPraiseText: v } : prev))}
+              onBlur={() => void savePatch({ weeklySelfPraiseText: data.weeklySelfPraiseText })}
               placeholder="入力してください"
             />
-          ) : null}
+          </div>
         </div>
-
-        {journalShowWeeklyNextWeekGoal(level) ? (
-          <div className="action-sub-section" data-section="next-week-goal">
-            <h3>来週の行動目標</h3>
-            <WeeklyTextRow
-              label="来週の目標"
-              value={data.nextWeekActionGoalText ?? ''}
-              disabled={saving}
-              onChange={(v) =>
-                setData((prev) => (prev ? { ...prev, nextWeekActionGoalText: v } : prev))
-              }
-              onBlur={() => void savePatch({ nextWeekActionGoalText: data.nextWeekActionGoalText })}
-              placeholder="入力してください（翌週へ進むときの繰り越しは後続フェーズ）"
-            />
-          </div>
-        ) : null}
       </div>
     </div>
   );
