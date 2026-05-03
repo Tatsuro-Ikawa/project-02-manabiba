@@ -1,8 +1,16 @@
-# Vertex AI — トライアル「Aiコーチからのコメント」（開発者向け）
+# Vertex AI — トライアル学び帳の AI 機能（開発者向け）
 
 ## 1. 概要
 
-4週間トライアル（`/trial_4w`）の**朝・晩**タブで、当日の振り返り入力（複数欄を連結したテキスト）をもとに **Vertex AI（Gemini）** でコーチング風のコメントを生成する PoC です。画面上の表記は **「Aiコーチからのコメント」** です。
+4週間トライアル（`/trial_4w`）で **Vertex AI（Gemini）** を使う実装のまとめです。
+
+| 画面 | 機能 | API |
+|------|------|-----|
+| **朝・晩** | Aiコーチからのコメント | `POST /api/ai/improvement` |
+| **週** | Aiレポート作成（4項目 JSON） | `POST /api/ai/weekly-report` |
+| **週** | Ai改善提案（詳細モードのみ・プレーンテキスト） | `POST /api/ai/weekly-improvement` |
+
+**朝・晩タブ**では、当日の振り返り入力（複数欄を連結したテキスト）をもとにコーチング風のコメントを生成する PoC です。画面上の表記は **「Aiコーチからのコメント」** です。
 
 - **画面・クライアント**: `src/components/trial/TrialMorningEvening.tsx`  
   - 入力は `buildAiReflectionInputText` で複数フィールドをラベル付きブロックに連結し、リクエストボディの `actionResultText` に載せる（キー名は後方互換のためそのまま）。  
@@ -206,9 +214,49 @@ LAN（例: `http://192.168.11.10:3000`）からブラウザで開いていても
 
 | 種別 | パス |
 |------|------|
-| API | `src/app/api/ai/improvement/route.ts` |
-| UI | `src/components/trial/TrialMorningEvening.tsx` |
+| API（朝・晩） | `src/app/api/ai/improvement/route.ts` |
+| UI（朝・晩） | `src/components/trial/TrialMorningEvening.tsx` |
+| API（週・レポート／改善） | `src/app/api/ai/weekly-report/route.ts`、`src/app/api/ai/weekly-improvement/route.ts` |
+| UI（週） | `src/components/trial/TrialWeekly.tsx` |
 | スタイル（ボタン状態など） | `src/styles/home-trial.css` |
 | 依存 | `package.json` の `google-auth-library` |
 
 設計書索引: [manabiba_01/00_README.md](./manabiba_01/00_README.md)
+
+---
+
+## 9. 週タブ: `POST /api/ai/weekly-report` と `POST /api/ai/weekly-improvement`
+
+### 9.1 共通
+
+- **認証・モデル・REST URL**は §4 と同様（`GOOGLE_CLOUD_PROJECT` / `GCP_SA_KEY_JSON` / `VERTEX_AI_GEMINI_MODEL`）。
+- **週次の実行回数**は `journal_weekly` に**機能別**に保持し、**JST の同一日（`YYYY-MM-DD`）における成功回数のみ**加算する（失敗・422・502 はカウントしない）。
+  - **Aiレポート作成**: `weeklyAiReportRunCount` / `weeklyAiReportRunDateKey`
+  - **Ai改善提案**: `weeklyAiImprovementRunCount` / `weeklyAiImprovementRunDateKey`
+- **上限**: いずれも **1 日あたり 3 回まで**（`TrialWeekly.tsx` の `WEEKLY_AI_DAILY_LIMIT`。朝・晩の 3 回とは独立）。
+- スキーマ・入力対照の正本: [manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md](./manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2 / §2.x-2-1。
+
+### 9.2 `POST /api/ai/weekly-report`
+
+- **Body**: `{ "weeklyInputText": string }` — 日次の朝・晩を日付ラベル付きで連結したテキスト（クライアント生成）。
+- **成功レスポンス**: `{ reports: { actionAspect, outcomeAspect, psychologyAspect, insightGrowth }, charCountTotal?, usageTotalTokenCount? }`（JSON 本文のみ。トークンは `usageTotalTokenCount` で分離）。
+- **検証**: 入力文字数下限などは `route.ts` 参照。
+- **プロンプトログ**: `ENABLE_AI_PROMPT_LOG = true`（本番ではオフ推奨。`route.ts` 定数で切替）。
+
+### 9.3 `POST /api/ai/weekly-improvement`
+
+- **Body**: `{ "weeklyImprovementInputText": string }` — 週報の参照 **8 項目**を `【ラベル】` 固定順で連結（`src/lib/weeklyImprovementAi.ts`）。**各ブロック本文は Unicode 10 文字以上**（API でも再検証）。
+- **成功レスポンス**: `{ suggestion: string, charCount, usageTotalTokenCount? }` — `suggestion` はプレーン1本（見出し＋改行＋本文、100〜450 文字を目安にサーバ側で句点付近トリム可）。**トークンは本文に含めない**。
+- **UI**: プレビュー表示時のみ `suggestion` と `usageTotalTokenCount` を結合し、文末に `（使用トークン合計: N）` を付ける。**Firestore の本文**はユーザーが「Ai改善提案に保存」したときのみ `aiImprovementSuggestionText` に書く（プレビュー破棄なら本文は未保存のまま）。**当日カウンタ**は API 成功直後に更新する（プレビュー保存の有無とは無関係）。来週への改善点への自動転記はしない。
+- **プロンプトログ**: `ENABLE_AI_PROMPT_LOG = false`（`route.ts`）。
+
+### 9.4 関連ファイル（週次）
+
+| 種別 | パス |
+|------|------|
+| API | `src/app/api/ai/weekly-report/route.ts` |
+| API | `src/app/api/ai/weekly-improvement/route.ts` |
+| 入力連結・検証定数 | `src/lib/weeklyImprovementAi.ts` |
+| UI | `src/components/trial/TrialWeekly.tsx` |
+| 永続化 | `src/lib/firestore.ts`（`JournalWeeklyPlain` / `saveJournalWeeklyPlain`） |
+| 表示レベル | `src/lib/journalDetailLevel.ts` + `JournalDetailLevelContext` |

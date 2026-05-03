@@ -1407,6 +1407,39 @@
   color: #fff;
 }
 
+/* 週次: Aiレポート作成ボタン（朝・晩の Ai ボタンと同様） */
+.trial-weekly-container .trial-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #f3f4f6;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.trial-weekly-container .trial-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.trial-weekly-container .trial-action-btn.ai-action-btn-ready {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.trial-weekly-container .trial-action-btn.ai-action-btn-done {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
 /* 月次: 行動の結果（月間カレンダーグリッド） */
 .trial-monthly-container .monthly-section {
   margin-bottom: var(--spacing-xxl);

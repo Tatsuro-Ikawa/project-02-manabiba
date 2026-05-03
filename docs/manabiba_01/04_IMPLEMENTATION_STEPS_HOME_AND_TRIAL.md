@@ -4,7 +4,7 @@
 
 プロトタイプで確定した「ホーム画面」と「28日間 こころのトライアル」4画面を、Next.js 上で実装し、外（本番に近い環境や実機）で確認できるようにするための手順です。
 
-**補足（2026-04）**: トライアル朝・晩タブの **Vertex AI「Aiコーチからのコメント」**（`/api/ai/improvement`）のセットアップ・トラブルシュートは、[../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) に集約した。
+**補足（2026-04〜）**: トライアル **Vertex AI** のセットアップ・REST 仕様・トラブルシュートは [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) に集約した。朝・晩は `/api/ai/improvement`、週タブは `/api/ai/weekly-report`（Aiレポート）と `/api/ai/weekly-improvement`（Ai改善提案・詳細表示時）。
 
 ---
 

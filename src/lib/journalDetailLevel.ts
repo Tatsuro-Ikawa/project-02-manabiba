@@ -115,29 +115,54 @@ export function journalShowSupplementaryDetails(level: JournalDetailLevel): bool
   return level !== 'simple';
 }
 
-/** 週：満足度チャート（平均テキストは常に表示） */
-export function journalShowWeeklySatisfactionChart(level: JournalDetailLevel): boolean {
+/** 週：今週の行動「行動内容：どのように」（簡易では非表示） */
+export function journalShowWeeklyThisWeekActionContent(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 週：行動内容と成果 */
-export function journalShowWeeklyActionContentAndOutcome(level: JournalDetailLevel): boolean {
+/** 週：Aiレポート作成ブロック（簡易では非表示） */
+export function journalShowWeeklyAiReportSection(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 週：行動時の思考・感情 */
-export function journalShowWeeklyEmotionAndThought(level: JournalDetailLevel): boolean {
+/** 週：行動の振り返りテキスト（簡易では非表示） */
+export function journalShowWeeklyActionReviewText(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 週：改善まとめ */
-export function journalShowWeeklyImprovementSummary(level: JournalDetailLevel): boolean {
+/** 週：成果への振り返りテキスト（簡易では非表示） */
+export function journalShowWeeklyOutcomeReview(level: JournalDetailLevel): boolean {
+  return level !== 'simple';
+}
+
+/** 週：指標の達成度（詳細のみ） */
+export function journalShowWeeklyMetricAchievement(level: JournalDetailLevel): boolean {
   return level === 'detailed';
 }
 
-/** 週：来週の行動目標 */
-export function journalShowWeeklyNextWeekGoal(level: JournalDetailLevel): boolean {
+/** 週：課題と原因の深掘り（詳細のみ） */
+export function journalShowWeeklyIssueRootCauseSection(level: JournalDetailLevel): boolean {
+  return level === 'detailed';
+}
+
+/** 週：来週への改善点セクション（簡易では非表示） */
+export function journalShowWeeklyNextImprovementSection(level: JournalDetailLevel): boolean {
   return level !== 'simple';
+}
+
+/** 週：Ai改善提案欄（詳細のみ） */
+export function journalShowWeeklyAiImprovementSuggestion(level: JournalDetailLevel): boolean {
+  return level === 'detailed';
+}
+
+/** 週：来週の行動「行動内容（具体的に）」（簡易では非表示） */
+export function journalShowWeeklyNextWeekActionContent(level: JournalDetailLevel): boolean {
+  return level !== 'simple';
+}
+
+/** 週：今週の自分へのねぎらいの言葉（詳細のみ） */
+export function journalShowWeeklySelfPraiseSection(level: JournalDetailLevel): boolean {
+  return level === 'detailed';
 }
 
 /** 月：今月成果目標 */

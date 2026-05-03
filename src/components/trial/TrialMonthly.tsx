@@ -14,6 +14,7 @@ import {
 import { getTodayDateKeyTokyo } from '@/lib/journalWeek';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
+import { AutosizeTextarea } from '@/components/trial/AutosizeTextarea';
 import {
   journalShowMonthlyActionGoal,
   journalShowMonthlyActionSummary,
@@ -73,8 +74,8 @@ function MonthlyTextRow({
       <div className="label-wrap">
         <span>{label}</span>
       </div>
-      <textarea
-        className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+      <AutosizeTextarea
+        className="w-full text-sm border border-gray-300 rounded p-2"
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}

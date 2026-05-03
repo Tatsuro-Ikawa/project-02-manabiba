@@ -5,6 +5,7 @@ export type UserRole = 'user' | 'coach' | 'senior_coach' | 'admin';
 
 /** マネジメント日誌の週の開始曜日（未設定時は月曜） */
 export type JournalWeekStartsOn = 'monday' | 'sunday';
+export type WeeklyAiReportWriteMode = 'overwrite' | 'append';
 
 // サブスクリプションプラン定義
 export type SubscriptionPlan = 'free' | 'standard' | 'premium';
@@ -31,6 +32,8 @@ export interface UserProfile {
   coachShareUsedThisMonth?: number;
   /** マネジメント日誌の週の開始（未設定・`monday` は月曜始まり。`sunday` のときのみ保存してもよい） */
   weekStartsOn?: JournalWeekStartsOn;
+  /** 週次 AI レポート作成時、既存入力への反映方式（未設定時は append） */
+  weeklyAiReportWriteMode?: WeeklyAiReportWriteMode;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date;

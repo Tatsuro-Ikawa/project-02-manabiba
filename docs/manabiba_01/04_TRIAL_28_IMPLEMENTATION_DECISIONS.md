@@ -156,6 +156,13 @@
 - **明日の目標・行動内容・イメージング**: `eveningTomorrowGoalTextEncrypted` / `eveningTomorrowActionContentTextEncrypted` / `eveningTomorrowImagingDone`
   - 保存時、翌日の朝の行動欄が未入力なら `eveningTomorrowActionSeedTextEncrypted` から自動コピー（上書きはしない）
 
+### 週（weekly）
+
+- **保存先**: `users/{uid}/journal_weekly/{weekStartKey}`（`weekStartKey` は週の開始日 `YYYY-MM-DD`、JST 基準）。
+- **Aiレポート作成**（Vertex・4観点 JSON）: API の `reports.actionAspect` / `outcomeAspect` / `psychologyAspect` / `insightGrowth` を、それぞれ **`weeklyActionReviewText`** / **`weeklyOutcomeReviewText`** / **`weeklyPsychologyText`** / **`insightAndLearningText`** に書き込む（上書き／追記はユーザープロファイルの `weeklyAiReportWriteMode`）。**同日の成功回数のみ** `weeklyAiReportRunCount` / `weeklyAiReportRunDateKey`（1 日 3 回まで。朝・晩の回数とは独立）。API: `POST /api/ai/weekly-report`。
+- **Ai改善提案**（Vertex・プレーンテキスト、**詳細**表示モード時のみ UI 表示）: 確定後は `aiImprovementSuggestionText`（暗号化版あり）。**同日の成功回数のみ** `weeklyAiImprovementRunCount` / `weeklyAiImprovementRunDateKey`（1 日 3 回まで）は **API 成功時点**で更新（プレビュー表示の有無に関わらず）。本文はプレビューから「Ai改善提案に保存」で反映。API: `POST /api/ai/weekly-improvement`。入力は週報 8 項目を固定順連結（各ブロック 10 文字以上）。トークンは JSON のみ返し、Firestore 保存本文には含めない（プレビュー時のみ UI で文末表示）。
+- スキーマの正本: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2 / §2.x-2-1。Vertex 詳細: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §9。
+
 ### 日付ナビ（前日/翌日）
 
 - 「今日」基準では制限しない（週・月から任意日付を開き、前後日を見て修正できることを重視）

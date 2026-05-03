@@ -44,7 +44,7 @@
 5. **[A-11 コーチ共有データ構造（現状案）](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)**
    - 割当 `coach_client_assignments`、共有メタ・`coach_share_rounds` / `coach_comment_versions`、フィールド名クイックリファレンス（[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) A-11 と同期）
 
-6. **Vertex AI（トライアル「Aiコーチからのコメント」）開発者向け** — [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)（`docs/` 直下。GCP 設定・環境変数・REST 仕様・トラブルシュート）
+6. **Vertex AI（トライアル学び帳：朝・晩コメント／週レポート・週改善提案）開発者向け** — [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)（`docs/` 直下。GCP 設定・環境変数・REST 仕様・週次 API・トラブルシュート）
 
 ### 同梱ファイル一覧（層別・接頭語）
 
@@ -88,6 +88,7 @@
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-05-02 | 週タブ Vertex（`/api/ai/weekly-report`・`/api/ai/weekly-improvement`）を [VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) に反映。`journal_weekly` の AI カウンタ等は [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md)・[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) と整合 |
 | 2026-04-10 | 設計書ファイルに層別接頭語（`00_`〜`05_`）を付与。索引は **00_README.md**、フォルダ入口は **README.md** |
 | 2026-03-28 | 03_A11_COACH_SHARING_SCHEMA_DRAFT.md を主要ドキュメント一覧に追加 |
 | 2026-03-02 | アファメーション設計書（04_AFFIRMATION_DESIGN.md）を主要ドキュメント一覧に追加 |

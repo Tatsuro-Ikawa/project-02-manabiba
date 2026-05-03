@@ -125,17 +125,47 @@
 - **暗号化**: 下記の自由記述は **`encrypt(plaintext, uid)`** で保存（日次と同様）。
 - **人コーチ・AI**: 共有メタ・コメントは後続。正本は [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。現行ルールは本人 read/write のみ。
 
-| フィールド（Firestore） | 型（想定） | 画面ラベル（参考） |
-|-------------------------|------------|---------------------|
-| weekStartKey | string | ドキュメント ID と一致 |
-| tz | string | 固定 `Asia/Tokyo` |
-| thisWeekActionGoalTextEncrypted | string \| null | 今週の行動目標 |
-| actionContentAndOutcomeTextEncrypted | string \| null | 行動内容と成果 |
-| emotionAndThoughtTextEncrypted | string \| null | 行動時の思考・感情 |
-| insightAndLearningTextEncrypted | string \| null | 今週の気づき・感動・学び |
-| improvementSummaryTextEncrypted | string \| null | 今週の改善まとめ |
-| nextWeekActionGoalTextEncrypted | string \| null | 来週の行動目標 |
-| createdAt, updatedAt | Timestamp | 監査用 |
+| フィールド（Firestore・暗号化キー） | 型（想定） | `JournalWeeklyPlain`（復号後・コード上の名前） | 週タブ UI（参考） |
+|--------------------------------------|------------|---------------------------------------------------|-------------------|
+| weekStartKey | string | `weekStartKey` | ドキュメント ID と一致 |
+| tz | string | `tz` | 固定 `Asia/Tokyo` |
+| thisWeekActionGoalTextEncrypted | string \| null | `thisWeekActionGoalText` | 今週の行動 → 行動目標（1文） |
+| thisWeekActionContentTextEncrypted | string \| null | `thisWeekActionContentText` | 今週の行動 → 行動内容 |
+| weeklyActionReviewTextEncrypted | string \| null | `weeklyActionReviewText` | 今週の振り返り → 行動面 → 行動の振り返り |
+| weeklyOutcomeReviewTextEncrypted | string \| null | `weeklyOutcomeReviewText` | 成果面 → 成果への振り返り |
+| weeklyMetricAchievementTextEncrypted | string \| null | `weeklyMetricAchievementText` | 成果面 → 指標の達成度 |
+| weeklyPsychologyTextEncrypted | string \| null | `weeklyPsychologyText` | 心理面（行動時の思考・感情の変化） |
+| insightAndLearningTextEncrypted | string \| null | `insightAndLearningText` | 気づき・学び・成長 |
+| weeklyIssueRootCauseTextEncrypted | string \| null | `weeklyIssueRootCauseText` | 課題と原因の深掘り |
+| nextWeekImprovementTextEncrypted | string \| null | `nextWeekImprovementText` | 来週への改善点 |
+| aiImprovementSuggestionTextEncrypted | string \| null | `aiImprovementSuggestionText` | 来週への改善点ブロック内 → Ai改善提案 |
+| nextWeekGoalTextEncrypted | string \| null | `nextWeekGoalText` | 来週の行動 → 目標（一文） |
+| nextWeekActionContentTextEncrypted | string \| null | `nextWeekActionContentText` | 来週の行動 → 行動内容 |
+| weeklySelfPraiseTextEncrypted | string \| null | `weeklySelfPraiseText` | 今週の自分へのねぎらいの言葉 |
+| weeklyAiReportRunCount | number \| null | `weeklyAiReportRunCount` | 週次 Ai レポート作成の当日**成功**実行回数（平文・失敗は含めない） |
+| weeklyAiReportRunDateKey | string \| null | `weeklyAiReportRunDateKey` | 上記回数の集計日 JST `YYYY-MM-DD`（平文） |
+| weeklyAiImprovementRunCount | number \| null | `weeklyAiImprovementRunCount` | 週次 Ai 改善提案の当日**成功**実行回数（平文・失敗は含めない） |
+| weeklyAiImprovementRunDateKey | string \| null | `weeklyAiImprovementRunDateKey` | 上記回数の集計日 JST `YYYY-MM-DD`（平文） |
+| createdAt, updatedAt | Timestamp | — | 監査用 |
+
+**互換（旧 UI）フィールド**（読み出しのみ想定）: `actionContentAndOutcomeTextEncrypted` / `improvementSummaryTextEncrypted` / `nextWeekActionGoalTextEncrypted` / `emotionAndThoughtTextEncrypted` — 型は `JournalWeeklyEncrypted` を参照（`src/lib/firestore.ts`）。
+
+#### 2.x-2-1 週次 Ai 改善提案 API の入力対照（`POST /api/ai/weekly-improvement`）
+
+クライアントは参照8項目を `【ラベル】` ＋改行＋本文の固定順で連結した `weeklyImprovementInputText` を送る。**各項目の本文は Unicode で 10 文字以上**であることをサーバでも検証する（実装の正本: `src/lib/weeklyImprovementAi.ts` の `WEEKLY_IMPROVEMENT_INPUT_SECTIONS`）。
+
+**応答 JSON**（`POST /api/ai/weekly-improvement`）: `suggestion`（プレーンテキスト1本・見出し＋改行＋本文。トークン注記は含めない）、`charCount`、`usageTotalTokenCount`（任意）。UI は `suggestion` と `usageTotalTokenCount` を結合し、プレビュー文末に `（使用トークン合計: N）` を表示する。保存するのは `suggestion` のみ（`aiImprovementSuggestionText`）。
+
+| 連結ブロックのラベル（`【】` 内） | `JournalWeeklyPlain` |
+|----------------------------------|------------------------|
+| 行動目標 | `thisWeekActionGoalText` |
+| 行動内容 | `thisWeekActionContentText` |
+| 行動の振り返り | `weeklyActionReviewText` |
+| 成果の振り返り | `weeklyOutcomeReviewText` |
+| 心理面　行動時の思考・感情の変化 | `weeklyPsychologyText` |
+| 気づき・学び・成長 | `insightAndLearningText` |
+| 課題と原因の深掘り | `weeklyIssueRootCauseText` |
+| 来週への改善点 | `nextWeekImprovementText` |
 
 ### 2.x-3 users / {uid} / journal_monthly / {monthKey}（マネジメント日誌: 月次）
 

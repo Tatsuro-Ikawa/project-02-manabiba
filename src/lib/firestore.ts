@@ -26,6 +26,7 @@ import {
   UserProfile,
   TrialAffirmationSubmenu, 
   type JournalWeekStartsOn,
+  type WeeklyAiReportWriteMode,
   UserRole, 
   SubscriptionPlan, 
   FeatureAccess, 
@@ -190,6 +191,10 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
       return {
         ...data,
         weekStartsOn: normalizeJournalWeekStartsOnField(data.weekStartsOn),
+        weeklyAiReportWriteMode:
+          data.weeklyAiReportWriteMode === 'overwrite' || data.weeklyAiReportWriteMode === 'append'
+            ? data.weeklyAiReportWriteMode
+            : undefined,
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
         lastLoginAt: data.lastLoginAt?.toDate(),
@@ -209,6 +214,23 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     return null;
   } catch (error) {
     console.error('ユーザープロファイル取得エラー:', error);
+    throw error;
+  }
+};
+
+/** 週次 AI レポートの既存入力反映方式（未設定時は append） */
+export const updateWeeklyAiReportWriteMode = async (
+  uid: string,
+  mode: WeeklyAiReportWriteMode
+): Promise<void> => {
+  try {
+    const now = serverTimestamp() as Timestamp;
+    await updateDoc(doc(db, 'users', uid), {
+      weeklyAiReportWriteMode: mode,
+      updatedAt: now,
+    });
+  } catch (error) {
+    console.error('weeklyAiReportWriteMode 更新エラー:', error);
     throw error;
   }
 };
@@ -847,6 +869,14 @@ export type JournalWeeklyPlain = {
   nextWeekActionContentText: string | null;
   /** 今週の自分へのねぎらいの言葉 */
   weeklySelfPraiseText: string | null;
+  /** 週次 AI レポート作成の当日実行回数 */
+  weeklyAiReportRunCount: number | null;
+  /** 上記回数を集計した日付キー（YYYY-MM-DD, JST） */
+  weeklyAiReportRunDateKey: string | null;
+  /** 週次 Ai 改善提案の当日成功実行回数（失敗は含めない） */
+  weeklyAiImprovementRunCount: number | null;
+  /** 上記回数を集計した日付キー（YYYY-MM-DD, JST） */
+  weeklyAiImprovementRunDateKey: string | null;
 
   /**
    * 互換（旧）: 以前の週次UIで使っていた統合欄。
@@ -877,6 +907,10 @@ export type JournalWeeklyEncrypted = {
   nextWeekGoalTextEncrypted: string | null;
   nextWeekActionContentTextEncrypted: string | null;
   weeklySelfPraiseTextEncrypted: string | null;
+  weeklyAiReportRunCount: number | null;
+  weeklyAiReportRunDateKey: string | null;
+  weeklyAiImprovementRunCount: number | null;
+  weeklyAiImprovementRunDateKey: string | null;
 
   // 互換（旧）: 過去フィールド（残して読み出し可能にする）
   actionContentAndOutcomeTextEncrypted?: string | null;
@@ -904,6 +938,10 @@ export function journalWeeklyPlainEmpty(weekStartKey: string): JournalWeeklyPlai
     nextWeekGoalText: null,
     nextWeekActionContentText: null,
     weeklySelfPraiseText: null,
+    weeklyAiReportRunCount: null,
+    weeklyAiReportRunDateKey: null,
+    weeklyAiImprovementRunCount: null,
+    weeklyAiImprovementRunDateKey: null,
   };
 }
 
@@ -942,6 +980,22 @@ export async function getJournalWeeklyPlain(
     nextWeekGoalText: await decryptOrNull(data.nextWeekGoalTextEncrypted),
     nextWeekActionContentText: await decryptOrNull(data.nextWeekActionContentTextEncrypted),
     weeklySelfPraiseText: await decryptOrNull(data.weeklySelfPraiseTextEncrypted),
+    weeklyAiReportRunCount:
+      typeof data.weeklyAiReportRunCount === 'number'
+        ? Math.max(0, Math.floor(data.weeklyAiReportRunCount))
+        : null,
+    weeklyAiReportRunDateKey:
+      typeof data.weeklyAiReportRunDateKey === 'string' && data.weeklyAiReportRunDateKey
+        ? data.weeklyAiReportRunDateKey
+        : null,
+    weeklyAiImprovementRunCount:
+      typeof data.weeklyAiImprovementRunCount === 'number'
+        ? Math.max(0, Math.floor(data.weeklyAiImprovementRunCount))
+        : null,
+    weeklyAiImprovementRunDateKey:
+      typeof data.weeklyAiImprovementRunDateKey === 'string' && data.weeklyAiImprovementRunDateKey
+        ? data.weeklyAiImprovementRunDateKey
+        : null,
 
     // 互換（旧）
     actionContentAndOutcomeText: await decryptOrNull(data.actionContentAndOutcomeTextEncrypted),
@@ -1005,6 +1059,23 @@ export async function saveJournalWeeklyPlain(params: {
   }
   if ('weeklySelfPraiseText' in params.patch) {
     encPairs.push(['weeklySelfPraiseTextEncrypted', normalizeText(params.patch.weeklySelfPraiseText)]);
+  }
+  if ('weeklyAiReportRunCount' in params.patch) {
+    const n = params.patch.weeklyAiReportRunCount;
+    payload.weeklyAiReportRunCount = typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
+  }
+  if ('weeklyAiReportRunDateKey' in params.patch) {
+    const k = params.patch.weeklyAiReportRunDateKey;
+    payload.weeklyAiReportRunDateKey = typeof k === 'string' && k.trim() ? k.trim() : null;
+  }
+  if ('weeklyAiImprovementRunCount' in params.patch) {
+    const n = params.patch.weeklyAiImprovementRunCount;
+    payload.weeklyAiImprovementRunCount =
+      typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
+  }
+  if ('weeklyAiImprovementRunDateKey' in params.patch) {
+    const k = params.patch.weeklyAiImprovementRunDateKey;
+    payload.weeklyAiImprovementRunDateKey = typeof k === 'string' && k.trim() ? k.trim() : null;
   }
 
   for (const [k, t] of encPairs) {

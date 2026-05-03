@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
+import { AutosizeTextarea } from '@/components/trial/AutosizeTextarea';
 import {
   addDaysDateKey,
   getTrial4wDailyPlain,
@@ -100,7 +101,7 @@ import {
   journalShowSupplementaryDetails,
 } from '@/lib/journalDetailLevel';
 
-const AI_SUGGESTION_DAILY_LIMIT = 3;
+const AI_SUGGESTION_DAILY_LIMIT = 10;
 
 function formatDateLabelJa(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map((x) => Number(x));
@@ -416,8 +417,8 @@ export default function TrialMorningEvening() {
             ) : null}
             <div className="form-row">
               <span className="trial-l3-label">行動目標：何を実行する（1文で）</span>
-              <textarea
-                className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+              <AutosizeTextarea
+                className="w-full text-sm border border-gray-300 rounded p-2"
                 value={data.morningTodayActionText ?? ''}
                 disabled={saving}
                 onChange={(e) => setData((prev) => (prev ? { ...prev, morningTodayActionText: e.target.value } : prev))}
@@ -428,8 +429,8 @@ export default function TrialMorningEvening() {
             {journalShowMorningActionContent(level) ? (
               <div className="form-row">
                 <span className="trial-l3-label">行動内容：どのように</span>
-                <textarea
-                  className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                <AutosizeTextarea
+                  className="w-full text-sm border border-gray-300 rounded p-2"
                   value={data.morningActionContentText ?? ''}
                   disabled={saving}
                   onChange={(e) =>
@@ -504,8 +505,8 @@ export default function TrialMorningEvening() {
             (data.eveningExecution === 'done' || data.eveningExecution === 'partial') && (
               <div className="form-row">
                 <span className="trial-l3-label">具体的な行動内容</span>
-                <textarea
-                  className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                <AutosizeTextarea
+                  className="w-full text-sm border border-gray-300 rounded p-2"
                   value={data.eveningSpecificActionsText ?? ''}
                   disabled={saving}
                   onChange={(e) =>
@@ -535,8 +536,8 @@ export default function TrialMorningEvening() {
               <>
                 <div className="form-row">
                   <span className="trial-l3-label">どのように行いどの程度できたか</span>
-                  <textarea
-                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  <AutosizeTextarea
+                    className="w-full text-sm border border-gray-300 rounded p-2"
                     value={data.eveningResultText ?? ''}
                     disabled={saving}
                     onChange={(e) =>
@@ -548,8 +549,8 @@ export default function TrialMorningEvening() {
                 </div>
                 <div className="form-row">
                   <span className="trial-l3-label">目標・指標に対しどの程度近づけたか</span>
-                  <textarea
-                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  <AutosizeTextarea
+                    className="w-full text-sm border border-gray-300 rounded p-2"
                     value={data.eveningResultGoalProgressText ?? ''}
                     disabled={saving}
                     onChange={(e) =>
@@ -598,8 +599,8 @@ export default function TrialMorningEvening() {
               </h4>
               <div className="trial-form-block-l3">
                 <div className="form-row">
-                  <textarea
-                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  <AutosizeTextarea
+                    className="w-full text-sm border border-gray-300 rounded p-2"
                     value={data.eveningEmotionThoughtText ?? ''}
                     disabled={saving}
                     onChange={(e) =>
@@ -636,8 +637,8 @@ export default function TrialMorningEvening() {
               (data.eveningBrake === 'yes' || data.eveningBrake === 'partial') && (
                 <div className="form-row">
                   <span className="trial-l3-label">どんなブレーキだったか</span>
-                  <textarea
-                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  <AutosizeTextarea
+                    className="w-full text-sm border border-gray-300 rounded p-2"
                     value={data.eveningBrakeWorkedText ?? ''}
                     disabled={saving}
                     onChange={(e) =>
@@ -670,8 +671,8 @@ export default function TrialMorningEvening() {
               (data.eveningBrake === 'yes' || data.eveningBrake === 'partial') && (
                 <div className="form-row">
                   <span className="trial-l3-label">どんな反論の言葉を使ったか</span>
-                  <textarea
-                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  <AutosizeTextarea
+                    className="w-full text-sm border border-gray-300 rounded p-2"
                     value={data.eveningBrakeWordsText ?? ''}
                     disabled={saving}
                     onChange={(e) =>
@@ -692,8 +693,8 @@ export default function TrialMorningEvening() {
           </h4>
           <div className="trial-form-block-l3">
             <div className="form-row">
-              <textarea
-                className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+              <AutosizeTextarea
+                className="w-full text-sm border border-gray-300 rounded p-2"
                 value={data.eveningInsightText ?? ''}
                 disabled={saving}
                 onChange={(e) => setData((prev) => (prev ? { ...prev, eveningInsightText: e.target.value } : prev))}
@@ -711,8 +712,8 @@ export default function TrialMorningEvening() {
               </h4>
               <div className="trial-form-block-l3">
                 <div className="form-row">
-                  <textarea
-                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  <AutosizeTextarea
+                    className="w-full text-sm border border-gray-300 rounded p-2"
                     value={data.eveningImprovementText ?? ''}
                     disabled={saving}
                     onChange={(e) =>
@@ -787,9 +788,9 @@ export default function TrialMorningEvening() {
           <div className="trial-form-block-l3">
             <div className="form-row">
               <span className="trial-l3-label">目標（一文で）</span>
-              <textarea
-                className={`w-full text-sm border border-gray-300 rounded p-2 ${level === 'simple' ? 'min-h-[52px]' : 'min-h-[100px]'}`}
-                rows={level === 'simple' ? 2 : 4}
+              <AutosizeTextarea
+                minHeightPx={level === 'simple' ? 52 : 100}
+                className="w-full text-sm border border-gray-300 rounded p-2"
                 value={data.eveningTomorrowActionSeedText ?? ''}
                 disabled={saving}
                 onChange={(e) =>
@@ -807,8 +808,8 @@ export default function TrialMorningEvening() {
             {journalShowEveningTomorrowActionContent(level) ? (
               <div className="form-row">
                 <span className="trial-l3-label">行動内容（具体的に）</span>
-                <textarea
-                  className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                <AutosizeTextarea
+                  className="w-full text-sm border border-gray-300 rounded p-2"
                   value={data.eveningTomorrowActionContentText ?? ''}
                   disabled={saving}
                   onChange={(e) =>
@@ -852,8 +853,8 @@ export default function TrialMorningEvening() {
               </h4>
               <div className="trial-form-block-l3">
                 <div className="form-row">
-                  <textarea
-                    className="w-full text-sm border border-gray-300 rounded p-2 min-h-[100px]"
+                  <AutosizeTextarea
+                    className="w-full text-sm border border-gray-300 rounded p-2"
                     value={data.eveningMessageToSelfText ?? ''}
                     disabled={saving}
                     onChange={(e) =>

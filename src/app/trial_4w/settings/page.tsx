@@ -5,22 +5,31 @@ import { useEffect, useState } from 'react';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
+import { useAuth } from '@/hooks/useAuth';
+import { updateWeeklyAiReportWriteMode } from '@/lib/firestore';
 import {
   JOURNAL_DETAIL_LEVEL_LABELS,
   type JournalDetailLevel,
 } from '@/lib/journalDetailLevel';
+import type { WeeklyAiReportWriteMode } from '@/types/auth';
 
 const LEVELS: JournalDetailLevel[] = ['simple', 'normal', 'detailed'];
 
 export default function TrialJournalSettingsPage() {
   const { level, setDefaultLevel, hydrated } = useJournalDetailLevel();
+  const { user, userProfile, refreshUserProfile } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draft, setDraft] = useState<JournalDetailLevel>(level);
+  const [aiWriteMode, setAiWriteMode] = useState<WeeklyAiReportWriteMode>('append');
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (hydrated) setDraft(level);
   }, [hydrated, level]);
+
+  useEffect(() => {
+    setAiWriteMode(userProfile?.weeklyAiReportWriteMode ?? 'append');
+  }, [userProfile?.weeklyAiReportWriteMode]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -75,9 +84,17 @@ export default function TrialJournalSettingsPage() {
                     type="button"
                     className="trial-action-btn"
                     disabled={!hydrated}
-                    onClick={() => {
-                      setDefaultLevel(draft);
-                      setSavedMsg('デフォルトを保存しました。');
+                    onClick={async () => {
+                      try {
+                        setDefaultLevel(draft);
+                        if (user) {
+                          await updateWeeklyAiReportWriteMode(user.uid, aiWriteMode);
+                          await refreshUserProfile();
+                        }
+                        setSavedMsg('設定を保存しました。');
+                      } catch (e) {
+                        setSavedMsg(e instanceof Error ? e.message : '設定保存に失敗しました。');
+                      }
                       setTimeout(() => setSavedMsg(null), 2500);
                     }}
                   >
@@ -88,6 +105,35 @@ export default function TrialJournalSettingsPage() {
                   </Link>
                 </div>
                 {savedMsg ? <p className="text-sm text-gray-700 mt-2">{savedMsg}</p> : null}
+              </div>
+
+              <div className="action-sub-section" data-section="weekly-ai-write-mode">
+                <h3>週次 Aiレポートの既存入力反映方式</h3>
+                <div className="radio-group" role="radiogroup" aria-label="週次 Aiレポートの反映方式">
+                  <label>
+                    <input
+                      type="radio"
+                      name="weekly-ai-write-mode"
+                      value="append"
+                      checked={aiWriteMode === 'append'}
+                      onChange={() => setAiWriteMode('append')}
+                    />{' '}
+                    追記（既定）
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="weekly-ai-write-mode"
+                      value="overwrite"
+                      checked={aiWriteMode === 'overwrite'}
+                      onChange={() => setAiWriteMode('overwrite')}
+                    />{' '}
+                    上書き
+                  </label>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  未ログイン時はブラウザ内のみで表示され、Firestore には保存されません。
+                </p>
               </div>
             </div>
           </div>
