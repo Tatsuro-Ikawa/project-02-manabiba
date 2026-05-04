@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 import { AI_REPORT_INPUT_MIN_TOTAL_CHARS } from '@/lib/journalAiReportWriteMode';
 
-type WeeklyReportRequestBody = {
-  weeklyInputText?: unknown;
+type MonthlyReportRequestBody = {
+  monthlyInputText?: unknown;
 };
 
-type WeeklyReportSections = {
+type MonthlyReportSections = {
   actionAspect: string;
   outcomeAspect: string;
   psychologyAspect: string;
@@ -16,7 +16,7 @@ type WeeklyReportSections = {
 export const runtime = 'nodejs';
 
 const GCP_SA_KEY_JSON_ENV = 'GCP_SA_KEY_JSON';
-const ENABLE_AI_PROMPT_LOG = true;
+const ENABLE_AI_PROMPT_LOG = false;
 const MAX_SECTION_CHARS = 200;
 const MIN_SECTION_CHARS = 100;
 const MAX_TOTAL_CHARS = 800;
@@ -108,7 +108,7 @@ function extractJsonCandidate(text: string): string {
   return text;
 }
 
-function normalizeSections(sections: WeeklyReportSections): WeeklyReportSections {
+function normalizeSections(sections: MonthlyReportSections): MonthlyReportSections {
   return {
     actionAspect: trimToSentenceBoundary(sections.actionAspect.trim(), MAX_SECTION_CHARS),
     outcomeAspect: trimToSentenceBoundary(sections.outcomeAspect.trim(), MAX_SECTION_CHARS),
@@ -117,7 +117,7 @@ function normalizeSections(sections: WeeklyReportSections): WeeklyReportSections
   };
 }
 
-function totalChars(sections: WeeklyReportSections): number {
+function totalChars(sections: MonthlyReportSections): number {
   return (
     countChars(sections.actionAspect) +
     countChars(sections.outcomeAspect) +
@@ -127,20 +127,20 @@ function totalChars(sections: WeeklyReportSections): number {
 }
 
 export async function POST(request: NextRequest) {
-  let body: WeeklyReportRequestBody;
+  let body: MonthlyReportRequestBody;
   try {
-    body = (await request.json()) as WeeklyReportRequestBody;
+    body = (await request.json()) as MonthlyReportRequestBody;
   } catch {
     return NextResponse.json({ error: 'リクエスト形式が不正です。' }, { status: 400 });
   }
 
-  const weeklyInputText =
-    typeof body.weeklyInputText === 'string' ? body.weeklyInputText.trim() : '';
+  const monthlyInputText =
+    typeof body.monthlyInputText === 'string' ? body.monthlyInputText.trim() : '';
 
-  if (!weeklyInputText || countChars(weeklyInputText) < AI_REPORT_INPUT_MIN_TOTAL_CHARS) {
+  if (!monthlyInputText || countChars(monthlyInputText) < AI_REPORT_INPUT_MIN_TOTAL_CHARS) {
     return NextResponse.json(
       {
-        error: `週次レポートの入力が不足しています（連結テキストは合計${AI_REPORT_INPUT_MIN_TOTAL_CHARS}文字以上必要です）。`,
+        error: `月次レポートの入力が不足しています（連結テキストは合計${AI_REPORT_INPUT_MIN_TOTAL_CHARS}文字以上必要です）。`,
       },
       { status: 400 }
     );
@@ -158,12 +158,13 @@ export async function POST(request: NextRequest) {
   }
 
   const prompt = [
-    '以下の【週次統合入力】は、当該週の各日について朝・晩の学び帳を日付ごとにラベル付きで連結したものです。',
+    '以下の【月次統合入力】は、当該暦月に属する各週の週次学び帳（journal_weekly 相当）の所定フィールドを、週ごとに見出し付きで連結したものです。',
+    '週の列挙は「週の開始日がその暦月内にある週」を対象とします（週が月境界をまたぐ場合も、開始日が月内なら当該月のインプットに含めます）。',
     '入力に値がなかった箇所は「無し」と記載されています。',
     '',
     'この内容を踏まえ、次の4キーを持つ JSON オブジェクトのみを返してください（必須）。',
-    '- actionAspect … 行動面の要約（クライアント画面の「行動の振り返り」欄に相当する下書き）',
-    '- outcomeAspect … 成果面の要約（「成果への振り返り」欄に相当）',
+    '- actionAspect … 行動面の要約（月次画面の「行動の振り返り」欄に相当する下書き）',
+    '- outcomeAspect … 成果面の要約（「振り返り」成果面欄に相当）',
     '- psychologyAspect … 心理面の要約（「行動時の思考・感情の変化」欄に相当）',
     '- insightGrowth … 気づき・学び・成長（同名列に相当）',
     '',
@@ -183,13 +184,13 @@ export async function POST(request: NextRequest) {
     '【重要】出力は JSON オブジェクトのみ。前後の説明文や Markdown は禁止。',
     '',
     '---',
-    '【週次統合入力】',
-    weeklyInputText,
+    '【月次統合入力】',
+    monthlyInputText,
   ].join('\n');
 
   if (ENABLE_AI_PROMPT_LOG) {
-    console.info('ai/weekly-report prompt chars:', countChars(prompt));
-    console.info('ai/weekly-report prompt begin\n' + prompt + '\nai/weekly-report prompt end');
+    console.info('ai/monthly-report prompt chars:', countChars(prompt));
+    console.info('ai/monthly-report prompt begin\n' + prompt + '\nai/monthly-report prompt end');
   }
 
   try {
@@ -250,7 +251,7 @@ export async function POST(request: NextRequest) {
 
     if (ENABLE_AI_PROMPT_LOG) {
       console.info(
-        `ai/weekly-report aiJson (HTTP ${aiRes.status}):`,
+        `ai/monthly-report aiJson (HTTP ${aiRes.status}):`,
         safeJsonForLog(aiJson, AI_JSON_LOG_MAX_CHARS)
       );
     }
@@ -272,22 +273,22 @@ export async function POST(request: NextRequest) {
 
     if (!text) {
       return NextResponse.json(
-        { error: '週次 AI レポートを生成できませんでした（空の応答）。' },
+        { error: '月次 AI レポートを生成できませんでした（空の応答）。' },
         { status: 502 }
       );
     }
 
-    let parsed: WeeklyReportSections;
+    let parsed: MonthlyReportSections;
     try {
-      parsed = JSON.parse(extractJsonCandidate(text)) as WeeklyReportSections;
+      parsed = JSON.parse(extractJsonCandidate(text)) as MonthlyReportSections;
     } catch {
       return NextResponse.json(
-        { error: '週次 AI レポートの JSON 解析に失敗しました。再実行してください。' },
+        { error: '月次 AI レポートの JSON 解析に失敗しました。再実行してください。' },
         { status: 502 }
       );
     }
 
-    const requiredKeys: Array<keyof WeeklyReportSections> = [
+    const requiredKeys: Array<keyof MonthlyReportSections> = [
       'actionAspect',
       'outcomeAspect',
       'psychologyAspect',
@@ -297,7 +298,7 @@ export async function POST(request: NextRequest) {
     for (const k of requiredKeys) {
       if (typeof parsed[k] !== 'string' || !parsed[k].trim()) {
         return NextResponse.json(
-          { error: `週次 AI レポートの必須項目が不足しています（${k}）。` },
+          { error: `月次 AI レポートの必須項目が不足しています（${k}）。` },
           { status: 502 }
         );
       }
@@ -309,7 +310,7 @@ export async function POST(request: NextRequest) {
       const chars = countChars(normalized[k]);
       if (chars < MIN_SECTION_CHARS) {
         return NextResponse.json(
-          { error: `週次 AI レポートの文字数が短すぎます（${k}: ${chars}文字）。` },
+          { error: `月次 AI レポートの文字数が短すぎます（${k}: ${chars}文字）。` },
           { status: 502 }
         );
       }
@@ -317,7 +318,7 @@ export async function POST(request: NextRequest) {
 
     if (totalChars(normalized) > MAX_TOTAL_CHARS) {
       return NextResponse.json(
-        { error: `週次 AI レポートの合計文字数が上限を超えました（${totalChars(normalized)}文字）。` },
+        { error: `月次 AI レポートの合計文字数が上限を超えました（${totalChars(normalized)}文字）。` },
         { status: 502 }
       );
     }
@@ -325,15 +326,15 @@ export async function POST(request: NextRequest) {
     const usage = aiJson.usageMetadata?.totalTokenCount;
 
     if (ENABLE_AI_PROMPT_LOG) {
-      console.info('ai/weekly-report response total chars:', totalChars(normalized));
+      console.info('ai/monthly-report response total chars:', totalChars(normalized));
       console.info(
-        'ai/weekly-report response total tokens:',
+        'ai/monthly-report response total tokens:',
         typeof usage === 'number' ? Math.max(0, Math.floor(usage)) : '(none)'
       );
       console.info(
-        'ai/weekly-report response begin\n' +
+        'ai/monthly-report response begin\n' +
           JSON.stringify(normalized, null, 2) +
-          '\nai/weekly-report response end'
+          '\nai/monthly-report response end'
       );
     }
 
@@ -345,13 +346,13 @@ export async function POST(request: NextRequest) {
   } catch (e) {
     if (isFetchAbortOrTimeout(e)) {
       return NextResponse.json(
-        { error: '週次 AI レポートの生成がタイムアウトしました。再実行してください。' },
+        { error: '月次 AI レポートの生成がタイムアウトしました。再実行してください。' },
         { status: 504 }
       );
     }
     const detail = e instanceof Error ? `${e.name}: ${e.message}` : '不明なエラー';
     return NextResponse.json(
-      { error: `週次 AI レポートの生成に失敗しました: ${detail}` },
+      { error: `月次 AI レポートの生成に失敗しました: ${detail}` },
       { status: 502 }
     );
   }

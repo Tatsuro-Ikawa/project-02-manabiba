@@ -88,7 +88,7 @@
 
 | 日付 | 変更内容 |
 |------|---------|
-| 2026-05-02 | 週タブ Vertex（`/api/ai/weekly-report`・`/api/ai/weekly-improvement`）を [VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) に反映。`journal_weekly` の AI カウンタ等は [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md)・[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) と整合 |
+| 2026-05-02 | トライアル Vertex：**週・月**のレポート／改善 API（`weekly-report`・`weekly-improvement`・`monthly-report`・`monthly-improvement`）、レポート入力の **150 文字下限・`無し` 埋め**、`users.weeklyAiReportWriteMode`（**3 値**）、改善提案 **500 文字**、月次改善の **特記事項（任意）** を [VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §9〜§10、[03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2-0・§2.x-3-0、[03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md) §6、[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) に反映 |
 | 2026-04-10 | 設計書ファイルに層別接頭語（`00_`〜`05_`）を付与。索引は **00_README.md**、フォルダ入口は **README.md** |
 | 2026-03-28 | 03_A11_COACH_SHARING_SCHEMA_DRAFT.md を主要ドキュメント一覧に追加 |
 | 2026-03-02 | アファメーション設計書（04_AFFIRMATION_DESIGN.md）を主要ドキュメント一覧に追加 |

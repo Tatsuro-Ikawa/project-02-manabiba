@@ -192,7 +192,9 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
         ...data,
         weekStartsOn: normalizeJournalWeekStartsOnField(data.weekStartsOn),
         weeklyAiReportWriteMode:
-          data.weeklyAiReportWriteMode === 'overwrite' || data.weeklyAiReportWriteMode === 'append'
+          data.weeklyAiReportWriteMode === 'overwrite' ||
+          data.weeklyAiReportWriteMode === 'append' ||
+          data.weeklyAiReportWriteMode === 'skip_if_nonempty'
             ? data.weeklyAiReportWriteMode
             : undefined,
         createdAt: data.createdAt?.toDate(),
@@ -218,7 +220,7 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
   }
 };
 
-/** 週次 AI レポートの既存入力反映方式（未設定時は append） */
+/** 学び帳 Aiレポート作成の既存入力反映方式（週・月共通。未設定時は append） */
 export const updateWeeklyAiReportWriteMode = async (
   uid: string,
   mode: WeeklyAiReportWriteMode
@@ -1151,22 +1153,43 @@ export async function carryOverNextWeekGoalToNextThisWeek(params: {
 // マネジメント日誌（学び帳）— 月次（SCREEN-007）
 const JOURNAL_MONTHLY_SUBCOLLECTION = 'journal_monthly';
 
-/** 月次ドキュメント ID = 暦月 YYYY-MM（Asia/Tokyo） */
+/** 月次ドキュメント ID = 暦月 YYYY-MM（Asia/Tokyo）。フィールド構成は週次に準拠。 */
 export type JournalMonthlyPlain = {
   monthKey: string;
   tz: 'Asia/Tokyo';
-  /** 今月成果目標 */
-  thisMonthOutcomeGoalText: string | null;
-  /** 今月行動目標 */
+  /** 今月の行動 — 行動目標（一文で何を実行するか） */
   thisMonthActionGoalText: string | null;
-  /** 行動概要と成果達成状況 */
-  actionSummaryAndOutcomeProgressText: string | null;
-  /** 気づき・感動・学び */
+  /** 今月の行動 — 行動内容（どのように） */
+  thisMonthActionContentText: string | null;
+  /** 今月の振り返り — 行動面 — 行動の振り返り */
+  monthlyActionReviewText: string | null;
+  /** 今月の振り返り — 成果面 — 振り返り */
+  monthlyOutcomeReviewText: string | null;
+  /** 今月の振り返り — 成果面 — 指標の達成度 */
+  monthlyMetricAchievementText: string | null;
+  /** 今月の振り返り — 心理面 */
+  monthlyPsychologyText: string | null;
+  /** 今月の振り返り — 気づき・学び・成長 */
   insightAndLearningText: string | null;
-  /** 改善点 */
-  improvementPointsText: string | null;
-  /** 来月の行動目標 */
-  nextMonthActionGoalText: string | null;
+  /** 今月の振り返り — 課題と原因の深掘り */
+  monthlyIssueRootCauseText: string | null;
+  /** 今月の振り返り — 来月への改善点 */
+  nextMonthImprovementText: string | null;
+  /** Ai改善提案（任意） */
+  aiImprovementSuggestionText: string | null;
+  /** 来月の行動 — 目標（一文で） */
+  nextMonthGoalText: string | null;
+  /** 来月の行動 — 行動内容（具体的に） */
+  nextMonthActionContentText: string | null;
+  /** 特記事項（その他自由欄） */
+  monthlySpecialNotesText: string | null;
+  /** 月次 AI レポート作成の当日成功実行回数 */
+  monthlyAiReportRunCount: number | null;
+  /** 上記回数を集計した日付キー（YYYY-MM-DD, JST） */
+  monthlyAiReportRunDateKey: string | null;
+  /** 月次 Ai 改善提案の当日成功実行回数 */
+  monthlyAiImprovementRunCount: number | null;
+  monthlyAiImprovementRunDateKey: string | null;
   /** 人コーチへの共有（閲覧）を許可するか */
   sharedWithCoach?: boolean;
 };
@@ -1174,13 +1197,29 @@ export type JournalMonthlyPlain = {
 export type JournalMonthlyEncrypted = {
   monthKey: string;
   tz: 'Asia/Tokyo';
-  thisMonthOutcomeGoalTextEncrypted: string | null;
   thisMonthActionGoalTextEncrypted: string | null;
-  actionSummaryAndOutcomeProgressTextEncrypted: string | null;
+  thisMonthActionContentTextEncrypted: string | null;
+  monthlyActionReviewTextEncrypted: string | null;
+  monthlyOutcomeReviewTextEncrypted: string | null;
+  monthlyMetricAchievementTextEncrypted: string | null;
+  monthlyPsychologyTextEncrypted: string | null;
   insightAndLearningTextEncrypted: string | null;
-  improvementPointsTextEncrypted: string | null;
-  nextMonthActionGoalTextEncrypted: string | null;
+  monthlyIssueRootCauseTextEncrypted: string | null;
+  nextMonthImprovementTextEncrypted: string | null;
+  aiImprovementSuggestionTextEncrypted: string | null;
+  nextMonthGoalTextEncrypted: string | null;
+  nextMonthActionContentTextEncrypted: string | null;
+  monthlySpecialNotesTextEncrypted: string | null;
+  monthlyAiReportRunCount: number | null;
+  monthlyAiReportRunDateKey: string | null;
+  monthlyAiImprovementRunCount: number | null;
+  monthlyAiImprovementRunDateKey: string | null;
   sharedWithCoach?: boolean;
+  /** 移行前フィールド（読み取り互換のみ） */
+  thisMonthOutcomeGoalTextEncrypted?: string | null;
+  actionSummaryAndOutcomeProgressTextEncrypted?: string | null;
+  improvementPointsTextEncrypted?: string | null;
+  nextMonthActionGoalTextEncrypted?: string | null;
   createdAt?: Timestamp | FieldValue;
   updatedAt?: Timestamp | FieldValue;
 };
@@ -1189,12 +1228,23 @@ export function journalMonthlyPlainEmpty(monthKey: string): JournalMonthlyPlain 
   return {
     monthKey,
     tz: 'Asia/Tokyo',
-    thisMonthOutcomeGoalText: null,
     thisMonthActionGoalText: null,
-    actionSummaryAndOutcomeProgressText: null,
+    thisMonthActionContentText: null,
+    monthlyActionReviewText: null,
+    monthlyOutcomeReviewText: null,
+    monthlyMetricAchievementText: null,
+    monthlyPsychologyText: null,
     insightAndLearningText: null,
-    improvementPointsText: null,
-    nextMonthActionGoalText: null,
+    monthlyIssueRootCauseText: null,
+    nextMonthImprovementText: null,
+    aiImprovementSuggestionText: null,
+    nextMonthGoalText: null,
+    nextMonthActionContentText: null,
+    monthlySpecialNotesText: null,
+    monthlyAiReportRunCount: null,
+    monthlyAiReportRunDateKey: null,
+    monthlyAiImprovementRunCount: null,
+    monthlyAiImprovementRunDateKey: null,
     sharedWithCoach: false,
   };
 }
@@ -1215,15 +1265,71 @@ export async function getJournalMonthlyPlain(uid: string, monthKey: string): Pro
       return null;
     }
   };
+
+  let thisMonthActionGoalText = await decryptOrNull(data.thisMonthActionGoalTextEncrypted);
+  let thisMonthActionContentText = await decryptOrNull(data.thisMonthActionContentTextEncrypted);
+  let monthlyActionReviewText = await decryptOrNull(data.monthlyActionReviewTextEncrypted);
+  let monthlyOutcomeReviewText = await decryptOrNull(data.monthlyOutcomeReviewTextEncrypted);
+  let monthlyMetricAchievementText = await decryptOrNull(data.monthlyMetricAchievementTextEncrypted);
+  let monthlyPsychologyText = await decryptOrNull(data.monthlyPsychologyTextEncrypted);
+  let insightAndLearningText = await decryptOrNull(data.insightAndLearningTextEncrypted);
+  let monthlyIssueRootCauseText = await decryptOrNull(data.monthlyIssueRootCauseTextEncrypted);
+  let nextMonthImprovementText = await decryptOrNull(data.nextMonthImprovementTextEncrypted);
+  let aiImprovementSuggestionText = await decryptOrNull(data.aiImprovementSuggestionTextEncrypted);
+  let nextMonthGoalText = await decryptOrNull(data.nextMonthGoalTextEncrypted);
+  let nextMonthActionContentText = await decryptOrNull(data.nextMonthActionContentTextEncrypted);
+  let monthlySpecialNotesText = await decryptOrNull(data.monthlySpecialNotesTextEncrypted);
+
+  const legacyOutcome = await decryptOrNull(data.thisMonthOutcomeGoalTextEncrypted);
+  const legacySummary = await decryptOrNull(data.actionSummaryAndOutcomeProgressTextEncrypted);
+  const legacyImprove = await decryptOrNull(data.improvementPointsTextEncrypted);
+  const legacyNextGoal = await decryptOrNull(data.nextMonthActionGoalTextEncrypted);
+
+  if (!monthlyOutcomeReviewText?.trim() && legacyOutcome?.trim()) {
+    monthlyOutcomeReviewText = legacyOutcome.trim();
+  }
+  if (!monthlyActionReviewText?.trim() && legacySummary?.trim()) {
+    monthlyActionReviewText = legacySummary.trim();
+  }
+  if (!nextMonthImprovementText?.trim() && legacyImprove?.trim()) {
+    nextMonthImprovementText = legacyImprove.trim();
+  }
+  if (!nextMonthGoalText?.trim() && legacyNextGoal?.trim()) {
+    nextMonthGoalText = legacyNextGoal.trim();
+  }
+
   return {
     monthKey,
     tz: 'Asia/Tokyo',
-    thisMonthOutcomeGoalText: await decryptOrNull(data.thisMonthOutcomeGoalTextEncrypted),
-    thisMonthActionGoalText: await decryptOrNull(data.thisMonthActionGoalTextEncrypted),
-    actionSummaryAndOutcomeProgressText: await decryptOrNull(data.actionSummaryAndOutcomeProgressTextEncrypted),
-    insightAndLearningText: await decryptOrNull(data.insightAndLearningTextEncrypted),
-    improvementPointsText: await decryptOrNull(data.improvementPointsTextEncrypted),
-    nextMonthActionGoalText: await decryptOrNull(data.nextMonthActionGoalTextEncrypted),
+    thisMonthActionGoalText,
+    thisMonthActionContentText,
+    monthlyActionReviewText,
+    monthlyOutcomeReviewText,
+    monthlyMetricAchievementText,
+    monthlyPsychologyText,
+    insightAndLearningText,
+    monthlyIssueRootCauseText,
+    nextMonthImprovementText,
+    aiImprovementSuggestionText,
+    nextMonthGoalText,
+    nextMonthActionContentText,
+    monthlySpecialNotesText,
+    monthlyAiReportRunCount:
+      typeof data.monthlyAiReportRunCount === 'number'
+        ? Math.max(0, Math.floor(data.monthlyAiReportRunCount))
+        : null,
+    monthlyAiReportRunDateKey:
+      typeof data.monthlyAiReportRunDateKey === 'string' && data.monthlyAiReportRunDateKey
+        ? data.monthlyAiReportRunDateKey
+        : null,
+    monthlyAiImprovementRunCount:
+      typeof data.monthlyAiImprovementRunCount === 'number'
+        ? Math.max(0, Math.floor(data.monthlyAiImprovementRunCount))
+        : null,
+    monthlyAiImprovementRunDateKey:
+      typeof data.monthlyAiImprovementRunDateKey === 'string' && data.monthlyAiImprovementRunDateKey
+        ? data.monthlyAiImprovementRunDateKey
+        : null,
     sharedWithCoach: data.sharedWithCoach ?? false,
   };
 }
@@ -1247,26 +1353,62 @@ export async function saveJournalMonthlyPlain(params: {
   if ('sharedWithCoach' in params.patch) {
     payload.sharedWithCoach = !!params.patch.sharedWithCoach;
   }
-  if ('thisMonthOutcomeGoalText' in params.patch) {
-    encPairs.push(['thisMonthOutcomeGoalTextEncrypted', normalizeText(params.patch.thisMonthOutcomeGoalText)]);
-  }
   if ('thisMonthActionGoalText' in params.patch) {
     encPairs.push(['thisMonthActionGoalTextEncrypted', normalizeText(params.patch.thisMonthActionGoalText)]);
   }
-  if ('actionSummaryAndOutcomeProgressText' in params.patch) {
-    encPairs.push([
-      'actionSummaryAndOutcomeProgressTextEncrypted',
-      normalizeText(params.patch.actionSummaryAndOutcomeProgressText),
-    ]);
+  if ('thisMonthActionContentText' in params.patch) {
+    encPairs.push(['thisMonthActionContentTextEncrypted', normalizeText(params.patch.thisMonthActionContentText)]);
+  }
+  if ('monthlyActionReviewText' in params.patch) {
+    encPairs.push(['monthlyActionReviewTextEncrypted', normalizeText(params.patch.monthlyActionReviewText)]);
+  }
+  if ('monthlyOutcomeReviewText' in params.patch) {
+    encPairs.push(['monthlyOutcomeReviewTextEncrypted', normalizeText(params.patch.monthlyOutcomeReviewText)]);
+  }
+  if ('monthlyMetricAchievementText' in params.patch) {
+    encPairs.push(['monthlyMetricAchievementTextEncrypted', normalizeText(params.patch.monthlyMetricAchievementText)]);
+  }
+  if ('monthlyPsychologyText' in params.patch) {
+    encPairs.push(['monthlyPsychologyTextEncrypted', normalizeText(params.patch.monthlyPsychologyText)]);
   }
   if ('insightAndLearningText' in params.patch) {
     encPairs.push(['insightAndLearningTextEncrypted', normalizeText(params.patch.insightAndLearningText)]);
   }
-  if ('improvementPointsText' in params.patch) {
-    encPairs.push(['improvementPointsTextEncrypted', normalizeText(params.patch.improvementPointsText)]);
+  if ('monthlyIssueRootCauseText' in params.patch) {
+    encPairs.push(['monthlyIssueRootCauseTextEncrypted', normalizeText(params.patch.monthlyIssueRootCauseText)]);
   }
-  if ('nextMonthActionGoalText' in params.patch) {
-    encPairs.push(['nextMonthActionGoalTextEncrypted', normalizeText(params.patch.nextMonthActionGoalText)]);
+  if ('nextMonthImprovementText' in params.patch) {
+    encPairs.push(['nextMonthImprovementTextEncrypted', normalizeText(params.patch.nextMonthImprovementText)]);
+  }
+  if ('aiImprovementSuggestionText' in params.patch) {
+    encPairs.push(['aiImprovementSuggestionTextEncrypted', normalizeText(params.patch.aiImprovementSuggestionText)]);
+  }
+  if ('nextMonthGoalText' in params.patch) {
+    encPairs.push(['nextMonthGoalTextEncrypted', normalizeText(params.patch.nextMonthGoalText)]);
+  }
+  if ('nextMonthActionContentText' in params.patch) {
+    encPairs.push(['nextMonthActionContentTextEncrypted', normalizeText(params.patch.nextMonthActionContentText)]);
+  }
+  if ('monthlySpecialNotesText' in params.patch) {
+    encPairs.push(['monthlySpecialNotesTextEncrypted', normalizeText(params.patch.monthlySpecialNotesText)]);
+  }
+  if ('monthlyAiReportRunCount' in params.patch) {
+    const n = params.patch.monthlyAiReportRunCount;
+    payload.monthlyAiReportRunCount =
+      typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
+  }
+  if ('monthlyAiReportRunDateKey' in params.patch) {
+    const k = params.patch.monthlyAiReportRunDateKey;
+    payload.monthlyAiReportRunDateKey = typeof k === 'string' && k.trim() ? k.trim() : null;
+  }
+  if ('monthlyAiImprovementRunCount' in params.patch) {
+    const n = params.patch.monthlyAiImprovementRunCount;
+    payload.monthlyAiImprovementRunCount =
+      typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
+  }
+  if ('monthlyAiImprovementRunDateKey' in params.patch) {
+    const k = params.patch.monthlyAiImprovementRunDateKey;
+    payload.monthlyAiImprovementRunDateKey = typeof k === 'string' && k.trim() ? k.trim() : null;
   }
 
   for (const [k, t] of encPairs) {

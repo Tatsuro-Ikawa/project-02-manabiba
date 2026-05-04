@@ -107,28 +107,41 @@ export default function TrialJournalSettingsPage() {
                 {savedMsg ? <p className="text-sm text-gray-700 mt-2">{savedMsg}</p> : null}
               </div>
 
-              <div className="action-sub-section" data-section="weekly-ai-write-mode">
-                <h3>週次 Aiレポートの既存入力反映方式</h3>
-                <div className="radio-group" role="radiogroup" aria-label="週次 Aiレポートの反映方式">
+              <div className="action-sub-section" data-section="journal-ai-report-write-mode">
+                <h3>学び帳 Aiレポート作成の既存入力反映方式（週・月共通）</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  週タブ・月タブの「Aiレポート作成を実行」で出力した下書きを、行動面・成果面・心理面・気づき・学び・成長の各欄にどう反映するかです。Firestore のユーザープロファイルに保存されます。
+                </p>
+                <div className="radio-group" role="radiogroup" aria-label="学び帳 Aiレポートの反映方式（週・月共通）">
                   <label>
                     <input
                       type="radio"
-                      name="weekly-ai-write-mode"
-                      value="append"
-                      checked={aiWriteMode === 'append'}
-                      onChange={() => setAiWriteMode('append')}
+                      name="journal-ai-report-write-mode"
+                      value="skip_if_nonempty"
+                      checked={aiWriteMode === 'skip_if_nonempty'}
+                      onChange={() => setAiWriteMode('skip_if_nonempty')}
                     />{' '}
-                    追記（既定）
+                    既に入力がある欄は上書きしない（空欄のみ反映）
                   </label>
                   <label>
                     <input
                       type="radio"
-                      name="weekly-ai-write-mode"
+                      name="journal-ai-report-write-mode"
                       value="overwrite"
                       checked={aiWriteMode === 'overwrite'}
                       onChange={() => setAiWriteMode('overwrite')}
                     />{' '}
                     上書き
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="journal-ai-report-write-mode"
+                      value="append"
+                      checked={aiWriteMode === 'append'}
+                      onChange={() => setAiWriteMode('append')}
+                    />{' '}
+                    追記（既定）
                   </label>
                 </div>
                 <p className="text-sm text-gray-600 mt-2">

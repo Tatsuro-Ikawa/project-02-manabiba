@@ -5,7 +5,13 @@ export type UserRole = 'user' | 'coach' | 'senior_coach' | 'admin';
 
 /** マネジメント日誌の週の開始曜日（未設定時は月曜） */
 export type JournalWeekStartsOn = 'monday' | 'sunday';
-export type WeeklyAiReportWriteMode = 'overwrite' | 'append';
+/**
+ * 週・月の学び帳「Aiレポート作成」で既存入力に生成結果を載せる方式。
+ * - `overwrite`: 常に生成結果で置き換え
+ * - `append`: 既に文字がある欄は末尾に追記（区切り付き）
+ * - `skip_if_nonempty`: 既に文字がある欄は変更しない。空欄のみ生成結果を入れる
+ */
+export type WeeklyAiReportWriteMode = 'overwrite' | 'append' | 'skip_if_nonempty';
 
 // サブスクリプションプラン定義
 export type SubscriptionPlan = 'free' | 'standard' | 'premium';
@@ -32,7 +38,10 @@ export interface UserProfile {
   coachShareUsedThisMonth?: number;
   /** マネジメント日誌の週の開始（未設定・`monday` は月曜始まり。`sunday` のときのみ保存してもよい） */
   weekStartsOn?: JournalWeekStartsOn;
-  /** 週次 AI レポート作成時、既存入力への反映方式（未設定時は append） */
+  /**
+   * 学び帳の Aiレポート作成（週・月共通）における、既存入力への反映方式（未設定時は append）。
+   * Firestore キー名は `weeklyAiReportWriteMode` のまま（月次 UI からも同値を参照）。
+   */
   weeklyAiReportWriteMode?: WeeklyAiReportWriteMode;
   createdAt: Date;
   updatedAt: Date;

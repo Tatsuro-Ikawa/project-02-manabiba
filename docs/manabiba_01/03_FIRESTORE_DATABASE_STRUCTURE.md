@@ -150,11 +150,20 @@
 
 **互換（旧 UI）フィールド**（読み出しのみ想定）: `actionContentAndOutcomeTextEncrypted` / `improvementSummaryTextEncrypted` / `nextWeekActionGoalTextEncrypted` / `emotionAndThoughtTextEncrypted` — 型は `JournalWeeklyEncrypted` を参照（`src/lib/firestore.ts`）。
 
+#### 2.x-2-0 週次 Ai レポート作成の API 入力（`POST /api/ai/weekly-report`）
+
+- **リクエスト本文**: `{ "weeklyInputText": string }`（クライアントは `buildWeeklyAiReportInputFromDailies` と同等の連結を送る想定。実装: `src/lib/weeklyAiReportInputFromDailies.ts`）。
+- **内容**: 当該週の各日（当日 `todayKey` まで）について、`journal_daily`（朝・晩）の項目を `【日付】` 付きブロックで並べる。自由記述が空なら本文上は **`無し`**。列挙型（実行状況・ブレーキ等）も未定義時は **`無し`** 表記。
+- **検証**: 連結テキスト全体が **`AI_REPORT_INPUT_MIN_TOTAL_CHARS`（150）** Unicode 文字以上（`src/lib/journalAiReportWriteMode.ts`）。不足時は API が 400。
+- **反映**: 応答 JSON の 4 キーを `weeklyActionReviewText` / `weeklyOutcomeReviewText` / `weeklyPsychologyText` / `insightAndLearningText` へ書き込む際、`users.{uid}.weeklyAiReportWriteMode`（`append` / `overwrite` / `skip_if_nonempty`）に従う（`applyAiReportWriteMode`）。
+
+Vertex の詳細は [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §9.2。
+
 #### 2.x-2-1 週次 Ai 改善提案 API の入力対照（`POST /api/ai/weekly-improvement`）
 
 クライアントは参照8項目を `【ラベル】` ＋改行＋本文の固定順で連結した `weeklyImprovementInputText` を送る。**各項目の本文は Unicode で 10 文字以上**であることをサーバでも検証する（実装の正本: `src/lib/weeklyImprovementAi.ts` の `WEEKLY_IMPROVEMENT_INPUT_SECTIONS`）。
 
-**応答 JSON**（`POST /api/ai/weekly-improvement`）: `suggestion`（プレーンテキスト1本・見出し＋改行＋本文。トークン注記は含めない）、`charCount`、`usageTotalTokenCount`（任意）。UI は `suggestion` と `usageTotalTokenCount` を結合し、プレビュー文末に `（使用トークン合計: N）` を表示する。保存するのは `suggestion` のみ（`aiImprovementSuggestionText`）。
+**応答 JSON**（`POST /api/ai/weekly-improvement`）: `suggestion`（プレーンテキスト1本・見出し＋改行＋本文。**100〜500 文字**目安。サーバ上限 500。トークン注記は含めない）、`charCount`、`usageTotalTokenCount`（任意）。UI は `suggestion` と `usageTotalTokenCount` を結合し、プレビュー文末に `（使用トークン合計: N）` を表示する。保存するのは `suggestion` のみ（`aiImprovementSuggestionText`）。
 
 | 連結ブロックのラベル（`【】` 内） | `JournalWeeklyPlain` |
 |----------------------------------|------------------------|
@@ -178,18 +187,58 @@
 |-------------------------|------------|---------------------|
 | monthKey | string | ドキュメント ID と一致（例: `2026-04`） |
 | tz | string | 固定 `Asia/Tokyo` |
-| thisMonthOutcomeGoalTextEncrypted | string \| null | 今月成果目標 |
-| thisMonthActionGoalTextEncrypted | string \| null | 今月行動目標 |
-| actionSummaryAndOutcomeProgressTextEncrypted | string \| null | 行動概要と成果達成状況 |
-| insightAndLearningTextEncrypted | string \| null | 気づき・感動・学び |
-| improvementPointsTextEncrypted | string \| null | 改善点 |
-| nextMonthActionGoalTextEncrypted | string \| null | 来月の行動目標 |
+| thisMonthActionGoalTextEncrypted | string \| null | 今月の行動 — 行動目標 |
+| thisMonthActionContentTextEncrypted | string \| null | 今月の行動 — 行動内容 |
+| monthlyActionReviewTextEncrypted | string \| null | 今月の振り返り — 行動の振り返り |
+| monthlyOutcomeReviewTextEncrypted | string \| null | 今月の振り返り — 成果の振り返り |
+| monthlyMetricAchievementTextEncrypted | string \| null | 指標の達成度 |
+| monthlyPsychologyTextEncrypted | string \| null | 心理面 |
+| insightAndLearningTextEncrypted | string \| null | 気づき・学び・成長 |
+| monthlyIssueRootCauseTextEncrypted | string \| null | 課題と原因の深掘り |
+| nextMonthImprovementTextEncrypted | string \| null | 来月への改善点 |
+| aiImprovementSuggestionTextEncrypted | string \| null | Ai改善提案 |
+| nextMonthGoalTextEncrypted | string \| null | 来月の行動 — 目標（一文） |
+| nextMonthActionContentTextEncrypted | string \| null | 来月の行動 — 行動内容 |
+| monthlySpecialNotesTextEncrypted | string \| null | 特記事項（その他自由欄） |
+| monthlyAiReportRunCount / monthlyAiReportRunDateKey | number / string \| null | 月次 Ai レポート作成の JST 当日成功回数 |
+| monthlyAiImprovementRunCount / monthlyAiImprovementRunDateKey | number / string \| null | 月次 Ai 改善提案の JST 当日成功回数 |
 | sharedWithCoach | bool \| null | 共有意図（UI/ルール用。`false` のときコーチ read 不可） |
+| （移行前のみ）thisMonthOutcomeGoalTextEncrypted 等 | string \| null | 旧 UI の列。読み込み時に新フィールドへフォールバック表示（再保存で新キーへ移行可） |
 | lastSharedWithCoachAt | Timestamp \| null | クライアントが「送信」を完了した最終日時（任意） |
 | lastSharedBodyFingerprint | string \| null | 送信時点の本文指紋（任意） |
 | coachUnreadAfterClientShare | bool \| null | コーチ側の新着（任意） |
 | clientUnreadLatestCoachReply | bool \| null | クライアント側の新着（任意） |
 | createdAt, updatedAt | Timestamp | 監査用 |
+
+#### 2.x-3-0 月次 Ai レポート・Ai 改善提案の API 入力
+
+**Ai レポート**（`POST /api/ai/monthly-report`）
+
+- **リクエスト本文**: `{ "monthlyInputText": string }`（`buildMonthlyAiReportInputFromWeeklies` と同等。実装: `src/lib/monthlyAiReportInputFromWeeklies.ts`）。
+- **対象週**: 暦月（JST `monthKey = YYYY-MM`）の 1 日〜末日のうち、**`weekStartKey` がその暦月に含まれる週**のみ（`listWeekStartKeysInCalendarMonth`。ユーザの `weekStartsOn` に従う）。各週の `journal_weekly` から、行動目標・行動内容・行動／成果／心理・気づき・課題・来週改善・ねぎらい等を見出し付きで連結。空欄は **`無し`**。
+- **検証**: 連結全体 **150 文字以上**（週次レポートと同じ `AI_REPORT_INPUT_MIN_TOTAL_CHARS`）。
+- **反映**: `monthlyActionReviewText` / `monthlyOutcomeReviewText` / `monthlyPsychologyText` / `insightAndLearningText` へ。モードは **`weeklyAiReportWriteMode`**（週次と同一フィールド名）。
+
+**Ai 改善提案**（`POST /api/ai/monthly-improvement`）
+
+- クライアントは `monthlyImprovementInputText` を送る。定義の正本: `src/lib/monthlyImprovementAi.ts` の `MONTHLY_IMPROVEMENT_INPUT_SECTIONS`（**9 ブロック**・順序固定）。
+- **各ブロック本文は原則 Unicode 10 文字以上**。**「特記事項（その他自由欄）」のみ任意**（`minChars: 0` のため API の短欄検証をスキップ）。
+- **応答**: 週次改善提案と同型。`suggestion` は **100〜500 文字**目安・上限 500。保存先は `aiImprovementSuggestionText`。
+- **カウンタ**: `monthlyAiReportRunCount` / `monthlyAiReportRunDateKey`、`monthlyAiImprovementRunCount` / `monthlyAiImprovementRunDateKey`（JST 同一日・成功時のみ。いずれも 1 日 3 回まで）。
+
+| 連結ブロックのラベル（`【】` 内） | `JournalMonthlyPlain` | 最小文字数（API 検証） |
+|----------------------------------|-------------------------|-------------------------|
+| 行動目標 | `thisMonthActionGoalText` | 10 |
+| 行動内容 | `thisMonthActionContentText` | 10 |
+| 行動の振り返り | `monthlyActionReviewText` | 10 |
+| 成果の振り返り | `monthlyOutcomeReviewText` | 10 |
+| 心理面　行動時の思考・感情の変化 | `monthlyPsychologyText` | 10 |
+| 気づき・学び・成長 | `insightAndLearningText` | 10 |
+| 課題と原因の深掘り | `monthlyIssueRootCauseText` | 10 |
+| 来月への改善点 | `nextMonthImprovementText` | 10 |
+| 特記事項（その他自由欄） | `monthlySpecialNotesText` | —（任意。短欄検証はスキップ） |
+
+Vertex の詳細は [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §10。
 
 #### 2.x-3-1 月次配下のサブコレクション（A-11 同型）
 
@@ -218,6 +267,7 @@ users/{uid}/journal_monthly/{monthKey}/coach_share_rounds/{roundId}
 | lastLoginAt  | Timestamp          | 最終ログイン日時                                         |
 | trialAffirmationMeta | map（任意） | 28日間トライアル・アファメーション UI 状態。`lastSubmenu`（null または select/create/edit/history）、`lastSelectedAffirmationId`（null または string）。**localStorage は使わない**（[04_AFFIRMATION_DESIGN.md](./04_AFFIRMATION_DESIGN.md) §3.6） |
 | weekStartsOn | string（任意） | マネジメント日誌の**週の開始曜日**。`sunday` のときのみ保存推奨。**未設定・削除時は月曜始まり**（`src/lib/journalWeek.ts`）。更新は `updateJournalWeekStartsOn`（`firestore.ts`） |
+| weeklyAiReportWriteMode | string（任意） | **Aiレポート作成**（週・月）で生成結果を既存入力にどう反映するか。`append` \| `overwrite` \| `skip_if_nonempty`（既に文字がある欄は変更しない）。未設定時は UI で `append` 相当。更新は `updateWeeklyAiReportWriteMode`。型は `WeeklyAiReportWriteMode`（`src/types/auth.ts`） |
 | activeCoachingAffirmationId | string \| null（任意・A-11） | **現在コーチング実施中**の `affirmations/{affirmationId}`。1 つのみ。`trialAffirmationMeta` の選択 ID とは別に、ビジネス上の正を持つ（[03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)） |
 
 

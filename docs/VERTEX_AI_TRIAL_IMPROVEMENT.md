@@ -9,6 +9,8 @@
 | **朝・晩** | Aiコーチからのコメント | `POST /api/ai/improvement` |
 | **週** | Aiレポート作成（4項目 JSON） | `POST /api/ai/weekly-report` |
 | **週** | Ai改善提案（詳細モードのみ・プレーンテキスト） | `POST /api/ai/weekly-improvement` |
+| **月** | Aiレポート作成（4項目 JSON） | `POST /api/ai/monthly-report` |
+| **月** | Ai改善提案（詳細モードのみ・プレーンテキスト） | `POST /api/ai/monthly-improvement` |
 
 **朝・晩タブ**では、当日の振り返り入力（複数欄を連結したテキスト）をもとにコーチング風のコメントを生成する PoC です。画面上の表記は **「Aiコーチからのコメント」** です。
 
@@ -217,7 +219,11 @@ LAN（例: `http://192.168.11.10:3000`）からブラウザで開いていても
 | API（朝・晩） | `src/app/api/ai/improvement/route.ts` |
 | UI（朝・晩） | `src/components/trial/TrialMorningEvening.tsx` |
 | API（週・レポート／改善） | `src/app/api/ai/weekly-report/route.ts`、`src/app/api/ai/weekly-improvement/route.ts` |
+| API（月・レポート／改善） | `src/app/api/ai/monthly-report/route.ts`、`src/app/api/ai/monthly-improvement/route.ts` |
 | UI（週） | `src/components/trial/TrialWeekly.tsx` |
+| UI（月） | `src/components/trial/TrialMonthly.tsx` |
+| レポート用インプット生成 | `src/lib/weeklyAiReportInputFromDailies.ts`、`src/lib/monthlyAiReportInputFromWeeklies.ts`、`src/lib/journalWeek.ts`（`listWeekStartKeysInCalendarMonth`） |
+| レポート反映モード | `src/lib/journalAiReportWriteMode.ts`（`AI_REPORT_INPUT_MIN_TOTAL_CHARS`、`applyAiReportWriteMode`） |
 | スタイル（ボタン状態など） | `src/styles/home-trial.css` |
 | 依存 | `package.json` の `google-auth-library` |
 
@@ -227,26 +233,30 @@ LAN（例: `http://192.168.11.10:3000`）からブラウザで開いていても
 
 ## 9. 週タブ: `POST /api/ai/weekly-report` と `POST /api/ai/weekly-improvement`
 
-### 9.1 共通
+### 9.1 共通（週次）
 
 - **認証・モデル・REST URL**は §4 と同様（`GOOGLE_CLOUD_PROJECT` / `GCP_SA_KEY_JSON` / `VERTEX_AI_GEMINI_MODEL`）。
 - **週次の実行回数**は `journal_weekly` に**機能別**に保持し、**JST の同一日（`YYYY-MM-DD`）における成功回数のみ**加算する（失敗・422・502 はカウントしない）。
   - **Aiレポート作成**: `weeklyAiReportRunCount` / `weeklyAiReportRunDateKey`
   - **Ai改善提案**: `weeklyAiImprovementRunCount` / `weeklyAiImprovementRunDateKey`
 - **上限**: いずれも **1 日あたり 3 回まで**（`TrialWeekly.tsx` の `WEEKLY_AI_DAILY_LIMIT`。朝・晩の 3 回とは独立）。
-- スキーマ・入力対照の正本: [manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md](./manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2 / §2.x-2-1。
+- **Aiレポートの反映モード**（週・月で共通）: `users/{uid}.weeklyAiReportWriteMode` を参照（`append`／`overwrite`／`skip_if_nonempty`＝既存入力がある欄は変更しない）。未設定時は UI では `append` 相当。設定 UI: `/trial_4w/settings`。
+- スキーマ・入力対照の正本: [manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md](./manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2（週次）および §2.x-2-0 / §2.x-2-1。
 
 ### 9.2 `POST /api/ai/weekly-report`
 
-- **Body**: `{ "weeklyInputText": string }` — 日次の朝・晩を日付ラベル付きで連結したテキスト（クライアント生成）。
+- **Body**: `{ "weeklyInputText": string }` — クライアントは **`buildWeeklyAiReportInputFromDailies`**（`src/lib/weeklyAiReportInputFromDailies.ts`）と同等の本文を送る想定。
+- **インプットの中身**: 当該週の各日（`todayKey` まで）について、朝・晩の項目を `【日付】` 見出し付きブロックで並べる。値が無い自由記述は **`無し`**。実行状況・ブレーキ・満足度など列挙型も未定義時は **`無し`** 表記に寄せる。
+- **検証**: 連結テキスト全体が **`AI_REPORT_INPUT_MIN_TOTAL_CHARS`（150）Unicode 文字以上**（`src/lib/journalAiReportWriteMode.ts`）。不足時は 400。
 - **成功レスポンス**: `{ reports: { actionAspect, outcomeAspect, psychologyAspect, insightGrowth }, charCountTotal?, usageTotalTokenCount? }`（JSON 本文のみ。トークンは `usageTotalTokenCount` で分離）。
-- **検証**: 入力文字数下限などは `route.ts` 参照。
+- **Firestore 反映**: 4 キーを週報の 4 欄へマッピング。**既存入力**は `weeklyAiReportWriteMode` に従う（上書きしない／上書き／追記）。
+- **出力の目安**（プロンプト）: 各観点 100〜200 文字目安・合計 800 文字以内・見出し＋本文など。サーバは各セクション最大 **200** 文字付近でトリム（`route.ts` の `MAX_SECTION_CHARS`）。
 - **プロンプトログ**: `ENABLE_AI_PROMPT_LOG = true`（本番ではオフ推奨。`route.ts` 定数で切替）。
 
 ### 9.3 `POST /api/ai/weekly-improvement`
 
 - **Body**: `{ "weeklyImprovementInputText": string }` — 週報の参照 **8 項目**を `【ラベル】` 固定順で連結（`src/lib/weeklyImprovementAi.ts`）。**各ブロック本文は Unicode 10 文字以上**（API でも再検証）。
-- **成功レスポンス**: `{ suggestion: string, charCount, usageTotalTokenCount? }` — `suggestion` はプレーン1本（見出し＋改行＋本文、100〜450 文字を目安にサーバ側で句点付近トリム可）。**トークンは本文に含めない**。
+- **成功レスポンス**: `{ suggestion: string, charCount, usageTotalTokenCount? }` — `suggestion` はプレーン1本（見出し＋改行＋本文。**100〜500 文字**を目安にサーバ側で句点付近までトリム。上限 `MAX_SUGGESTION_CHARS = 500`）。**トークンは本文に含めない**。
 - **UI**: プレビュー表示時のみ `suggestion` と `usageTotalTokenCount` を結合し、文末に `（使用トークン合計: N）` を付ける。**Firestore の本文**はユーザーが「Ai改善提案に保存」したときのみ `aiImprovementSuggestionText` に書く（プレビュー破棄なら本文は未保存のまま）。**当日カウンタ**は API 成功直後に更新する（プレビュー保存の有無とは無関係）。来週への改善点への自動転記はしない。
 - **プロンプトログ**: `ENABLE_AI_PROMPT_LOG = false`（`route.ts`）。
 
@@ -256,7 +266,47 @@ LAN（例: `http://192.168.11.10:3000`）からブラウザで開いていても
 |------|------|
 | API | `src/app/api/ai/weekly-report/route.ts` |
 | API | `src/app/api/ai/weekly-improvement/route.ts` |
-| 入力連結・検証定数 | `src/lib/weeklyImprovementAi.ts` |
+| 入力連結・検証定数 | `src/lib/weeklyImprovementAi.ts`、`weeklyAiReportInputFromDailies.ts` |
 | UI | `src/components/trial/TrialWeekly.tsx` |
 | 永続化 | `src/lib/firestore.ts`（`JournalWeeklyPlain` / `saveJournalWeeklyPlain`） |
 | 表示レベル | `src/lib/journalDetailLevel.ts` + `JournalDetailLevelContext` |
+
+---
+
+## 10. 月タブ: `POST /api/ai/monthly-report` と `POST /api/ai/monthly-improvement`
+
+### 10.1 共通（月次）
+
+- **認証・モデル・REST**は §4 と同様。
+- **月次の実行回数**は `journal_monthly` に**機能別**に保持し、**JST 同一日の成功回数のみ**加算（失敗・422・502 は含めない）。
+  - **Aiレポート**: `monthlyAiReportRunCount` / `monthlyAiReportRunDateKey`
+  - **Ai改善提案**: `monthlyAiImprovementRunCount` / `monthlyAiImprovementRunDateKey`
+- **上限**: **1 日あたり 3 回まで**（`TrialMonthly.tsx` の `MONTHLY_AI_DAILY_LIMIT`。週・朝晩のカウンタとは独立）。
+- **Aiレポートの反映モード**: 週次と同じく **`users/{uid}.weeklyAiReportWriteMode`**（キー名は週次のまま。月次 UI からも参照）。
+- スキーマの正本: [manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md](./manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-3 および §2.x-3-0。
+
+### 10.2 `POST /api/ai/monthly-report`
+
+- **Body**: `{ "monthlyInputText": string }` — クライアントは **`buildMonthlyAiReportInputFromWeeklies`**（`src/lib/monthlyAiReportInputFromWeeklies.ts`）と同等の本文を送る想定。
+- **インプットのソース**: **暦月（JST `YYYY-MM`）内に `weekStartKey` が入る週**だけを対象に、`journal_weekly` の所定フィールドを週ごとに見出し付きで連結する（`listWeekStartKeysInCalendarMonth` + 各週の `JournalWeeklyPlain`）。週が暦月をまたいでも、**週の開始日がどの暦月に属するか**で当月／他月に振り分ける（一般的な「週開始基準」）。
+- **欠損**: 各フィールドが空なら本文上は **`無し`**。
+- **検証**: 連結全体が **150 文字以上**（定数は週次と共通 `AI_REPORT_INPUT_MIN_TOTAL_CHARS`）。
+- **成功レスポンス**: 週次と同型の `reports` 4 キー。Firestore では **`monthlyActionReviewText`** / **`monthlyOutcomeReviewText`** / **`monthlyPsychologyText`** / **`insightAndLearningText`**（月次ドキュメント）へ反映。反映モードは `weeklyAiReportWriteMode`。
+- **出力の目安・トリム**: 週次レポート（§9.2）と同方針（各 100〜200 文字目安・合計 800 以内・セクション最大 200）。
+- **プロンプトログ**: `ENABLE_AI_PROMPT_LOG = false`（`monthly-report/route.ts`）。
+
+### 10.3 `POST /api/ai/monthly-improvement`
+
+- **Body**: `{ "monthlyImprovementInputText": string }` — 月報の参照項目を `【ラベル】` 固定順で連結（`src/lib/monthlyImprovementAi.ts` の `MONTHLY_IMPROVEMENT_INPUT_SECTIONS`）。**8 項目は各 10 文字以上**。**「特記事項（その他自由欄）」は任意**（`minChars: 0` のため API の短欄検証から除外）。
+- **成功レスポンス**: 週次改善提案と同型。**100〜500 文字**目安・上限 500。**トークンは本文に含めない**。
+- **UI・カウンタ・保存**: 週次改善提案（§9.3）と同様の考え方。保存先は `journal_monthly` の `aiImprovementSuggestionText`。
+- **プロンプトログ**: `ENABLE_AI_PROMPT_LOG = false`（`route.ts`）。
+
+### 10.4 関連ファイル（月次）
+
+| 種別 | パス |
+|------|------|
+| API | `src/app/api/ai/monthly-report/route.ts`、`monthly-improvement/route.ts` |
+| 入力連結 | `monthlyAiReportInputFromWeeklies.ts`、`monthlyImprovementAi.ts` |
+| UI | `src/components/trial/TrialMonthly.tsx` |
+| 週キー列挙 | `src/lib/journalWeek.ts`（`listWeekStartKeysInCalendarMonth`） |

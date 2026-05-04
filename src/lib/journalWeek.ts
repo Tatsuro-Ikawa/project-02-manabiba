@@ -113,3 +113,25 @@ export function formatWeekRangeShortJa(weekStartKey: string): string {
 export function shiftWeekStartDateKey(weekStartKey: string, deltaWeeks: number): string {
   return addDaysToDateKey(weekStartKey, deltaWeeks * 7);
 }
+
+/**
+ * 暦月 `monthKey`（YYYY-MM, JST）に「週の開始日が属する」すべての週の `weekStartKey` を昇順で返す。
+ * 月次 Ai レポートのインプットは、これらの週の `journal_weekly` を連結する（週が月境界をまたいでも、開始日が月内なら含める）。
+ */
+export function listWeekStartKeysInCalendarMonth(
+  monthKey: string,
+  weekStartsOn: JournalWeekStartsOn = 'monday'
+): string[] {
+  const [y, m] = monthKey.split('-').map((x) => Number(x));
+  if (!y || !m || m < 1 || m > 12) return [];
+  const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const monthEnd = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const keys: string[] = [];
+  let cur = getWeekStartDateKeyForDateKey(monthStart, weekStartsOn);
+  while (cur <= monthEnd) {
+    keys.push(cur);
+    cur = shiftWeekStartDateKey(cur, 1);
+  }
+  return keys;
+}

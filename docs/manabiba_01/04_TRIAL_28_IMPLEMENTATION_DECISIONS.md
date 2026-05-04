@@ -109,7 +109,7 @@
 - クライアントの **未読（`clientUnreadLatestCoachReply`）を開封操作で false にする UI/挙動**
 - サブスク（プラン）→ `coachShareQuotaPerMonth` の同期（現状は暫定フォールバック）
 
-### 5.2 マネジメント日誌 — 人コーチ・AI・コース（2026-04-04 確定）
+### 5.2 マネジメント日誌 — 人コーチ・AI・コース（2026-04-04 確定、2026-05-02 Vertex 週月レポート・改善の仕様追記）
 
 - **正本**: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)
 - **共有範囲（人コーチ）**: `journal_daily` は共有しない。`journal_weekly` / `journal_monthly` のみ（ルールで read を制御）。
@@ -159,9 +159,16 @@
 ### 週（weekly）
 
 - **保存先**: `users/{uid}/journal_weekly/{weekStartKey}`（`weekStartKey` は週の開始日 `YYYY-MM-DD`、JST 基準）。
-- **Aiレポート作成**（Vertex・4観点 JSON）: API の `reports.actionAspect` / `outcomeAspect` / `psychologyAspect` / `insightGrowth` を、それぞれ **`weeklyActionReviewText`** / **`weeklyOutcomeReviewText`** / **`weeklyPsychologyText`** / **`insightAndLearningText`** に書き込む（上書き／追記はユーザープロファイルの `weeklyAiReportWriteMode`）。**同日の成功回数のみ** `weeklyAiReportRunCount` / `weeklyAiReportRunDateKey`（1 日 3 回まで。朝・晩の回数とは独立）。API: `POST /api/ai/weekly-report`。
-- **Ai改善提案**（Vertex・プレーンテキスト、**詳細**表示モード時のみ UI 表示）: 確定後は `aiImprovementSuggestionText`（暗号化版あり）。**同日の成功回数のみ** `weeklyAiImprovementRunCount` / `weeklyAiImprovementRunDateKey`（1 日 3 回まで）は **API 成功時点**で更新（プレビュー表示の有無に関わらず）。本文はプレビューから「Ai改善提案に保存」で反映。API: `POST /api/ai/weekly-improvement`。入力は週報 8 項目を固定順連結（各ブロック 10 文字以上）。トークンは JSON のみ返し、Firestore 保存本文には含めない（プレビュー時のみ UI で文末表示）。
-- スキーマの正本: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2 / §2.x-2-1。Vertex 詳細: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §9。
+- **Aiレポート作成**（Vertex・4観点 JSON）: API の `reports.actionAspect` / `outcomeAspect` / `psychologyAspect` / `insightGrowth` を、それぞれ **`weeklyActionReviewText`** / **`weeklyOutcomeReviewText`** / **`weeklyPsychologyText`** / **`insightAndLearningText`** に書き込む。反映はユーザープロファイルの **`weeklyAiReportWriteMode`**（`append`／`overwrite`／`skip_if_nonempty`＝既存入力がある欄は変更しない）。**インプット**は当週の日次（朝・晩）を **`無し` 埋め**で連結し、**合計 150 文字以上**（実装: `buildWeeklyAiReportInputFromDailies`）。**同日の成功回数のみ** `weeklyAiReportRunCount` / `weeklyAiReportRunDateKey`（1 日 3 回まで。朝・晩の回数とは独立）。API: `POST /api/ai/weekly-report`。
+- **Ai改善提案**（Vertex・プレーンテキスト、**詳細**表示モード時のみ UI 表示）: 確定後は `aiImprovementSuggestionText`（暗号化版あり）。**同日の成功回数のみ** `weeklyAiImprovementRunCount` / `weeklyAiImprovementRunDateKey`（1 日 3 回まで）は **API 成功時点**で更新（プレビュー表示の有無に関わらず）。本文はプレビューから「Ai改善提案に保存」で反映。API: `POST /api/ai/weekly-improvement`。入力は週報 8 項目を固定順連結（各ブロック 10 文字以上）。**生成本文は 100〜500 文字**目安（サーバ上限 500）。トークンは JSON のみ返し、Firestore 保存本文には含めない（プレビュー時のみ UI で文末表示）。
+- スキーマの正本: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2 / §2.x-2-0 / §2.x-2-1。Vertex 詳細: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §9。
+
+### 月（monthly）
+
+- **保存先**: `users/{uid}/journal_monthly/{monthKey}`（`monthKey = YYYY-MM`、JST）。
+- **Aiレポート作成**（Vertex・4観点 JSON）: 応答 4 キーを **`monthlyActionReviewText`** / **`monthlyOutcomeReviewText`** / **`monthlyPsychologyText`** / **`insightAndLearningText`** に反映。反映モードは週次と同じ **`weeklyAiReportWriteMode`**。**インプット**は暦月内に週開始日が入る各週の **週報**を連結（欠損は `無し`、**合計 150 文字以上**）。**同日の成功回数のみ** `monthlyAiReportRunCount` / `monthlyAiReportRunDateKey`（1 日 3 回）。API: `POST /api/ai/monthly-report`。
+- **Ai改善提案**: `aiImprovementSuggestionText` へ保存（プレビューから確定）。カウンタ `monthlyAiImprovementRunCount` / `monthlyAiImprovementRunDateKey`（1 日 3 回・成功時のみ）。入力は月報 **9 項目**固定順（**特記事項は任意**、他は各 10 文字以上）。**生成本文 100〜500 文字**目安。API: `POST /api/ai/monthly-improvement`。Vertex 詳細: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §10。
+- スキーマの正本: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-3 / §2.x-3-0。
 
 ### 日付ナビ（前日/翌日）
 

@@ -165,27 +165,67 @@ export function journalShowWeeklySelfPraiseSection(level: JournalDetailLevel): b
   return level === 'detailed';
 }
 
-/** 月：今月成果目標 */
-export function journalShowMonthlyOutcomeGoal(level: JournalDetailLevel): boolean {
+/** 月：今月の行動「行動内容：どのように」（簡易では非表示） */
+export function journalShowMonthlyThisMonthActionContent(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 月：今月行動目標 */
-export function journalShowMonthlyActionGoal(level: JournalDetailLevel): boolean {
+/** 月：Aiレポート作成ブロック（簡易では非表示） */
+export function journalShowMonthlyAiReportSection(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 月：行動概要と成果達成状況 */
-export function journalShowMonthlyActionSummary(level: JournalDetailLevel): boolean {
+/** 月：行動の振り返りテキスト（簡易では非表示） */
+export function journalShowMonthlyActionReviewText(level: JournalDetailLevel): boolean {
+  return level !== 'simple';
+}
+
+/** 月：成果への振り返りテキスト（簡易では非表示） */
+export function journalShowMonthlyOutcomeReview(level: JournalDetailLevel): boolean {
+  return level !== 'simple';
+}
+
+/** 月：指標の達成度（詳細のみ） */
+export function journalShowMonthlyMetricAchievement(level: JournalDetailLevel): boolean {
   return level === 'detailed';
 }
 
-/** 月：改善点 */
-export function journalShowMonthlyImprovementPoints(level: JournalDetailLevel): boolean {
+/** 月：心理面（簡易・普通・詳細） */
+export function journalShowMonthlyPsychologySection(_level: JournalDetailLevel): boolean {
+  return true;
+}
+
+/** 月：気づき・学び・成長（簡易・普通・詳細） */
+export function journalShowMonthlyInsightLearning(_level: JournalDetailLevel): boolean {
+  return true;
+}
+
+/** 月：課題と原因の深掘り（詳細のみ） */
+export function journalShowMonthlyIssueRootCauseSection(level: JournalDetailLevel): boolean {
+  return level === 'detailed';
+}
+
+/** 月：来月への改善点セクション（簡易では非表示） */
+export function journalShowMonthlyNextImprovementSection(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 月：来月の行動目標 */
-export function journalShowMonthlyNextMonthGoal(level: JournalDetailLevel): boolean {
+/** 月：Ai改善提案欄（詳細のみ） */
+export function journalShowMonthlyAiImprovementSuggestion(level: JournalDetailLevel): boolean {
+  return level === 'detailed';
+}
+
+/** 月：来月の行動「目標（一文で）」（全レベル） */
+export function journalShowMonthlyNextMonthGoal(_level: JournalDetailLevel): boolean {
+  return true;
+}
+
+/** 月：来月の行動「行動内容（具体的に）」（簡易では非表示） */
+export function journalShowMonthlyNextMonthActionContent(level: JournalDetailLevel): boolean {
   return level !== 'simple';
+}
+
+/** 月：特記事項（その他自由欄）（詳細のみ） */
+export function journalShowMonthlySpecialNotes(level: JournalDetailLevel): boolean {
+  return level === 'detailed';
 }

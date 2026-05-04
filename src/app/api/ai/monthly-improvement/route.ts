@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 import {
-  countWeeklyImprovementInputChars,
-  extractWeeklyImprovementSectionBody,
-  WEEKLY_IMPROVEMENT_INPUT_SECTIONS,
-  WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
-} from '@/lib/weeklyImprovementAi';
+  countMonthlyImprovementInputChars,
+  extractMonthlyImprovementSectionBody,
+  MONTHLY_IMPROVEMENT_INPUT_SECTIONS,
+  MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
+} from '@/lib/monthlyImprovementAi';
 
-type WeeklyImprovementRequestBody = {
-  weeklyImprovementInputText?: unknown;
+type MonthlyImprovementRequestBody = {
+  monthlyImprovementInputText?: unknown;
 };
 
 export const runtime = 'nodejs';
 
-/** 応答本文（プレーン1本）の最大文字数。超過分は句点付近で trim（weekly-report / improvement と同型） */
 const MAX_SUGGESTION_CHARS = 500;
-/** 応答の最小文字数。未満時は拡張プロンプトを1回試行 */
 const MIN_SUGGESTION_CHARS = 100;
 const ENABLE_AI_PROMPT_LOG = false;
 const AI_JSON_LOG_MAX_CHARS = 16000;
@@ -105,31 +103,35 @@ function buildGoogleAuth(): GoogleAuth {
 }
 
 export async function POST(request: NextRequest) {
-  let body: WeeklyImprovementRequestBody;
+  let reqBody: MonthlyImprovementRequestBody;
   try {
-    body = (await request.json()) as WeeklyImprovementRequestBody;
+    reqBody = (await request.json()) as MonthlyImprovementRequestBody;
   } catch {
     return NextResponse.json({ error: 'リクエスト形式が不正です。' }, { status: 400 });
   }
 
   const input =
-    typeof body.weeklyImprovementInputText === 'string' ? body.weeklyImprovementInputText.trim() : '';
+    typeof reqBody.monthlyImprovementInputText === 'string'
+      ? reqBody.monthlyImprovementInputText.trim()
+      : '';
 
   if (!input) {
-    return NextResponse.json({ error: 'weeklyImprovementInputText を指定してください。' }, { status: 400 });
+    return NextResponse.json({ error: 'monthlyImprovementInputText を指定してください。' }, { status: 400 });
   }
 
   const shortSections: string[] = [];
-  for (const sec of WEEKLY_IMPROVEMENT_INPUT_SECTIONS) {
-    const body = extractWeeklyImprovementSectionBody(input, sec.promptLabel);
-    if (countWeeklyImprovementInputChars(body) < WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD) {
+  for (const sec of MONTHLY_IMPROVEMENT_INPUT_SECTIONS) {
+    const min = sec.minChars ?? MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD;
+    if (min <= 0) continue;
+    const sectionBody = extractMonthlyImprovementSectionBody(input, sec.promptLabel);
+    if (countMonthlyImprovementInputChars(sectionBody) < min) {
       shortSections.push(sec.labelShort);
     }
   }
   if (shortSections.length > 0) {
     return NextResponse.json(
       {
-        error: `次の項目をそれぞれ${WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD}文字以上入力してください: ${shortSections.join('、')}`,
+        error: `次の項目をそれぞれ${MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD}文字以上入力してください: ${shortSections.join('、')}`,
       },
       { status: 400 }
     );
@@ -148,12 +150,12 @@ export async function POST(request: NextRequest) {
 
   const prompt = [
     'あなたは行動改善を支援する日本語コーチです。',
-    '以下の【今週の振り返り入力】は、クライアントの週報からの項目欄を改行区切りで連結したものです。',
+    '以下の【今月の振り返り入力】は、クライアントの月報からの項目欄を改行区切りで連結したものです。',
     '',
-    '【含まれる項目（いずれもクライアント入力済み・各10文字以上）】',
+    '【含まれる項目】特記事項以外はクライアント入力済みで各10文字以上。特記事項は任意。',
     '「行動目標」「行動内容」「行動の振り返り」「成果の振り返り」',
     '「心理面　行動時の思考・感情の変化」「気づき・学び・成長」',
-    '「課題と原因の深掘り」「来週への改善点」',
+    '「課題と原因の深掘り」「来月への改善点」「特記事項（その他自由欄）」',
     '',
     '【出力形式（必須）】',
     '- プレーンテキストを**1本だけ**出力する（JSON・コードブロック・前後の説明文は禁止）。',
@@ -163,7 +165,7 @@ export async function POST(request: NextRequest) {
     '- 見出し・改行・本文を合算した Unicode 文字数で**300〜500 文字**を目安とする。',
     '',
     '【出力内容】',
-    'これらの項目のうち、行動目標および課題と原因を踏まえ、来週に活かせる改善内容を提案してください。',
+    'これらの項目のうち、行動目標および課題と原因を踏まえ、来月に活かせる改善内容を提案してください。',
     '行動や成果への振り返り、特に心理面や気づき・学び・成長で記述されている言葉を引用しながら、',
     'クライアントへの受容・共感・承認をベースに次の一歩に活かす提案をしてください。',
     '',
@@ -175,13 +177,13 @@ export async function POST(request: NextRequest) {
     '- 長さが上限に近いときは、最後の 1 文を省略してもよいが、文を途中で切らない。',
     '',
     '---',
-    '【今週の振り返り入力】',
+    '【今月の振り返り入力】',
     input,
   ].join('\n');
 
   if (ENABLE_AI_PROMPT_LOG) {
-    console.info('ai/weekly-improvement prompt chars:', countChars(prompt));
-    console.info('ai/weekly-improvement prompt begin\n' + prompt + '\nai/weekly-improvement prompt end');
+    console.info('ai/monthly-improvement prompt chars:', countChars(prompt));
+    console.info('ai/monthly-improvement prompt begin\n' + prompt + '\nai/monthly-improvement prompt end');
   }
 
   try {
@@ -244,7 +246,7 @@ export async function POST(request: NextRequest) {
 
       if (ENABLE_AI_PROMPT_LOG) {
         console.info(
-          `ai/weekly-improvement aiJson (HTTP ${aiRes.status}):`,
+          `ai/monthly-improvement aiJson (HTTP ${aiRes.status}):`,
           safeJsonForLog(aiJson, AI_JSON_LOG_MAX_CHARS)
         );
       }
@@ -280,7 +282,7 @@ export async function POST(request: NextRequest) {
       usageSum += generated.usageTotalTokenCount;
     }
     if (generated.httpError) {
-      console.error('ai/weekly-improvement: generation error', generated.httpError);
+      console.error('ai/monthly-improvement: generation error', generated.httpError);
       return NextResponse.json({ error: generated.httpError }, { status: 502 });
     }
     if (generated.blockReason) {
@@ -333,7 +335,7 @@ export async function POST(request: NextRequest) {
       usageTotalTokenCount: usageSum > 0 ? usageSum : undefined,
     });
   } catch (e) {
-    console.error('ai/weekly-improvement route error:', e);
+    console.error('ai/monthly-improvement route error:', e);
     if (isFetchAbortOrTimeout(e)) {
       return NextResponse.json(
         { error: 'Ai改善提案の生成がタイムアウトしました。再実行してください。' },

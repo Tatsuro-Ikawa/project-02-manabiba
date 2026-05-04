@@ -43,6 +43,8 @@ import {
   validateWeeklyImprovementInput,
   WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
 } from '@/lib/weeklyImprovementAi';
+import { AI_REPORT_INPUT_MIN_TOTAL_CHARS, applyAiReportWriteMode } from '@/lib/journalAiReportWriteMode';
+import { buildWeeklyAiReportInputFromDailies } from '@/lib/weeklyAiReportInputFromDailies';
 
 function WeeklyTextRow({
   label,
@@ -89,106 +91,6 @@ type WeeklyReportsResponse = {
 
 /** 週次の各 Ai 機能（レポート作成・改善提案）あたりの 1 日上限（JST）。成功時のみカウント */
 const WEEKLY_AI_DAILY_LIMIT = 3;
-
-function hasText(v: string | null | undefined): v is string {
-  return typeof v === 'string' && v.trim().length > 0;
-}
-
-function executionLabel(v: Trial4wDailyPlain['eveningExecution']): string {
-  if (v === 'done') return 'できた';
-  if (v === 'partial') return '一部できた';
-  if (v === 'none') return 'できなかった';
-  return '';
-}
-
-function brakeLabel(v: Trial4wDailyPlain['eveningBrake']): string {
-  if (v === 'yes') return '働いた';
-  if (v === 'partial') return '一部働いた';
-  if (v === 'no') return '働かなかった';
-  return '';
-}
-
-function formatTokyoDateTime(d = new Date()): string {
-  return new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(d);
-}
-
-function applyWriteMode(
-  current: string | null,
-  generated: string,
-  mode: 'overwrite' | 'append'
-): string {
-  if (mode === 'overwrite') return generated;
-  if (!hasText(current)) return generated;
-  return `${current.trim()}\n\n---\nAIレポート（${formatTokyoDateTime()}）\n${generated}`;
-}
-
-function buildWeeklyAiInputText(
-  weekDates: string[],
-  todayKey: string,
-  dailyByDateKey: Record<string, Trial4wDailyPlain>
-): string {
-  const blocks: string[] = [];
-  for (const dk of weekDates) {
-    if (dk > todayKey) continue;
-    const d = dailyByDateKey[dk];
-    if (!d) continue;
-    const lines: string[] = [`【日付】${dk}`];
-
-    const todayAction: string[] = [];
-    if (hasText(d.morningActionGoalText)) todayAction.push(`- 行動目標: ${d.morningActionGoalText.trim()}`);
-    if (hasText(d.morningActionContentText)) todayAction.push(`- 行動内容: ${d.morningActionContentText.trim()}`);
-    if (todayAction.length > 0) {
-      lines.push('【今日の行動】', ...todayAction);
-    }
-
-    const ex = executionLabel(d.eveningExecution);
-    if (ex) lines.push('【行動の実行状況】', `- 実行状況: ${ex}`);
-
-    const resultLines: string[] = [];
-    if (hasText(d.eveningResultExecutionText)) {
-      resultLines.push(`- どのように行いどの程度できたか: ${d.eveningResultExecutionText.trim()}`);
-    }
-    if (hasText(d.eveningResultGoalProgressText)) {
-      resultLines.push(`- 目標・指標に対しどの程度近づけたか: ${d.eveningResultGoalProgressText.trim()}`);
-    }
-    if (typeof d.eveningSatisfaction === 'number') {
-      resultLines.push(`- 満足度: ${d.eveningSatisfaction}/10`);
-    }
-    if (resultLines.length > 0) lines.push('【行動の結果】', ...resultLines);
-
-    if (hasText(d.eveningEmotionThoughtText)) {
-      lines.push('【行動時の感情・思考】', `- 内容: ${d.eveningEmotionThoughtText.trim()}`);
-    }
-
-    const brake = brakeLabel(d.eveningBrake);
-    if (brake) {
-      const brakeLines = [`- 作動: ${brake}`];
-      if (d.eveningBrake === 'yes' || d.eveningBrake === 'partial') {
-        if (hasText(d.eveningBrakeWorkedText)) brakeLines.push(`- どんなブレーキだったか: ${d.eveningBrakeWorkedText.trim()}`);
-        if (hasText(d.eveningBrakeWordsText)) brakeLines.push(`- どんな反論の言葉を使ったか: ${d.eveningBrakeWordsText.trim()}`);
-      }
-      lines.push('【こころのブレーキ】', ...brakeLines);
-    }
-
-    if (hasText(d.eveningInsightText)) {
-      lines.push('【今日の気づき・感動・学びと課題】', `- 内容: ${d.eveningInsightText.trim()}`);
-    }
-    if (hasText(d.eveningImprovementText)) {
-      lines.push('【明日への改善点】', `- 内容: ${d.eveningImprovementText.trim()}`);
-    }
-
-    if (lines.length > 1) blocks.push(lines.join('\n'));
-  }
-  return blocks.join('\n\n');
-}
 
 export default function TrialWeekly() {
   const { user, userProfile, loading } = useAuth();
@@ -345,9 +247,11 @@ export default function TrialWeekly() {
       return;
     }
 
-    const weeklyInputText = buildWeeklyAiInputText(weekDates, todayKey, dailyByDateKey);
-    if (!weeklyInputText.trim()) {
-      setMsg('週次AIレポート作成に必要な入力データが不足しています。');
+    const weeklyInputText = buildWeeklyAiReportInputFromDailies(weekDates, todayKey, dailyByDateKey);
+    if ([...weeklyInputText].length < AI_REPORT_INPUT_MIN_TOTAL_CHARS) {
+      setMsg(
+        `週次AIレポート作成の入力が不足しています（連結テキストは合計${AI_REPORT_INPUT_MIN_TOTAL_CHARS}文字以上になるまで、朝・晩の記入をお願いします）。`
+      );
       return;
     }
 
@@ -366,22 +270,22 @@ export default function TrialWeekly() {
 
       const writeMode = userProfile?.weeklyAiReportWriteMode ?? 'append';
       const patch: Partial<JournalWeeklyPlain> = {
-        weeklyActionReviewText: applyWriteMode(
+        weeklyActionReviewText: applyAiReportWriteMode(
           data.weeklyActionReviewText,
           payload.reports.actionAspect,
           writeMode
         ),
-        weeklyOutcomeReviewText: applyWriteMode(
+        weeklyOutcomeReviewText: applyAiReportWriteMode(
           data.weeklyOutcomeReviewText,
           payload.reports.outcomeAspect,
           writeMode
         ),
-        weeklyPsychologyText: applyWriteMode(
+        weeklyPsychologyText: applyAiReportWriteMode(
           data.weeklyPsychologyText,
           payload.reports.psychologyAspect,
           writeMode
         ),
-        insightAndLearningText: applyWriteMode(
+        insightAndLearningText: applyAiReportWriteMode(
           data.insightAndLearningText,
           payload.reports.insightGrowth,
           writeMode
@@ -695,7 +599,9 @@ export default function TrialWeekly() {
                 </button>
               </div>
               <p className="text-sm text-gray-600">
-                ボタンを押すと「行動面」「成果面」「心理面」「気づき・学び・成長」の入力欄に下書きを自動で出力します（手動で編集できます）。
+                当週の朝・晩学び帳を日付ごとに連結したテキスト（空欄は「無し」）をもとに、「行動面」「成果面」「心理面」「気づき・学び・成長」欄へ下書きを出力します。連結テキストは合計
+                {AI_REPORT_INPUT_MIN_TOTAL_CHARS}
+                文字以上で実行できます（手動で編集できます）。
                 {weeklyAiUsageTotalTokens != null
                   ? `（使用トークン合計: ${weeklyAiUsageTotalTokens}）`
                   : '（使用トークン合計: —）'}
