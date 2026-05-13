@@ -19,6 +19,7 @@ import {
   listWeekStartKeysInCalendarMonth,
   resolveJournalWeekStartsOn,
 } from '@/lib/journalWeek';
+import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
 import { AutosizeTextarea } from '@/components/trial/AutosizeTextarea';
@@ -286,25 +287,6 @@ export default function TrialMonthly() {
     url.searchParams.set('date', dateKey);
     window.history.replaceState({}, '', url.pathname + url.search);
   }, []);
-
-  function computeMorningSymbol(d: Trial4wDailyPlain | undefined, dateKey: string): { sym: string; cls: string } {
-    if (dateKey > todayKey) return { sym: '—', cls: 'symbol-none' };
-    const done1 = d?.morningAffirmationDeclaration === 'done';
-    const done2 = !!(d?.morningTodayActionText && d.morningTodayActionText.trim());
-    const done3 = d?.morningImagingDone === true;
-    const score = Number(done1) + Number(done2) + Number(done3);
-    if (score === 3) return { sym: '〇', cls: 'symbol-o' };
-    if (score >= 1) return { sym: '△', cls: 'symbol-delta' };
-    return { sym: '×', cls: 'symbol-x' };
-  }
-
-  function computeEveningSymbol(d: Trial4wDailyPlain | undefined, dateKey: string): { sym: string; cls: string } {
-    if (dateKey > todayKey) return { sym: '—', cls: 'symbol-none' };
-    if (d?.eveningExecution === 'done') return { sym: '〇', cls: 'symbol-o' };
-    if (d?.eveningExecution === 'partial') return { sym: '△', cls: 'symbol-delta' };
-    if (d?.eveningExecution === 'none') return { sym: '×', cls: 'symbol-x' };
-    return { sym: '—', cls: 'symbol-none' };
-  }
 
   const monthCalendarCells = useMemo(() => {
     const r = getMonthStartEndDateKey(displayMonthKey);
@@ -640,8 +622,8 @@ export default function TrialMonthly() {
                   return <div key={`e-${idx}`} className="month-cal-cell empty" role="gridcell" aria-hidden />;
                 }
                 const d = dailyByDateKey[c.dateKey];
-                const m = computeMorningSymbol(d, c.dateKey);
-                const e = computeEveningSymbol(d, c.dateKey);
+                const m = computeMorningCompletionSymbol(d, c.dateKey, todayKey);
+                const e = computeEveningExecutionSymbol(d, c.dateKey, todayKey);
                 return (
                   <div key={c.dateKey} className="month-cal-cell" role="gridcell">
                     <span className="cell-date">{c.day}</span>

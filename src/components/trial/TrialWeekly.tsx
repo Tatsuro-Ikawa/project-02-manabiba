@@ -45,6 +45,7 @@ import {
 } from '@/lib/weeklyImprovementAi';
 import { AI_REPORT_INPUT_MIN_TOTAL_CHARS, applyAiReportWriteMode } from '@/lib/journalAiReportWriteMode';
 import { buildWeeklyAiReportInputFromDailies } from '@/lib/weeklyAiReportInputFromDailies';
+import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
 
 function WeeklyTextRow({
   label,
@@ -457,25 +458,6 @@ export default function TrialWeekly() {
     window.history.replaceState({}, '', url.pathname + url.search);
   }, []);
 
-  function computeMorningSymbol(d: Trial4wDailyPlain | undefined, dateKey: string): { sym: string; cls: string } {
-    if (dateKey > todayKey) return { sym: '—', cls: 'symbol-none' };
-    const done1 = d?.morningAffirmationDeclaration === 'done';
-    const done2 = !!(d?.morningTodayActionText && d.morningTodayActionText.trim());
-    const done3 = d?.morningImagingDone === true;
-    const score = Number(done1) + Number(done2) + Number(done3);
-    if (score === 3) return { sym: '〇', cls: 'symbol-o' };
-    if (score >= 1) return { sym: '△', cls: 'symbol-delta' };
-    return { sym: '×', cls: 'symbol-x' };
-  }
-
-  function computeEveningSymbol(d: Trial4wDailyPlain | undefined, dateKey: string): { sym: string; cls: string } {
-    if (dateKey > todayKey) return { sym: '—', cls: 'symbol-none' };
-    if (d?.eveningExecution === 'done') return { sym: '〇', cls: 'symbol-o' };
-    if (d?.eveningExecution === 'partial') return { sym: '△', cls: 'symbol-delta' };
-    if (d?.eveningExecution === 'none') return { sym: '×', cls: 'symbol-x' };
-    return { sym: '—', cls: 'symbol-none' };
-  }
-
   if (!user && !loading) {
     return (
       <div className="trial-tab-content">
@@ -618,8 +600,8 @@ export default function TrialWeekly() {
             <div className="weekly-result-grid" role="grid" aria-label="行動の結果（7日）">
               {weekDates.map((dk) => {
                 const d = dailyByDateKey[dk];
-                const m = computeMorningSymbol(d, dk);
-                const e = computeEveningSymbol(d, dk);
+                const m = computeMorningCompletionSymbol(d, dk, todayKey);
+                const e = computeEveningExecutionSymbol(d, dk, todayKey);
                 const [, mm, dd] = dk.split('-').map((x) => Number(x));
                 const wd = getJsWeekdayInTokyo(dk);
                 return (

@@ -26,6 +26,7 @@ export default function LeftSidebar({
   const isTrial = pathname.startsWith('/trial_4w');
   const isTrialSettings = pathname === '/trial_4w/settings';
   const isMypage = pathname.startsWith('/mypage');
+  const isCommunication = pathname === '/communication';
 
   const handleNav = () => onClose?.();
 
@@ -48,6 +49,15 @@ export default function LeftSidebar({
       >
         <span className="material-symbols-outlined" aria-hidden>play_circle</span>
         <span>スタート</span>
+      </Link>
+      <Link
+        href="/communication"
+        className={`sidebar-btn ${isCommunication ? 'active' : ''}`}
+        aria-label="コミュニケーション"
+        onClick={handleNav}
+      >
+        <span className="material-symbols-outlined" aria-hidden>forum</span>
+        <span>コミュニケーション</span>
       </Link>
       {pathname.startsWith('/trial_4w') && (
         <Link

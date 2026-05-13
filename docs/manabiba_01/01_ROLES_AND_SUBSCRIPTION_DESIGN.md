@@ -300,3 +300,23 @@
 - 実装手順: [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md)
 - 要件定義: [01_REQUIREMENTS_SPECIFICATION.md](./01_REQUIREMENTS_SPECIFICATION.md)（2.1 認証・認可）
 - システムアーキテクチャ: [02_SYSTEM_ARCHITECTURE.md](./02_SYSTEM_ARCHITECTURE.md)（データモデル）
+
+### 6.1 サブスクリプション仕様が記載されているドキュメント（索引）
+
+サブスクの**要件・データ・運用・実装手順**が分散しているため、作業入口として次を使う。
+
+| ドキュメント | 主な内容 |
+|--------------|----------|
+| **本書「§4. サブスクリプション（技術的器）」** | 技術的器の方針、想定プラン種別、トライアル終了日、Phase 対応。 |
+| [01_REQUIREMENTS_SPECIFICATION.md](./01_REQUIREMENTS_SPECIFICATION.md)（**§2.7** ほか） | 機能要件 SUB-001〜、プラン `free` / `standard` / `premium`、料金表記など。 |
+| [01_FEATURE_LIST.md](./01_FEATURE_LIST.md)（**§2.7**） | サブスク機能の一覧と実装状況フラグ。 |
+| [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md)（**users.subscription**） | `plan` / `status` / 日付フィールド等のフィールド定義。 |
+| [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)（**§3** 等） | コース別のコーチ/AI 能力、サブスク2コースとの対応表の扱い。 |
+| [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md) / [A11_COACH_SHARING_SCHEMA_DRAFT.md](./A11_COACH_SHARING_SCHEMA_DRAFT.md) | `coachShareQuotaPerMonth` と**プラン由来のクォータ**の関係。 |
+| [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md)（**【4】**） | サブスクの器の拡張手順（決済なし）。 |
+| [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md)（**§2** 等） | トライアル期間とサブスクの連動メモ。 |
+| **型（実装）** `src/types/auth.ts` | `SubscriptionPlan`、`SubscriptionInfo`、`UserProfile.subscription`。 |
+
+**画面実装とサブスクの接続（例）**
+
+- メッセージボードのプレミアム判定: [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)（現状は `src/lib/communicationConstants.ts` の暫定フラグ → **本番は `UserProfile.subscription` に差し替え**）。

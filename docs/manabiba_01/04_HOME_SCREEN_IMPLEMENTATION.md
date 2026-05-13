@@ -6,6 +6,19 @@
 
 - 参照: [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)（ロール・モード切替）
 - 画像「ホーム画面: ロール別コンテナ表示内容」の内容を反映している。
+- **コミュニケーション画面**（`/communication`）の仕様・実装は [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md) を参照。
+
+---
+
+## 0. レイアウト更新（2026-05）
+
+- **セクションラッパー**: `HomePage.tsx` で `home-sections-stack` と `home-section-divider` を用い、バナー・道場新着・マネジメント・動画/記事/リンクの間の余白と区切りを統一した。
+- **幅狭時の2カラム崩れ**: `home-trial.css` の `@media (max-width: 1024px)` にあった **`home-content-right { order: 1; }` を削除**し、DOM 順（動画 → 記事 → リンク）で縦積みになるよう修正した。
+- **マネジメント**: `HomeDashboard.tsx`（セクション `home-section-dashboard-management`）に今日/今週目標・今週の実施状況・コーチ新着を配置。コーチ新着の「詳細」は `/communication`（メッセージボードはプレミアム連携後に本格利用）。
+
+### 今週の実施状況（ホーム内プレビュー）
+
+- 幅狭時も **4列優先**（極小幅で 3 列・2 列へ段階的に変更）。日付と曜日を **`5/4 月` 形式の1行**（`weekly-result-date-row`）にし、セル高さを抑えた。
 
 ---
 
@@ -163,6 +176,8 @@
 | 種別 | パス |
 |------|------|
 | ホーム | `src/components/HomePage.tsx` |
+| 道場新着 | `src/components/home/HomeWhatsNewDojo.tsx` |
+| マネジメント（ダッシュボード） | `src/components/home/HomeDashboard.tsx` |
 | おすすめ動画編集モーダル | `src/components/home/LatestVideosEditModal.tsx` |
 | 注目記事編集モーダル | `src/components/home/LatestArticlesEditModal.tsx` |
 | いちおしサイト編集モーダル | `src/components/home/ReferenceLinksEditModal.tsx` |
@@ -183,6 +198,7 @@
 ## 6. 参照
 
 - [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md) — ロール・モード・ホーム section ID
+- [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md) — `/communication`（ホームからの導線含む）
 - [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md) — Phase 2 全体
 - 画像: ホーム画面 ロール別コンテナ表示内容
 
