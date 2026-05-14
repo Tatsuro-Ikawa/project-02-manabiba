@@ -26,11 +26,11 @@
 │       ├── coaching-program/         # コーチングプログラム進捗（設計書に記載）
 │       │   ├── 7day-program/
 │       │   └── 28day-trial/{date}
-│       ├── journal_daily/             # マネジメント日誌（学び帳）日次: 朝・晩
+│       ├── journal_daily/             # 気づきノート（学び帳）日次: 朝・晩（旧称: マネジメント日誌）
 │       │   └── {dateKey}              # YYYY-MM-DD（JST）
-│       ├── journal_weekly/            # マネジメント日誌（学び帳）週次（週報）
+│       ├── journal_weekly/            # 気づきノート（学び帳）週次（週報）
 │       │   └── {weekStartKey}         # その週の開始日 YYYY-MM-DD（JST・設定の週始まり）
-│       ├── journal_monthly/           # マネジメント日誌（学び帳）月次（月報）
+│       ├── journal_monthly/           # 気づきノート（学び帳）月次（月報）
 │       │   └── {monthKey}             # YYYY-MM（JST・暦月）
 │       ├── affirmation_drafts/        # アファメーション穴埋め下書き（暗号化スロット）
 │       │   └── {profileId}
@@ -79,10 +79,10 @@
 
 ## 2. 各コレクション・ドキュメントの主要フィールド
 
-### 2.x users / {uid} / journal_daily / {dateKey}（マネジメント日誌: 日次 朝・晩）
+### 2.x users / {uid} / journal_daily / {dateKey}（気づきノート: 日次 朝・晩）
 
 - **パス**: `users/{uid}/journal_daily/{dateKey}`（`dateKey = YYYY-MM-DD`、`tz = Asia/Tokyo`）
-- **目的**: マネジメント日誌（学び帳）の「朝・晩」記録（SCREEN-005）。28日無料トライアル開始時も同一コレクションを利用し、サブスク継続後もそのまま蓄積する。
+- **目的**: 気づきノート（学び帳）の「朝・晩」記録（SCREEN-005）。28日無料トライアル開始時も同一コレクションを利用し、サブスク継続後もそのまま蓄積する。
 - **暗号化**: 自由記述は **`encrypt(plaintext, uid)`** で暗号化して保存し、読み込み時に復号する。
 
 | フィールド | 型（想定） | 説明 |
@@ -118,7 +118,7 @@
 | eveningTomorrowImagingDone | bool \| null | 明日の行動のイメージング |
 | createdAt, updatedAt | Timestamp | 監査用 |
 
-### 2.x-2 users / {uid} / journal_weekly / {weekStartKey}（マネジメント日誌: 週次）
+### 2.x-2 users / {uid} / journal_weekly / {weekStartKey}（気づきノート: 週次）
 
 - **パス**: `users/{uid}/journal_weekly/{weekStartKey}`（`weekStartKey` = 当該週の開始日 `YYYY-MM-DD`、`tz = Asia/Tokyo`、ユーザの週開始曜日設定に従う）
 - **目的**: 週報（SCREEN-006）の長文。CRUD: `getJournalWeeklyPlain` / `saveJournalWeeklyPlain`（`src/lib/firestore.ts`）。
@@ -176,10 +176,10 @@ Vertex の詳細は [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPRO
 | 課題と原因の深掘り | `weeklyIssueRootCauseText` |
 | 来週への改善点 | `nextWeekImprovementText` |
 
-### 2.x-3 users / {uid} / journal_monthly / {monthKey}（マネジメント日誌: 月次）
+### 2.x-3 users / {uid} / journal_monthly / {monthKey}（気づきノート: 月次）
 
 - **パス**: `users/{uid}/journal_monthly/{monthKey}`（`monthKey = YYYY-MM`、`tz = Asia/Tokyo`）
-- **目的**: 月報（SCREEN-007 相当）の長文。28日トライアル後も「学び帳」として継続利用する前提。
+- **目的**: 月報（SCREEN-007 相当）の長文。28日トライアル後も**気づきノート**として継続利用する前提。
 - **暗号化**: 下記の自由記述は **`encrypt(plaintext, uid)`** で保存（日次・週次と同様）。
 - **人コーチ（パーソナル）共有・コメント**: **A-11 同型**で **月次ドキュメント配下**に `coach_share_rounds` / `coach_comment_versions` を配置する（正本: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)）。現段階のルールは本人 read/write のみ（コーチ read/write は後続フェーズで解放）。
 
@@ -266,21 +266,31 @@ users/{uid}/journal_monthly/{monthKey}/coach_share_rounds/{roundId}
 | updatedAt    | Timestamp          | 更新日時                                             |
 | lastLoginAt  | Timestamp          | 最終ログイン日時                                         |
 | trialAffirmationMeta | map（任意） | 28日間トライアル・アファメーション UI 状態。`lastSubmenu`（null または select/create/edit/history）、`lastSelectedAffirmationId`（null または string）。**localStorage は使わない**（[04_AFFIRMATION_DESIGN.md](./04_AFFIRMATION_DESIGN.md) §3.6） |
-| weekStartsOn | string（任意） | マネジメント日誌の**週の開始曜日**。`sunday` のときのみ保存推奨。**未設定・削除時は月曜始まり**（`src/lib/journalWeek.ts`）。更新は `updateJournalWeekStartsOn`（`firestore.ts`） |
+| weekStartsOn | string（任意） | 気づきノートの**週の開始曜日**。`sunday` のときのみ保存推奨。**未設定・削除時は月曜始まり**（`src/lib/journalWeek.ts`）。更新は `updateJournalWeekStartsOn`（`firestore.ts`） |
 | weeklyAiReportWriteMode | string（任意） | **Aiレポート作成**（週・月）で生成結果を既存入力にどう反映するか。`append` \| `overwrite` \| `skip_if_nonempty`（既に文字がある欄は変更しない）。未設定時は UI で `append` 相当。更新は `updateWeeklyAiReportWriteMode`。型は `WeeklyAiReportWriteMode`（`src/types/auth.ts`） |
 | activeCoachingAffirmationId | string \| null（任意・A-11） | **現在コーチング実施中**の `affirmations/{affirmationId}`。1 つのみ。`trialAffirmationMeta` の選択 ID とは別に、ビジネス上の正を持つ（[03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)） |
 
 
 **subscription（サブオブジェクト）**
 
+Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/{uid}.subscription`。クライアントからの直接書き換えは行わず、将来は Webhook（Admin SDK）等のみ（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) 付録 B）。
 
-| フィールド     | 説明                                              |
-| --------- | ----------------------------------------------- |
-| plan      | `free` | `standard` | `premium` 等               |
-| status    | `active` | `inactive` | `cancelled` | `expired` |
-| startDate | 開始日                                             |
-| features  | pdca, aiComments, coachComments 等の boolean      |
-| usage     | pdcaEntries, aiComments 等の利用数                   |
+| フィールド | 型（想定） | 説明 |
+| ---------- | ---------- | ---- |
+| plan | string | `free` \| `standard` \| `premium`（[01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md) §4 と整合） |
+| status | string | `active` \| `inactive` \| `cancelled` \| `expired` |
+| startDate | Timestamp | 契約・プラン記録の開始 |
+| endDate | Timestamp（任意） | レガシーまたは表示用の終了。Stripe 連携時は `currentPeriodEnd` を優先してもよい |
+| trialEndsAt | Timestamp（任意） | **28 日お試し**等の終了日時。`plan === 'free'` と組み合わせ、entitlement 解決で standard 相当に使う（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md)） |
+| currentPeriodEnd | Timestamp（任意） | Stripe `current_period_end` のミラー。**解約予約中でも期間内は有効**とみなす判定に使う |
+| stripeCustomerId | string（任意） | Stripe Customer ID（`cus_...`）。未連携時は未設定 |
+| stripeSubscriptionId | string（任意） | Stripe Subscription ID（`sub_...`）。未連携時は未設定 |
+| features | map | 既存: `pdca`, `aiComments`, `coachComments` 等の boolean（[04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md) 【4】）。**API ガードの正本は `src/lib/subscription/resolveEntitlements.ts` に寄せていく** |
+| usage | map | 既存: 利用数カウンタ |
+
+**entitlement（派生物）**: `UserProfile` を入力に `resolveEntitlements` が `Record<FeatureKey, boolean>` を返す（`src/lib/subscription/`）。Firestore に冗長保存するかは任意（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) 付録 C.1）。
+
+**将来（addons）**: オプション課金を持つ場合は `subscription.addons`（配列または map）を別途定義する（現時点ではフィールドなしでよい）。
 
 **consents（サブオブジェクト）**
 

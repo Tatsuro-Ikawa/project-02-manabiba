@@ -55,7 +55,7 @@ export default function TrialJournalSettingsPage() {
             <div className="morning-evening-container">
               <div className="trial-tab-heading-row">
                 <h1 id="trial-settings-title" style={{ fontSize: '1.25rem', fontWeight: 600 }}>
-                  学び帳の表示設定（仮）
+                  気づきノートの表示設定
                 </h1>
               </div>
               <p className="text-sm text-gray-600 mb-4">
@@ -108,11 +108,11 @@ export default function TrialJournalSettingsPage() {
               </div>
 
               <div className="action-sub-section" data-section="journal-ai-report-write-mode">
-                <h3>学び帳 Aiレポート作成の既存入力反映方式（週・月共通）</h3>
+                <h3>気づきノート Aiレポート作成の既存入力反映方式（週・月共通）</h3>
                 <p className="text-sm text-gray-600 mb-2">
                   週タブ・月タブの「Aiレポート作成を実行」で出力した下書きを、行動面・成果面・心理面・気づき・学び・成長の各欄にどう反映するかです。Firestore のユーザープロファイルに保存されます。
                 </p>
-                <div className="radio-group" role="radiogroup" aria-label="学び帳 Aiレポートの反映方式（週・月共通）">
+                <div className="radio-group" role="radiogroup" aria-label="気づきノート Aiレポートの反映方式（週・月共通）">
                   <label>
                     <input
                       type="radio"

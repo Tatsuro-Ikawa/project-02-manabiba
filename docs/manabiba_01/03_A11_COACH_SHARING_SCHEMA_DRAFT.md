@@ -427,7 +427,7 @@ function hasActiveCoachAssignmentForClient(clientUid) {
 - クライアントの **`clientUnreadLatestCoachReply` を開封で false** にする明示操作（現状は未実装）
 - サブスク（プラン）→ `coachShareQuotaPerMonth` の同期（現状はクライアント側フォールバックで暫定）
 
-### 12.4 マネジメント日誌（週次・月次）との拡張
+### 12.4 気づきノート（週次・月次）との拡張
 
 - **正本（コース・能力マトリックス・人コーチ / AI の切り分け）**: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)
 - **方針**: `journal_weekly` / `journal_monthly` にも、必要に応じて **本書と同型の** `coach_share_rounds` / `coach_comment_versions`（および親ドキュメントの共有メタ）をぶら下げる。
@@ -501,5 +501,5 @@ users/{clientUid}/journal_monthly/{monthKey}
 | 2026-03-30 | **§11 新設**（UI/UX）。改訂履歴を §12 に繰下げ |
 | 2026-03-30 | **§12 実装フェーズ1**（コード・手順）。改訂履歴を §13 に繰下げ |
 | 2026-03-30 | 月次クォータ方式に更新（1クライアント N回/月・テーマ非依存）。フィンガープリントは短時間連打防止へ縮小 |
-| 2026-04-04 | §12.4 追加: マネジメント日誌（週次・月次）拡張と [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md) への参照 |
+| 2026-04-04 | §12.4 追加: 気づきノート（週次・月次）拡張と [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md) への参照 |
 | 2026-04-19 | **§12 更新**: トライアル行動宣言の共有 UI（`coachClient` URL・タイトルバー共有・下部パネル撤廃）。Firestore デプロイ手順は [DEPLOY_GITHUB_VERCEL.md](../DEPLOY_GITHUB_VERCEL.md) §2.6 を参照 |

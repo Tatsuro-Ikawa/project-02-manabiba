@@ -148,7 +148,7 @@
 | 4 | **コメント記入** | 共有されている項目ごとにコーチがコメントを記入・保存する。クライアントは後から自分の画面でそのコメントを確認できる。 |
 
 - **アファメーション（A-11）** のデータ置き場・フィールド名の現状案は [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)（割当 `coach_client_assignments`、`coach_share_rounds` / `coach_comment_versions`）。
-- **マネジメント日誌（学び帳）** の人コーチ／AI／サブスク **コース定義・能力マトリックス** は [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。日次は人コーチに共有しない。週次は共有のみ、月次は質問・回答含む（現行プラン `ai_plus_personal`）。動的ルールではなく **コース（運用）で切替**。
+- **気づきノート**（旧称: マネジメント日誌／学び帳）の人コーチ／AI／サブスク **コース定義・能力マトリックス** は [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。日次は人コーチに共有しない。週次は共有のみ、月次は質問・回答含む（現行プラン `ai_plus_personal`）。動的ルールではなく **コース（運用）で切替**。
 - この流れを**画面設計で考慮**し、ホーム・28日間トライアルそれぞれで「モード切替時の見え方」と「クライアントとの情報共有（コメントのやり取り）」のイメージを用意する（後述「3. 画面設計で作成するイメージ・成果物」）。
 
 ---
@@ -252,6 +252,18 @@
 - **決済・課金は本フェーズでは実装しない**。プラン種別・トライアル期間・有効期限などを保持する**技術的な器**を先に用意する。
 - 商品（フリー、期間限定、コース、個別サービス追加など）の詳細は、サービス提供内容に合わせて後から決める。
 
+### 4.1.1 利用区分（ゲスト〜個別）
+
+プロダクト上の区分は次のとおり。**フリー以降はログイン必須**とする。
+
+| 区分 | ログイン | 課金 | 概要 |
+|------|----------|------|------|
+| **ゲスト** | 不要 | — | 未認証ユーザー。 |
+| **フリー** | **必須** | **なし** | **お試しクライアント**。気づきノート（28日間相当）を **4週間（28日・JST 起点）**利用可能。 |
+| **スタンダード** | 必須 | あり | 気づきノート＋AI 等（対応表・entitlements に準拠）。 |
+| **プレミアム** | 必須 | あり | スタンダードに加えコミュニケーション等。 |
+| **個別** | 案件による | あり | 7日間プログラム等。**本バージョンではドキュメントのみ**（実装はバージョンアップ・別ロードマップ）。詳細は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md)。 |
+
 ### 4.2 想定するプラン種別（器として）
 
 | 種別 | 説明（例） |
@@ -263,14 +275,19 @@
 
 - 上記は**データ構造・列挙として用意**し、実際の「どのプランで何ができるか」はプロダクト要件に合わせて後から詰める。
 
-### 4.3 28日間こころのトライアルの扱い
+### 4.3 28日間（フリー・お試し）の扱い
 
-- **28日間はフリー**で利用可能。
-- **28日経過後は有料**（プラン変更または制限付き継続）。
-- 技術的には次のいずれかで表現する：
-  - プラン `trial` で `trialEndDate`（開始日＋28日）を持たせる。
-  - または `plan: 'free'` のまま `trialEndDate` のみ持ち、トライアル終了後に `plan` を `course` 等に更新する（決済実装時）。
-- 現段階では **トライアル終了日とプラン種別を保持するフィールド** をユーザープロファイル（または subscription サブオブジェクト）に用意し、画面では「トライアル残り日数」「期限後は有料」などの表示ができるようにする。
+- **期間**: **28日**。**開始した日から起算**し、タイムゾーンは **JST（Asia/Tokyo）** とする。
+- **期間中**: 画面に **残り期間**（日数または時間のいずれか／併用は UI 設計で決定）を表示する。
+- **失効後（スタンダード未契約・誘導キャンセル含む）**: **閲覧のみ**、**入力はロック**。ホームのマネジメント情報エリア上にオーバーレイし、**有効期間終了**と **データ消去までの残日数（90日ルール）** を案内する。詳細・用語の平易説明は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §3・付録A。
+- **データ保持**: 失効から **90日（3か月）** 経過後にデータ破棄。**外部エクスポート**は本バージョンではスコープ外。途中解約も同方針で [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) に記載。
+- **課金導線**: **「続けますか？」** と **スタンダード申し込み**は、未契約ユーザー向けの導線として表示する（文言は UI 仕様で確定）。
+- **entitlements**: 「期間中は standard 相当の気づきノート機能」等は **マトリクス＋ `trialEndsAt`（または `kizukiTrialEndsAt`）** で解決し、API・Firestore ルールと一致させる。
+- 技術的には例: プラン `free` のまま **`trialEndsAt`**（開始＋28日）を持つ、または `trial` と日付の組み合わせ。決済実装後に `standard` へ更新するフローを [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) と合わせて整理する。
+
+### 4.3.1 本バージョンのスコープ外（参照）
+
+- **外部データ入出力**、**個別プログラム（7日間）の実装**、**Zoom の本アプリ組込み**などは [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) に記載のとおり **後続バージョンまたは別アプリ**とする。
 
 ### 4.4 保持するデータ（器）
 
@@ -315,6 +332,8 @@
 | [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md) / [A11_COACH_SHARING_SCHEMA_DRAFT.md](./A11_COACH_SHARING_SCHEMA_DRAFT.md) | `coachShareQuotaPerMonth` と**プラン由来のクォータ**の関係。 |
 | [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md)（**【4】**） | サブスクの器の拡張手順（決済なし）。 |
 | [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md)（**§2** 等） | トライアル期間とサブスクの連動メモ。 |
+| [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) | **ゲスト／フリー／スタンダード／プレミアム／個別**、28日JST、失効後の閲覧のみ・90日破棄・ホームオーバーレイ、付録A〜C（平易説明・**1/2/5/7 確定**・**entitlement と決済の分離**・**Stripe シーケンス図 C.4**）、スコープ外（外部入出力・個別実装・Zoom）。 |
+| [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md) | メッセージボード実装・プレミアム連携メモ。Zoom は別アプリ（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §5）。 |
 | **型（実装）** `src/types/auth.ts` | `SubscriptionPlan`、`SubscriptionInfo`、`UserProfile.subscription`。 |
 
 **画面実装とサブスクの接続（例）**

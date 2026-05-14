@@ -63,11 +63,11 @@ export default function LeftSidebar({
         <Link
           href="/trial_4w/settings"
           className={`sidebar-btn ${isTrialSettings ? 'active' : ''}`}
-          aria-label="学び帳の表示設定"
+          aria-label="気づきノートの表示設定"
           onClick={handleNav}
         >
           <span className="material-symbols-outlined" aria-hidden>tune</span>
-          <span>学び帳設定</span>
+          <span>気づきノート設定</span>
         </Link>
       )}
       <Link

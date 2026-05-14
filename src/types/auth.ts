@@ -72,6 +72,17 @@ export interface SubscriptionInfo {
   status: 'active' | 'inactive' | 'cancelled' | 'expired';
   startDate: Date;
   endDate?: Date;
+  /** 28 日お試し等の終了日時（JST 起点は運用で `users` 更新側が揃える）。未設定ならトライアル期限なし。 */
+  trialEndsAt?: Date;
+  /**
+   * Stripe Subscription の現在請求期間終了（`current_period_end` のミラー）。
+   * 解約予約中でも期間内は有効権限に使う想定（設計: 04_SUBSCRIPTION_PRODUCT_SCOPE 付録 C）。
+   */
+  currentPeriodEnd?: Date;
+  /** Stripe Customer ID（`cus_...`）。決済連携時に Webhook 等で設定。 */
+  stripeCustomerId?: string | null;
+  /** Stripe Subscription ID（`sub_...`）。 */
+  stripeSubscriptionId?: string | null;
   features: FeatureAccess;
   usage: UsageLimits;
 }

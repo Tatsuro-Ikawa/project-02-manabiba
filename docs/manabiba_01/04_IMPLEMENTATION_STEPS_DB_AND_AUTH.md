@@ -28,6 +28,20 @@ Phase 1（[04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./04_IMPLEMENTATION_STEPS_
 
 ---
 
+## Phase A — データモデルと同期（決済なし）
+
+[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md)（付録 B・C）と整合させる **先行実装**。Stripe 未接続でも進められる。
+
+| Step | 内容 | 状態 |
+|------|------|------|
+| **A1** | `users/{uid}.subscription` の拡張案を [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.1 に固定（`trialEndsAt`, `currentPeriodEnd`, `stripeCustomerId`, `stripeSubscriptionId` 等）。型は `src/types/auth.ts` の `SubscriptionInfo`。 | 反映済み（要レビュー） |
+| **A2** | **`resolveEntitlements(profile)`** — `src/lib/subscription/`。入力: `UserProfile \| null`、出力: `Record<FeatureKey, boolean>`。 | 反映済み（要レビュー） |
+| **A3** | **管理者**: プラン変更は当面 **Firestore Console** または既存のサーバー経路のみ。**将来** Admin API / 管理画面に切り出す。 | 運用メモのみ |
+
+**注意**: `src/context/SubscriptionContext.tsx` は `src/types/subscription.ts` を参照している **別系統の仮実装**のまま。本番の正本は **`UserProfile.subscription`（Firestore）** と **A2 の解決関数**に揃える予定（二重定義の解消は後続タスク）。
+
+---
+
 ## 進め方の流れ（手順一覧）
 
 ```

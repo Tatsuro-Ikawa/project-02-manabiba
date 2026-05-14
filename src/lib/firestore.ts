@@ -210,6 +210,8 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
           ...data.subscription,
           startDate: data.subscription?.startDate?.toDate(),
           endDate: data.subscription?.endDate?.toDate(),
+          trialEndsAt: data.subscription?.trialEndsAt?.toDate?.() ?? undefined,
+          currentPeriodEnd: data.subscription?.currentPeriodEnd?.toDate?.() ?? undefined,
         },
       } as UserProfile;
     }

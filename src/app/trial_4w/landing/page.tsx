@@ -74,8 +74,7 @@ function Trial4wLandingContent() {
             <section className="trial-landing-card" aria-label="ページ 2/2">
               <div className="trial-landing-subtitle">◆ 習慣化へのはじめの一歩</div>
               <div className="trial-landing-card-inner">
-                <div className="trial-landing-card-title">気づきと学びのマネジメント日誌「学び帳(仮)」
-                </div>
+                <div className="trial-landing-card-title">気づきと学びの「気づきノート」</div>
                 <div className="trial-landing-cols">
                   <div className="trial-landing-col">
                     <div className="trial-landing-col-header">AIコーチ</div>

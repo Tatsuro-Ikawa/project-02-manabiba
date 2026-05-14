@@ -581,7 +581,7 @@ export default function TrialWeekly() {
                 </button>
               </div>
               <p className="text-sm text-gray-600">
-                当週の朝・晩学び帳を日付ごとに連結したテキスト（空欄は「無し」）をもとに、「行動面」「成果面」「心理面」「気づき・学び・成長」欄へ下書きを出力します。連結テキストは合計
+                当週の朝・晩の気づきノートを日付ごとに連結したテキスト（空欄は「無し」）をもとに、「行動面」「成果面」「心理面」「気づき・学び・成長」欄へ下書きを出力します。連結テキストは合計
                 {AI_REPORT_INPUT_MIN_TOTAL_CHARS}
                 文字以上で実行できます（手動で編集できます）。
                 {weeklyAiUsageTotalTokens != null

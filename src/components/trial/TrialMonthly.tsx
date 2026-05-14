@@ -309,7 +309,7 @@ export default function TrialMonthly() {
     const monthlyInputText = buildMonthlyAiReportInputFromWeeklies(weeklyDocsForMonth);
     if (countChars(monthlyInputText) < AI_REPORT_INPUT_MIN_TOTAL_CHARS) {
       setMsg(
-        `月次AIレポート作成の入力が不足しています（当月の週報を連結したテキストが合計${AI_REPORT_INPUT_MIN_TOTAL_CHARS}文字以上になるよう、各週の学び帳を記入してください）。`
+        `月次AIレポート作成の入力が不足しています（当月の週報を連結したテキストが合計${AI_REPORT_INPUT_MIN_TOTAL_CHARS}文字以上になるよう、各週の気づきノート（週次）を記入してください）。`
       );
       return;
     }
@@ -595,7 +595,7 @@ export default function TrialMonthly() {
                 </button>
               </div>
               <p className="text-sm text-gray-600">
-                当月に含まれる各週の週次学び帳（所定フィールド）を連結したテキストをもとに、「行動面」「成果面」「心理面」「気づき・学び・成長」欄へ下書きを出力します。連結テキストは合計
+                当月に含まれる各週の週次気づきノート（所定フィールド）を連結したテキストをもとに、「行動面」「成果面」「心理面」「気づき・学び・成長」欄へ下書きを出力します。連結テキストは合計
                 {AI_REPORT_INPUT_MIN_TOTAL_CHARS}
                 文字以上で実行できます（手動で編集できます）。
                 {monthlyAiUsageTotalTokens != null

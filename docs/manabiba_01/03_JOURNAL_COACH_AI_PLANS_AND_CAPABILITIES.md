@@ -1,8 +1,10 @@
-# マネジメント日誌 — 人コーチ・AI・サブスクコース（能力マトリックス）
+# 気づきノート — 人コーチ・AI・サブスクコース（能力マトリックス）
+
+> **名称（2026-05）**: プロダクト表記を **気づきノート** に統一する。Firestore パス名 `journal_*` は従来どおり。旧称: マネジメント日誌／学び帳。
 
 ## 📋 目的
 
-マネジメント日誌（`journal_daily` / `journal_weekly` / 将来 `journal_monthly`）について、**人間パーソナルコーチ**と **AI コーチ**の役割を区別し、**サブスクのコース（プラン）**で ON/OFF を切り替えるための**正本**とする。
+気づきノート（`journal_daily` / `journal_weekly` / 将来 `journal_monthly`）について、**人間パーソナルコーチ**と **AI コーチ**の役割を区別し、**サブスクのコース（プラン）**で ON/OFF を切り替えるための**正本**とする。
 
 - **関連**: [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)（アファメーション共有）、[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §5、[01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)
 - **実装（Vertex・トライアル朝晩の「Aiコーチからのコメント」PoC）**: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)（環境変数・IAM・モデル ID・REST エンドポイント・短文時の再生成・トークン付記）
@@ -162,6 +164,7 @@ coachCapabilities.ai.journal.monthly    = { share, question, reply }
 
 | 日付 | 内容 |
 |------|------|
+| 2026-05-12 | タイトル・目的を**気づきノート**に変更（旧称注記）。 |
 | 2026-05-02 | §6: 週次・月次の API 入力仕様を現行実装に合わせ更新（レポート 150 文字・週報連結・改善 500 文字・月次特記事項任意）。参照先を VERTEX §9〜§10・FIRESTORE §2.x-2-0 / §2.x-3-0 に変更。 |
 | 2026-04-04 | 初版。能力マトリックス・コース案・ルール方針・AI はボタン操作と利用者責任を明記。 |
 | 2026-04-04 | §1 補足: サブスク 2 コース対応表は §1＋§2 で表現。§2: パーソナル月次は**暦月 1 回**、**未送信の繰越なし**を確定。§3.1: A-11 クォータとの独立性を注記。 |

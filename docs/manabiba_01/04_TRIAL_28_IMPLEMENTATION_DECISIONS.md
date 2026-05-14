@@ -109,7 +109,7 @@
 - クライアントの **未読（`clientUnreadLatestCoachReply`）を開封操作で false にする UI/挙動**
 - サブスク（プラン）→ `coachShareQuotaPerMonth` の同期（現状は暫定フォールバック）
 
-### 5.2 マネジメント日誌 — 人コーチ・AI・コース（2026-04-04 確定、2026-05-02 Vertex 週月レポート・改善の仕様追記）
+### 5.2 気づきノート — 人コーチ・AI・コース（2026-04-04 確定、2026-05-02 Vertex 週月レポート・改善の仕様追記）
 
 - **正本**: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)
 - **共有範囲（人コーチ）**: `journal_daily` は共有しない。`journal_weekly` / `journal_monthly` のみ（ルールで read を制御）。
