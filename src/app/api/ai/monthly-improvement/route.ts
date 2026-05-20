@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
+import { guardAiEntitlement } from '@/lib/server/aiEntitlementGate';
 import {
   countMonthlyImprovementInputChars,
   extractMonthlyImprovementSectionBody,
@@ -103,6 +104,9 @@ function buildGoogleAuth(): GoogleAuth {
 }
 
 export async function POST(request: NextRequest) {
+  const gate = await guardAiEntitlement(request, 'kizuki.monthly.ai_report');
+  if (gate) return gate;
+
   let reqBody: MonthlyImprovementRequestBody;
   try {
     reqBody = (await request.json()) as MonthlyImprovementRequestBody;

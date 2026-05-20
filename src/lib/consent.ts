@@ -18,3 +18,14 @@ export function hasAcceptedCurrentConsents(profile: UserProfile | null | undefin
   );
 }
 
+/** 7日間スタートプログラム用の同意（`users/{uid}.startProgram7dConsents`） */
+export function hasAcceptedStartProgram7dConsents(profile: UserProfile | null | undefined): boolean {
+  const c = profile?.startProgram7dConsents;
+  if (!c) return false;
+  return (
+    c.termsVersion === TERMS_VERSION &&
+    c.privacyVersion === PRIVACY_VERSION &&
+    c.acceptedAt instanceof Date &&
+    !Number.isNaN(c.acceptedAt.getTime())
+  );
+}

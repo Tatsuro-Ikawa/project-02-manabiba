@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/context/ViewModeContext';
 import { useRouter } from 'next/navigation';
@@ -19,6 +20,7 @@ export default function ProtoHeader({
   sidebarOpen = false,
   onToggleSidebar,
 }: ProtoHeaderProps) {
+  const pathname = usePathname();
   const { userProfile, user, signOut } = useAuth();
   const { mode, availableModes, setMode } = useViewMode();
   const router = useRouter();
@@ -53,6 +55,19 @@ export default function ProtoHeader({
     router.push('/');
   };
 
+  const headerTitle = (() => {
+    if (pathname.startsWith('/start-program')) {
+      return { text: 'スタートプログラム', showReg: false };
+    }
+    if (
+      pathname === '/trial_4w' ||
+      (pathname.startsWith('/trial_4w/') && !pathname.startsWith('/trial_4w/landing'))
+    ) {
+      return { text: '気づきノート', showReg: false };
+    }
+    return { text: '人生学び場　こころ道場', showReg: true };
+  })();
+
   return (
     <header className="proto-header">
       <div className="header-left">
@@ -62,14 +77,21 @@ export default function ProtoHeader({
           aria-label={sidebarOpen ? 'メニューを閉じる' : 'メニューを開く'}
           aria-expanded={sidebarOpen}
           onClick={onToggleSidebar}
-          title="メニュー（ホーム・こころのトライアル・マイページ）"
+          title="メニュー（ホーム・スタート・実行・マイページ等）"
         >
           <span className="material-symbols-outlined" aria-hidden>
             {sidebarOpen ? 'close' : 'menu'}
           </span>
         </button>
       </div>
-      <h1>人生学び場 こころ道場</h1>
+      <h1>
+        {headerTitle.text}
+        {headerTitle.showReg ? (
+          <sup className="trade-reg-mark" title="登録商標">
+            ®
+          </sup>
+        ) : null}
+      </h1>
       <div className="header-right">
         <div className="flex items-center gap-3">
           {user ? (

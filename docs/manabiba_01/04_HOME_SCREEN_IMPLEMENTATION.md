@@ -50,10 +50,74 @@
 
 - ホーム（未ログイン）: 「**試してみる**」→ `GET /trial_4w/landing`
 - ランディング: `GET /trial_4w/landing`
-  - 2/2（AIコーチ）の「やってみる」のみ有効
-  - 未ログインなら `GET /login?next=/trial_4w`（ログイン必須）
-  - ログイン後は `GET /post-login?next=/trial_4w` に遷移し、同意状況により `/consent` を必須表示
-  - 同意完了後に `/trial_4w` へ遷移
+  - 1/2（セルフ7日間）の「やってみる」: ログイン・同意完了後に **`/start-program`**（7日間スタートプログラム・現状ダミー画面）
+  - 2/2（AIコーチ）の「やってみる」: 未ログインなら `GET /login?next=/trial_4w` → `GET /post-login?next=/trial_4w` → 未同意なら `/consent` → 同意完了後 **`/trial_4w`**（気づきノート）
+
+### 1.2 グローバルナビ（左サイドバー・中央ヘッダー表記）（2026-05-20 確定）
+
+| 左サイドバー | 遷移先 | 備考 |
+|--------------|--------|------|
+| **ホーム** | `/` | — |
+| **スタート** | `/start-program` | 7日間スタートプログラム。**現状はダミー画面**（コンテンツは今後実装）。 |
+| **実行** | `/trial_4w` | **気づきノート**（アファメーション・朝晩・週・月）。`/trial_4w/settings` 利用時も「実行」系としてハイライト。 |
+| **コミュニケーション** | `/communication` | — |
+| **気づきノート設定** | `/trial_4w/settings` | `/trial_4w` 配下（`landing` を除く）表示時のみサイドバーに出す。 |
+| **マイページ** | `/mypage` | — |
+
+**中央ヘッダー（`ProtoHeader` の見出し）**
+
+| パス（代表） | 表示文言 |
+|--------------|----------|
+| `/start-program` | スタートプログラム |
+| `/trial_4w` および `/trial_4w/*` で **`/trial_4w/landing` を除く** | 気づきノート |
+| 上記以外（`/`、`/trial_4w/landing`、利用規約・プライバシー・特商法等） | 人生学び場　こころ道場 + ®（登録商標） |
+
+- 実装: `src/components/proto/LeftSidebar.tsx`、`src/components/proto/ProtoHeader.tsx`。
+- 気づきノートのデータモデル・Firestore パスは従来どおり（`trial_4w` 名の履歴はドキュメント上はそのまま）。
+
+### 1.3 7日間スタートプログラム：規約・プライバシー同意シーケンス（2026-05-20）
+
+**方針**: 会員登録時の **`users.{uid}.consents`**（`/consent`）に加え、7日間プログラム入室前に **`users.{uid}.startProgram7dConsents`** を別途記録する。画面は **専用の全画面**（`/start-program/consent`）。モーダルのみで初回同意を済ませるパターンは、読了の証跡・特商法周りの観点から本件では採用しない。
+
+**条文表示（2026-05）**: `/consent` および `/start-program/consent` では、利用規約・プライバシーの**ダミー条文**を同一スクロール枠内に表示し、**末尾までスクロール後**に同意チェックを有効化する。正式条文は `/terms`・`/privacy` および本枠へ順次反映する。
+
+```mermaid
+sequenceDiagram
+  participant U as ユーザー
+  participant L as /login
+  participant P as /post-login
+  participant C as /consent
+  participant S as /start-program
+  participant SC as /start-program/consent
+  participant FS as Firestore
+
+  Note over U,FS: 未ログインで7日間に参加する場合（ランディング等）
+  U->>L: やってみる（next=post-login→start-program）
+  L->>P: ログイン成功
+  P->>C: 会員の規約未同意なら consent?next=/start-program
+  U->>C: チェック＋同意して続ける
+  C->>FS: updateUserConsents（consents）
+  C->>S: replace /start-program
+  S->>SC: プログラム同意未なら replace /start-program/consent
+  U->>SC: チェック＋同意してプログラムへ進む
+  SC->>FS: updateStartProgram7dConsents
+  SC->>S: replace /start-program（本体表示）
+
+  Note over U,FS: ログイン済みでサイドバー「スタート」
+  U->>S: GET /start-program
+  alt 会員同意のみ未
+    S->>C: consent?next=/start-program
+  end
+  alt プログラム同意未
+    S->>SC: start-program/consent
+  end
+```
+
+| ルート | 役割 |
+|--------|------|
+| `/consent?next=/start-program` | 会員全体の利用規約・プライバシー（既存） |
+| `/start-program/consent` | 7日間プログラム用の同意（`startProgram7dConsents`） |
+| `/start-program` | 同意済みのときのみダミー本体を表示 |
 
 ## 2. 管理者モード時の編集 UI
 

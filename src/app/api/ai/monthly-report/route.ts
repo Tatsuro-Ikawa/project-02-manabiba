@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
+import { guardAiEntitlement } from '@/lib/server/aiEntitlementGate';
 import { AI_REPORT_INPUT_MIN_TOTAL_CHARS } from '@/lib/journalAiReportWriteMode';
 
 type MonthlyReportRequestBody = {
@@ -127,6 +128,9 @@ function totalChars(sections: MonthlyReportSections): number {
 }
 
 export async function POST(request: NextRequest) {
+  const gate = await guardAiEntitlement(request, 'kizuki.monthly.ai_report');
+  if (gate) return gate;
+
   let body: MonthlyReportRequestBody;
   try {
     body = (await request.json()) as MonthlyReportRequestBody;

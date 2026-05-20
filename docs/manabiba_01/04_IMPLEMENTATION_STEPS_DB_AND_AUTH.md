@@ -13,7 +13,7 @@ Phase 1（[04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./04_IMPLEMENTATION_STEPS_
 
 ## 前提
 
-- Phase 1 の成果物（ホーム `/`、トライアル `/trial_4w`、1026px レイアウト、サイドバー「ホーム」→ `/`）は完了していること。
+- Phase 1 の成果物（ホーム `/`、気づきノート `/trial_4w`、7日間 `/start-program`、1026px レイアウト、サイドバー）は完了していること。
 - ホームの「認証状態に応じたログイン前／ログイン後の表示切替」は、本 Phase で実認証に差し替えながら検証する。
 
 ---
@@ -39,6 +39,20 @@ Phase 1（[04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./04_IMPLEMENTATION_STEPS_
 | **A3** | **管理者**: プラン変更は当面 **Firestore Console** または既存のサーバー経路のみ。**将来** Admin API / 管理画面に切り出す。 | 運用メモのみ |
 
 **注意**: `src/context/SubscriptionContext.tsx` は `src/types/subscription.ts` を参照している **別系統の仮実装**のまま。本番の正本は **`UserProfile.subscription`（Firestore）** と **A2 の解決関数**に揃える予定（二重定義の解消は後続タスク）。
+
+---
+
+## Phase B — API（Next.js Route Handlers / Cloud Functions）
+
+| Step | 内容 | 内部仕様の正本 |
+|------|------|----------------|
+| **B1** | `GET /api/me/subscription`: 表示用プラン＋期限＋`resolveEntitlements` 結果 | [04_PHASE_B_API_INTERNAL_DECISIONS.md](./04_PHASE_B_API_INTERNAL_DECISIONS.md) §2 |
+| **B2** | `/api/ai/*` 先頭で entitlement チェック（403 + `PLAN_REQUIRED` 等） | 同 §3 |
+| **B3** | `journal_*` の rules ＋（必要なら）サーバー二重検証 | 同 §4 |
+| **B4** | コミュニケーション POST/PATCH/既読を premium ＋割当でガード | 同 §5 |
+| **B5** | 外部出力（将来） | 同 §6（Phase B ではコード未実装） |
+
+**横断（認証・エラー形式・Admin の置き場所）**: [04_PHASE_B_API_INTERNAL_DECISIONS.md](./04_PHASE_B_API_INTERNAL_DECISIONS.md) §1。
 
 ---
 
@@ -222,7 +236,7 @@ Phase 1（[04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./04_IMPLEMENTATION_STEPS_
 
 - **【1】ユーザー権限（ロール）**: `UserRole`（user / coach / admin）、`users/{uid}.role`、`hasRole`。表示モード切替（ViewModeContext: client / coach / admin）を実装。ヘッダーアバタークリックでロール・モード表示とアカウント設定・ログアウト。
 - **【2】ホーム画面を認証状態に連携**: `HomePage` で `useAuth` を使用。ログイン前は「本日の一番」「昨日までの積重ね」非表示。ログイン後はホームに留まり、マイページはサイドバーから遷移。ログインリダイレクト先を `/` に変更。
-- **トライアル導線（ランディング + 同意ゲート）**: `GET /trial_4w/landing` を追加。ランディングの 2/2（AIコーチ）の「やってみる」から、未ログインなら `/login?next=/trial_4w` → ログイン後 `/post-login?next=/trial_4w` で同意状況を判定。未同意なら `/consent?next=/trial_4w` を必須表示し、同意後に `/trial_4w` へ遷移。`users/{uid}.consents` に同意情報（termsVersion/privacyVersion は日付）を保存。
+- **トライアル導線（ランディング + 同意ゲート）**: `GET /trial_4w/landing`。2/2（AIコーチ）の「やってみる」は未ログインなら `/login?next=/trial_4w` → ログイン後 `/post-login?next=/trial_4w` → 未同意なら `/consent?next=/trial_4w` → 同意後 **`/trial_4w`**（気づきノート）。1/2（セルフ7日間）は同意後 **`/start-program`**（スタートプログラム・ダミー）。`users/{uid}.consents` に同意情報（termsVersion/privacyVersion は日付）を保存。
 - **【5】Firestore**: `site_content/home` を追加。`latestVideos`・`latestArticles`・`referenceLinks` の読み書き。セキュリティルールに `site_content/home`（read: 全員、create/update: isAdminUser()）とヘルパー `isAdminUser()` を追加。プロジェクトルートに `firebase.json`・`.firebaserc` を用意し、`firebase deploy --only firestore:rules` でデプロイ可能。
 - **ホーム 管理者編集（最新動画）**: 管理者モード時のみ「編集」ボタン表示。`LatestVideosEditModal` で URL・タイトル・サムネイル・並び・作成者（author_name, author_url）を編集。`/api/youtube-oembed` で YouTube（Shorts 含む）のメタデータ取得。保存で `updateHomeLatestVideos`。カード表示は 4:3（幅 213px・高さ 160px）、object-fit: contain。
 - **ホーム 管理者編集（最新記事）**: 管理者モード時のみ「編集」ボタン表示。`LatestArticlesEditModal` で URL・見出し・リード・出所・サムネイルURL・並びを編集。`/api/article-ogp` で記事 URL の OGP 取得。保存で `updateHomeLatestArticles`。カード表示は動画と同様のスタイルで横スクロール。

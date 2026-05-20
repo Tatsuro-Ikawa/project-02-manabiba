@@ -262,6 +262,7 @@ users/{uid}/journal_monthly/{monthKey}/coach_share_rounds/{roundId}
 | role         | string             | ロール: `user` | `coach` | `senior_coach` | `admin` |
 | subscription | map                | サブスクリプション情報（下記）                                  |
 | consents     | map                | 利用規約・プライバシーポリシー同意（初回ログイン時に必須。版は日付）            |
+| startProgram7dConsents | map（任意） | **7日間スタートプログラム**入室前の規約・プライバシー同意。`consents` と同形（`termsVersion` / `privacyVersion` / `acceptedAt`）。版は `src/lib/consent.ts` の `TERMS_VERSION` / `PRIVACY_VERSION` と整合。更新は `updateStartProgram7dConsents`（`firestore.ts`）。未設定時は `/start-program` から `/start-program/consent` へ誘導 |
 | createdAt    | Timestamp          | 作成日時                                             |
 | updatedAt    | Timestamp          | 更新日時                                             |
 | lastLoginAt  | Timestamp          | 最終ログイン日時                                         |
@@ -281,7 +282,11 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | status | string | `active` \| `inactive` \| `cancelled` \| `expired` |
 | startDate | Timestamp | 契約・プラン記録の開始 |
 | endDate | Timestamp（任意） | レガシーまたは表示用の終了。Stripe 連携時は `currentPeriodEnd` を優先してもよい |
-| trialEndsAt | Timestamp（任意） | **28 日お試し**等の終了日時。`plan === 'free'` と組み合わせ、entitlement 解決で standard 相当に使う（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md)） |
+| trialEndsAt | Timestamp（任意） | **気づきノート28日お試し**の終了（**スタンダード／プレミアム初回申込時のみ**。フリー会員には通常未設定） |
+| trialConsumedAt | Timestamp（任意） | 28日お試しを**消費した日時**（**再付与なし**判定） |
+| dataRetentionEndsAt | Timestamp（任意） | **解約日またはプラン変更日＋90日**のデータ削除予定 |
+| courseId | string（任意） | `ai_only` \| `ai_plus_personal` 等（[03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)）。`plan` から導出してもよい |
+| coaching | map（任意） | プレミアム面談用。例: `firstSessionFreeAvailable`（boolean）、`firstSessionUsedAt`（Timestamp） |
 | currentPeriodEnd | Timestamp（任意） | Stripe `current_period_end` のミラー。**解約予約中でも期間内は有効**とみなす判定に使う |
 | stripeCustomerId | string（任意） | Stripe Customer ID（`cus_...`）。未連携時は未設定 |
 | stripeSubscriptionId | string（任意） | Stripe Subscription ID（`sub_...`）。未連携時は未設定 |
@@ -300,6 +305,17 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | privacyVersion | プライバシーポリシーの同意バージョン（`YYYY-MM-DD`） |
 | acceptedAt | 同意日時（Timestamp） |
 
+**startProgram7dConsents（サブオブジェクト・任意）**
+
+7日間スタートプログラム専用。キー構造は `consents` と同じ。
+
+| フィールド | 説明 |
+|---|---|
+| termsVersion | 利用規約の同意バージョン（`YYYY-MM-DD`） |
+| privacyVersion | プライバシーポリシーの同意バージョン（`YYYY-MM-DD`） |
+| acceptedAt | 同意日時（Timestamp） |
+
+- 未設定時は `GET /start-program` が `GET /start-program/consent` を必須表示し、同意後 `updateStartProgram7dConsents(uid, {termsVersion, privacyVersion})` で保存する。版は会員登録時の `consents` と同じ定数を用い、文面更新時は両方の再同意を要求できる。
 
 - 実装: `src/lib/firestore.ts` の `createDefaultUserProfile` / `createUserProfile` / `getUserProfile`、型は `src/types/auth.ts` の `UserProfile`。
 
@@ -313,6 +329,7 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 
 - ロールの判定は **`users/{uid}.role`** を参照している。このフィールドを `user` / `coach` / `admin` に設定することで、クライアント・ホスト・管理者の区別ができる。
 - 利用規約・プライバシーポリシーの同意は `users/{uid}.consents` を参照する。未同意の場合は `GET /consent?next=...` を表示し、同意後 `updateUserConsents(uid, {termsVersion, privacyVersion})` で保存する（版は `src/lib/consent.ts` で管理）。
+- **7日間スタートプログラム**の同意は `users/{uid}.startProgram7dConsents` を参照する。未同意の場合は `GET /start-program` から `GET /start-program/consent` を必須表示し、同意後 `updateStartProgram7dConsents` で保存する（[04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) §1.3）。
 
 ---
 

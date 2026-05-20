@@ -13,6 +13,8 @@ import {
   type Trial4wEveningExecution,
   type Trial4wDailyPlain,
 } from '@/lib/firestore';
+import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
+import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 
 function trialEveningExecutionLabel(v: Trial4wEveningExecution | null): string {
   if (v === 'done') return 'できた';
@@ -281,13 +283,14 @@ export default function TrialMorningEvening() {
     setAiError(null);
     setAiSuggestion(null);
     try {
+      const authHeaders = await buildJsonAuthHeaders(user);
       const res = await fetch('/api/ai/improvement', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ actionResultText: aiInputText }),
       });
-      const json = (await res.json()) as { suggestion?: string; error?: string };
-      if (!res.ok) throw new Error(json.error || 'Aiコーチからのコメントの生成に失敗しました。');
+      const json = (await res.json()) as { suggestion?: string; error?: string | { message?: string } };
+      if (!res.ok) throw new Error(messageFromApiErrorPayload(json) || 'Aiコーチからのコメントの生成に失敗しました。');
       if (!json.suggestion || typeof json.suggestion !== 'string') {
         throw new Error('Aiコーチからのコメントの形式が不正です。');
       }

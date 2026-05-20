@@ -86,7 +86,7 @@ export default function HomePage() {
               <div className="banner-buttons">
                 {loggedIn ? (
                   <Link href="/trial_4w" className="banner-btn active">
-                    こころのトライアルを続ける
+                    気づきノートを続ける
                   </Link>
                 ) : (
                   <>

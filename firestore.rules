@@ -19,6 +19,31 @@ service cloud.firestore {
       return userDoc.data != null && userDoc.data.get('role', '') == 'admin';
     }
 
+    // Phase B3: 気づきノート journal_* の write は `resolveEntitlements`（TS）と同条件に合わせる。
+    // subscription 変更時は src/lib/subscription/resolveEntitlements.ts とペアで更新すること。
+    function subscriptionAllowsJournalWrite(sub) {
+      return sub != null && (
+          (sub.get('plan', '') == 'free' &&
+            sub.get('trialEndsAt', timestamp.date(1970, 1, 1)) > request.time) ||
+          (
+            (sub.get('plan', '') == 'standard' || sub.get('plan', '') == 'premium') &&
+            (
+              sub.get('status', '') == 'active' ||
+              (
+                sub.get('status', '') == 'cancelled' &&
+                sub.get('currentPeriodEnd', timestamp.date(1970, 1, 1)) > request.time
+              )
+            )
+          )
+        );
+    }
+
+    function journalWriteAllowedForOwner(ownerUid) {
+      let path = /databases/$(database)/documents/users/$(ownerUid);
+      return exists(path) &&
+        subscriptionAllowsJournalWrite(get(path).data.get('subscription', null));
+    }
+
     // A-11: コーチ↔クライアント割当（ドキュメント ID = coachUid_clientUid）
     function coachClientAssignmentDocPath(coachUid, clientUid) {
       return /databases/$(database)/documents/coach_client_assignments/$(coachUid + '_' + clientUid);
@@ -110,13 +135,15 @@ service cloud.firestore {
       // パス: users/{uid}/journal_daily/{dateKey}
       // 現段階: 本人のみ read/write（コーチ共有は A-11 等で後続）
       match /journal_daily/{dateKey} {
-        allow read, create, update, delete: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && journalWriteAllowedForOwner(userId);
       }
 
       // マネジメント日誌（学び帳）— 週次（SCREEN-006 実装時に利用）
       // パス: users/{uid}/journal_weekly/{weekStartKey}（JST・ユーザの週開始日基準の YYYY-MM-DD）
       match /journal_weekly/{weekStartKey} {
-        allow read, create, update, delete: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && journalWriteAllowedForOwner(userId);
       }
 
       // マネジメント日誌（学び帳）— 月次（月報）
@@ -129,7 +156,7 @@ service cloud.firestore {
           resource.data.get('sharedWithCoach', false) == true &&
           clientAllowsHumanCoachComments(userId)
         );
-        allow create, update, delete: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId) && journalWriteAllowedForOwner(userId);
 
         // クライアント送信（質問）ラウンド
         match /coach_share_rounds/{roundId} {
@@ -138,7 +165,7 @@ service cloud.firestore {
             journalMonthlySharedWithCoach(userId, monthKey) &&
             clientAllowsHumanCoachComments(userId)
           );
-          allow create: if isOwner(userId);
+          allow create: if isOwner(userId) && journalWriteAllowedForOwner(userId);
           allow update, delete: if false;
 
           // コーチコメント（版の追記のみ）

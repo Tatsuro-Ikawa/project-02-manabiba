@@ -40,6 +40,8 @@ import {
 } from '@/lib/journalDetailLevel';
 import { buildMonthlyAiReportInputFromWeeklies } from '@/lib/monthlyAiReportInputFromWeeklies';
 import { AI_REPORT_INPUT_MIN_TOTAL_CHARS, applyAiReportWriteMode } from '@/lib/journalAiReportWriteMode';
+import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
+import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import {
   buildMonthlyImprovementInputText,
   MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
@@ -323,14 +325,15 @@ export default function TrialMonthly() {
     setSaving(true);
     setMsg(null);
     try {
+      const authHeaders = await buildJsonAuthHeaders(user);
       const res = await fetch('/api/ai/monthly-report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ monthlyInputText }),
       });
-      const payload = (await res.json()) as MonthlyReportsResponse & { error?: string };
+      const payload = (await res.json()) as MonthlyReportsResponse & { error?: string | { message?: string } };
       if (!res.ok || !payload?.reports) {
-        throw new Error(payload?.error || '月次AIレポートの作成に失敗しました。');
+        throw new Error(messageFromApiErrorPayload(payload) || '月次AIレポートの作成に失敗しました。');
       }
 
       const writeMode = userProfile?.weeklyAiReportWriteMode ?? 'append';
@@ -398,17 +401,18 @@ export default function TrialMonthly() {
     setMonthlyImprovementPreviewUsageTokens(null);
     setMonthlyImprovementLoading(true);
     try {
+      const authHeaders = await buildJsonAuthHeaders(user);
       const res = await fetch('/api/ai/monthly-improvement', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ monthlyImprovementInputText: input }),
       });
       const json = (await res.json()) as {
         suggestion?: string;
-        error?: string;
+        error?: string | { message?: string };
         usageTotalTokenCount?: number;
       };
-      if (!res.ok) throw new Error(json.error || 'Ai改善提案の生成に失敗しました。');
+      if (!res.ok) throw new Error(messageFromApiErrorPayload(json) || 'Ai改善提案の生成に失敗しました。');
       if (!json.suggestion || typeof json.suggestion !== 'string') {
         throw new Error('Ai改善提案の形式が不正です。');
       }

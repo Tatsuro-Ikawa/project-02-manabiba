@@ -258,11 +258,11 @@
 
 | 区分 | ログイン | 課金 | 概要 |
 |------|----------|------|------|
-| **ゲスト** | 不要 | — | 未認証ユーザー。 |
-| **フリー** | **必須** | **なし** | **お試しクライアント**。気づきノート（28日間相当）を **4週間（28日・JST 起点）**利用可能。 |
-| **スタンダード** | 必須 | あり | 気づきノート＋AI 等（対応表・entitlements に準拠）。 |
-| **プレミアム** | 必須 | あり | スタンダードに加えコミュニケーション等。 |
-| **個別** | 案件による | あり | 7日間プログラム等。**本バージョンではドキュメントのみ**（実装はバージョンアップ・別ロードマップ）。詳細は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md)。 |
+| **ゲスト** | 不要 | — | 未認証。7日間プログラム導線は非表示。 |
+| **フリー会員** | **必須** | **なし** | 無償コンテンツ（現版: 7日間**ダミー**をホーム表示可）。**気づきノート不可・28日お試しなし**。 |
+| **スタンダード** | 必須 | あり | **AI 中心**。気づきノート＋AI。**メッセージボードなし**。初回申込時のみ28日お試し可。 |
+| **プレミアム** | 必須 | あり | **AI＋月次面談＋Q&A**（`ai_plus_personal` 相当）。**メッセージボードあり**。詳細は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §1〜6。 |
+| **個別** | 案件による | あり | 7日間プログラム本実装は**次バージョン**。現版はフリー向けダミーのみ。 |
 
 ### 4.2 想定するプラン種別（器として）
 
@@ -275,15 +275,15 @@
 
 - 上記は**データ構造・列挙として用意**し、実際の「どのプランで何ができるか」はプロダクト要件に合わせて後から詰める。
 
-### 4.3 28日間（フリー・お試し）の扱い
+### 4.3 28日お試し（気づきノート）とデータ保持
 
-- **期間**: **28日**。**開始した日から起算**し、タイムゾーンは **JST（Asia/Tokyo）** とする。
-- **期間中**: 画面に **残り期間**（日数または時間のいずれか／併用は UI 設計で決定）を表示する。
-- **失効後（スタンダード未契約・誘導キャンセル含む）**: **閲覧のみ**、**入力はロック**。ホームのマネジメント情報エリア上にオーバーレイし、**有効期間終了**と **データ消去までの残日数（90日ルール）** を案内する。詳細・用語の平易説明は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §3・付録A。
-- **データ保持**: 失効から **90日（3か月）** 経過後にデータ破棄。**外部エクスポート**は本バージョンではスコープ外。途中解約も同方針で [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) に記載。
-- **課金導線**: **「続けますか？」** と **スタンダード申し込み**は、未契約ユーザー向けの導線として表示する（文言は UI 仕様で確定）。
-- **entitlements**: 「期間中は standard 相当の気づきノート機能」等は **マトリクス＋ `trialEndsAt`（または `kizukiTrialEndsAt`）** で解決し、API・Firestore ルールと一致させる。
-- 技術的には例: プラン `free` のまま **`trialEndsAt`**（開始＋28日）を持つ、または `trial` と日付の組み合わせ。決済実装後に `standard` へ更新するフローを [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) と合わせて整理する。
+- **対象**: **スタンダード／プレミアム初回申込時のみ**（フリー会員には付与しない）。**再フリーなし**（`trialConsumedAt` 等）。
+- **期間**: **28日**、**JST** 起点。`trialEndsAt` で管理。
+- **期間中**: 残り日数表示。entitlement で **standard 相当の気づきノート**。
+- **失効後**: 閲覧のみ・入力ロック・ホームオーバーレイ（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §3）。
+- **データ保持**: 解約日またはプラン変更日から **90日**。**`dataRetentionEndsAt`** に終了日を保存（§3.2）。
+- **課金導線**: 未契約向けにスタンダード申し込み等（UI 仕様）。
+- **entitlements**: `resolveEntitlements` と Firestore ルールで一致させる。
 
 ### 4.3.1 本バージョンのスコープ外（参照）
 
@@ -291,13 +291,17 @@
 
 ### 4.4 保持するデータ（器）
 
-- **プラン種別**（例: `free` | `trial` | `course` | `addon` 等、商品に合わせて拡張）
-- **ステータス**（例: `active` | `inactive` | `expired` | `cancelled`）
-- **開始日・終了日**（`startDate`, `endDate`）
-- **トライアル終了日**（`trialEndDate`）— 28日間トライアル用
-- **機能フラグ・利用制限**（既存の `features` / `usage` と同様の構造を維持・拡張）
+- **プラン種別**: `free` | `standard` | `premium`（プロダクトの3コース）
+- **ステータス**: `active` | `inactive` | `expired` | `cancelled` 等
+- **`trialEndsAt`** — 気づきノート28日お試しの終了（初回申込時のみ）
+- **`trialConsumedAt`** — お試し消費済み（再付与禁止）
+- **`dataRetentionEndsAt`** — データ削除予定（解約・プラン変更＋90日）
+- **`currentPeriodEnd`** — Stripe 請求期間末（解約予約時の猶予）
+- **`courseId`**（任意）— `ai_only` / `ai_plus_personal` 等（[03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)）
+- **`coaching`**（任意）— 初回面談無料等（プレミアム）
+- **機能フラグ・利用制限**（既存の `features` / `usage`）。API ガードの正本は `resolveEntitlements`
 
-決済ID・課金履歴は**決済実装フェーズ**で追加する。
+決済ID・課金履歴は**決済実装フェーズ**で追加する。フィールド詳細は [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md)。
 
 ---
 
@@ -332,7 +336,7 @@
 | [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md) / [A11_COACH_SHARING_SCHEMA_DRAFT.md](./A11_COACH_SHARING_SCHEMA_DRAFT.md) | `coachShareQuotaPerMonth` と**プラン由来のクォータ**の関係。 |
 | [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md)（**【4】**） | サブスクの器の拡張手順（決済なし）。 |
 | [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md)（**§2** 等） | トライアル期間とサブスクの連動メモ。 |
-| [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) | **ゲスト／フリー／スタンダード／プレミアム／個別**、28日JST、失効後の閲覧のみ・90日破棄・ホームオーバーレイ、付録A〜C（平易説明・**1/2/5/7 確定**・**entitlement と決済の分離**・**Stripe シーケンス図 C.4**）、スコープ外（外部入出力・個別実装・Zoom）。 |
+| [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) | **ゲスト／フリー／スタンダード／プレミアム／個別**、28日JST、失効後の閲覧のみ・90日破棄・ホームオーバーレイ、付録A〜C、**§7 Phase C 分担**、**§8 運用前外部仕様**、**§9 Stripe 組込みタイミング**、Stripe シーケンス図 C.4、スコープ外（外部入出力・個別実装・Zoom）。 |
 | [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md) | メッセージボード実装・プレミアム連携メモ。Zoom は別アプリ（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §5）。 |
 | **型（実装）** `src/types/auth.ts` | `SubscriptionPlan`、`SubscriptionInfo`、`UserProfile.subscription`。 |
 

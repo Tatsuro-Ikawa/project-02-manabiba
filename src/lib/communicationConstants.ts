@@ -1,10 +1,7 @@
 /**
  * コミュニケーション画面（メッセージボード）用の定数。
- * サブスク確定後はプレミアム判定・上限値を置き換える想定。
+ * プレミアム可否は `resolveEntitlements`（`communication.message_board`）で判定する。
  */
-
-/** メッセージボード等のプレミアム解放フラグ（暫定: サブスク連携まで false） */
-export const COMMUNICATION_PREMIUM_BOARD_UNLOCKED = false;
 
 /**
  * クライアントが1スレッド内で送信できるメッセージ数の上限（暫定）。

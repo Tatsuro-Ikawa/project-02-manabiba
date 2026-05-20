@@ -21,7 +21,12 @@ const LandingPage: React.FC = () => {
     <>
       <header className="nav">
         <div className="container nav-inner">
-          <div className="brand">人生学び場 こころ道場</div>
+          <div className="brand">
+            人生学び場　こころ道場
+            <sup className="trade-reg-mark" title="登録商標">
+              ®
+            </sup>
+          </div>
           <nav className="nav-links">
             <a href="#personal">私の物語</a>
             <a href="#prospect">あなたの物語</a>
@@ -312,7 +317,12 @@ const LandingPage: React.FC = () => {
       </section>
 
       <footer>
-        <div className="container center small">© 2025 人生学び場 こころ道場</div>
+        <div className="container center small">
+          © 2025 人生学び場　こころ道場
+          <sup className="trade-reg-mark" title="登録商標">
+            ®
+          </sup>
+        </div>
       </footer>
     </>
   );

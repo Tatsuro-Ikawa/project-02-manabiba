@@ -11,6 +11,8 @@ function Trial4wLandingContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, loading } = useAuth();
   const loggedIn = !loading && !!user;
+  const freeSignupNext = '/post-login?next=/start-program';
+  const kizukiTrialNext = '/post-login?next=/trial_4w';
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -33,7 +35,6 @@ function Trial4wLandingContent() {
       <div className="trial-main-wrapper">
         <div className="trial-main">
           <div className="trial-landing-top">
-            <div className="trial-landing-title">28日間　こころのトライアル　プログラム</div>
             <Link href="/" className="trial-landing-back" aria-label="ホームへ戻る">
               戻る
             </Link>
@@ -42,39 +43,37 @@ function Trial4wLandingContent() {
           <h2 className="trial-landing-headline">一度きりの人生、なりたい自分を目指しませんか？</h2>
 
           <div className="trial-landing-stack">
-            <section className="trial-landing-card" aria-label="ページ 1/2">
+            <section className="trial-landing-card" aria-label="7日間プログラム">
               <div className="trial-landing-subtitle">◆ なりたい自分への近道</div>
               <div className="trial-landing-card-inner">
                 <div className="trial-landing-card-title">自分を変える7日間プログラム</div>
-                <div className="trial-landing-cols">
+                <div className="trial-landing-cols trial-landing-cols--single">
                   <div className="trial-landing-col">
-                    <div className="trial-landing-col-header">セルフコーチング</div>
+                    <div className="trial-landing-col-header">セルフコーチング（フリーコース）</div>
                     <div className="trial-landing-price-box">
                       <div className="trial-landing-price">¥0</div>
                     </div>
-                    <button type="button" className="trial-landing-cta disabled" disabled>
-                      やってみる
-                    </button>
-                  </div>
-                  <div className="trial-landing-col">
-                    <div className="trial-landing-col-header">プライベートコーチ</div>
-                    <div className="trial-landing-price-box">
-                      <div className="trial-landing-price strike">¥39,600</div>
-                      <div className="trial-landing-price">¥14,300</div>
-                      <div className="trial-landing-note">(オープン期間(2026年末)限定価格)</div>
-                    </div>
-                    <button type="button" className="trial-landing-cta disabled" disabled>
-                      やってみる
-                    </button>
+                    {loggedIn ? (
+                      <Link href={freeSignupNext} className="trial-landing-cta">
+                        やってみる
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/login?next=${encodeURIComponent(freeSignupNext)}`}
+                        className="trial-landing-cta"
+                      >
+                        やってみる
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
             </section>
-
             <section className="trial-landing-card" aria-label="ページ 2/2">
               <div className="trial-landing-subtitle">◆ 習慣化へのはじめの一歩</div>
               <div className="trial-landing-card-inner">
-                <div className="trial-landing-card-title">気づきと学びの「気づきノート」</div>
+                <div className="trial-landing-card-title">気づきと学びのマネジメント日誌「学び帳(仮)」
+                </div>
                 <div className="trial-landing-cols">
                   <div className="trial-landing-col">
                     <div className="trial-landing-col-header">AIコーチ</div>
@@ -89,11 +88,11 @@ function Trial4wLandingContent() {
                       <div className="trial-landing-badge">28日間フリー</div>
                     </div>
                     {loggedIn ? (
-                      <Link href="/trial_4w" className="trial-landing-cta">
+                      <Link href={kizukiTrialNext} className="trial-landing-cta">
                         やってみる
                       </Link>
                     ) : (
-                      <Link href={`/login?next=${encodeURIComponent('/trial_4w')}`} className="trial-landing-cta">
+                      <Link href={`/login?next=${encodeURIComponent(kizukiTrialNext)}`} className="trial-landing-cta">
                         やってみる
                       </Link>
                     )}
@@ -112,6 +111,10 @@ function Trial4wLandingContent() {
                     </button>
                   </div>
                 </div>
+                <p className="trial-landing-tokushoho-note">
+                  特定商取引法に基づく表記は
+                  <Link href="/legal/tokushoho">こちら</Link>
+                </p>
               </div>
             </section>
           </div>

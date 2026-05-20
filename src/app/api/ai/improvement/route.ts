@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
+import { guardAiEntitlement } from '@/lib/server/aiEntitlementGate';
 
 type ImprovementRequestBody = {
   actionResultText?: unknown;
@@ -109,6 +110,9 @@ function buildGoogleAuth(): GoogleAuth {
 }
 
 export async function POST(request: NextRequest) {
+  const gate = await guardAiEntitlement(request, 'kizuki.morning_evening.ai_comment');
+  if (gate) return gate;
+
   let body: ImprovementRequestBody;
   try {
     body = (await request.json()) as ImprovementRequestBody;

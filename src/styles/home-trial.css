@@ -31,6 +31,15 @@
   white-space: nowrap;
 }
 
+/* 登録商標（®）— ヘッダー・フッター等でサイト名の直後に付与 */
+.trade-reg-mark {
+  font-size: 0.55em;
+  font-weight: 700;
+  vertical-align: super;
+  margin-left: 0.06em;
+  line-height: 0;
+}
+
 .proto-header .header-left,
 .proto-header .header-right {
   display: flex;
@@ -1466,15 +1475,9 @@
 .trial-landing-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-md);
-}
-
-.trial-landing-title {
-  font-size: var(--font-size-body-small);
-  color: var(--color-text-secondary);
-  font-weight: 600;
 }
 
 .trial-landing-back {
@@ -1548,6 +1551,12 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-lg);
   align-items: start;
+}
+
+.trial-landing-cols--single {
+  grid-template-columns: 1fr;
+  max-width: 360px;
+  margin: 0 auto;
 }
 
 .trial-landing-col {
@@ -1645,6 +1654,25 @@
   opacity: 0.9;
 }
 
+.trial-landing-tokushoho-note {
+  margin: var(--spacing-md) 0 0;
+  padding-top: var(--spacing-sm);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.trial-landing-tokushoho-note a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  margin-left: 0.15em;
+}
+
+.trial-landing-tokushoho-note a:hover {
+  text-decoration: none;
+}
+
 /* ========== フッター（利用規約・プライバシーポリシー・コピーライト） ========== */
 .home-footer {
   background: var(--color-primary-dark);
@@ -1718,6 +1746,89 @@
 
 .legal-page-back a:hover {
   text-decoration: underline;
+}
+
+.legal-page-lead {
+  color: var(--color-text);
+  line-height: 1.7;
+  margin: 0 0 var(--spacing-md);
+}
+
+.legal-page-updated {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  margin: 0 0 var(--spacing-xl);
+}
+
+.legal-dl {
+  margin: 0;
+  padding: 0;
+}
+
+.legal-dl > div {
+  border-top: 1px solid var(--color-border, #e5e7eb);
+  padding: var(--spacing-lg) 0;
+}
+
+.legal-dl > div:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.legal-dl dt {
+  font-weight: 700;
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-sm);
+}
+
+.legal-dl dd {
+  margin: 0;
+  color: var(--color-text);
+  line-height: 1.75;
+  font-size: var(--font-size-body);
+}
+
+.legal-dl dd a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.legal-dl dd a:hover {
+  text-decoration: underline;
+}
+
+.legal-subheading {
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  margin: var(--spacing-md) 0 var(--spacing-sm);
+  color: var(--color-text);
+}
+
+.legal-subheading:first-of-type {
+  margin-top: 0;
+}
+
+.legal-list {
+  margin: 0 0 var(--spacing-sm);
+  padding-left: 1.25rem;
+  line-height: 1.75;
+}
+
+.legal-list li + li {
+  margin-top: 0.35rem;
+}
+
+.legal-price-intro {
+  margin: 0 0 var(--spacing-sm);
+}
+
+.legal-page-note {
+  display: block;
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
 }
 
 /* ========== トライアル: trial-main, メニューバー ========== */

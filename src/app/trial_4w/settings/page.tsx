@@ -101,7 +101,7 @@ export default function TrialJournalSettingsPage() {
                     保存
                   </button>
                   <Link href="/trial_4w" className="trial-action-btn" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-                    スタートへ戻る
+                    気づきノートへ戻る
                   </Link>
                 </div>
                 {savedMsg ? <p className="text-sm text-gray-700 mt-2">{savedMsg}</p> : null}

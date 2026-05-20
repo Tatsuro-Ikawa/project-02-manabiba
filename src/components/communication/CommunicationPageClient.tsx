@@ -14,8 +14,10 @@ import { getUserProfile } from '@/lib/firestore';
 import {
   COACH_SHARED_JOURNAL_VISIBILITY_RULE,
   COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT,
-  COMMUNICATION_PREMIUM_BOARD_UNLOCKED,
 } from '@/lib/communicationConstants';
+import { resolveEntitlements } from '@/lib/subscription/resolveEntitlements';
+import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
+import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 
 type CommTab = 'director' | 'board';
 
@@ -112,7 +114,7 @@ function buildDemoMessages(isCoachView: boolean): CommMsg[] {
 function MessageEditModal(props: {
   open: boolean;
   initialText: string;
-  onSave: (text: string) => void;
+  onSave: (text: string) => void | Promise<void>;
   onCancel: () => void;
 }) {
   const { open, initialText, onSave, onCancel } = props;
@@ -156,7 +158,11 @@ function MessageEditModal(props: {
           <button type="button" className="communication-edit-modal-btn secondary" onClick={onCancel}>
             キャンセル
           </button>
-          <button type="button" className="communication-edit-modal-btn primary" onClick={() => onSave(text)}>
+          <button
+            type="button"
+            className="communication-edit-modal-btn primary"
+            onClick={() => void onSave(text)}
+          >
             保存
           </button>
         </div>
@@ -194,7 +200,12 @@ export default function CommunicationPageClient() {
   const isCoachView = loggedIn && mode === 'coach' && !!userProfile && isCoachRole;
   const isAdminView = loggedIn && mode === 'admin' && userProfile?.role === 'admin';
 
-  const premiumUnlocked = COMMUNICATION_PREMIUM_BOARD_UNLOCKED;
+  const [assignedCoachUid, setAssignedCoachUid] = useState<string | null>(null);
+
+  const premiumUnlocked = useMemo(() => {
+    if (!userProfile) return false;
+    return resolveEntitlements(userProfile)['communication.message_board'];
+  }, [userProfile]);
 
   const setTab = useCallback(
     (next: CommTab) => {
@@ -219,10 +230,12 @@ export default function CommunicationPageClient() {
   useEffect(() => {
     if (!loggedIn || !user?.uid) {
       setCoachTarget(null);
+      setAssignedCoachUid(null);
       return;
     }
     if (mode !== 'client') {
       setCoachTarget(null);
+      setAssignedCoachUid(null);
       return;
     }
     let cancelled = false;
@@ -231,9 +244,13 @@ export default function CommunicationPageClient() {
         const asg = await getActiveCoachAssignmentForClient(user.uid);
         const coachUid = asg?.data.coachUid;
         if (!coachUid) {
-          if (!cancelled) setCoachTarget({ name: '担当コーチ（未割当）', photoURL: null });
+          if (!cancelled) {
+            setCoachTarget({ name: '担当コーチ（未割当）', photoURL: null });
+            setAssignedCoachUid(null);
+          }
           return;
         }
+        if (!cancelled) setAssignedCoachUid(coachUid);
         const prof = await getUserProfile(coachUid);
         if (cancelled) return;
         setCoachTarget({
@@ -241,7 +258,10 @@ export default function CommunicationPageClient() {
           photoURL: prof?.photoURL ?? null,
         });
       } catch {
-        if (!cancelled) setCoachTarget({ name: '担当コーチ', photoURL: null });
+        if (!cancelled) {
+          setCoachTarget({ name: '担当コーチ', photoURL: null });
+          setAssignedCoachUid(null);
+        }
       }
     })();
     return () => {
@@ -304,12 +324,22 @@ export default function CommunicationPageClient() {
 
   const boardDisabledReason = useMemo(() => {
     if (!loggedIn) return 'ログインが必要です。';
-    if (!premiumUnlocked) return 'プレミアムコースのみ利用できます（暫定: 機能ロック中）。';
+    if (!premiumUnlocked) return 'プレミアムプランのみ利用できます。';
     if (isAdminView) return '管理者モードではメッセージボードを利用できません。';
     if (isCoachView && !coachClientUid) return 'クライアントを選択してください。';
+    if (mode === 'client' && !assignedCoachUid) return '担当コーチの割当がありません。';
     if (clientAtLimit) return `クライアントからの送信は ${COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT} 件までです。`;
     return null;
-  }, [loggedIn, premiumUnlocked, isAdminView, isCoachView, coachClientUid, clientAtLimit]);
+  }, [
+    loggedIn,
+    premiumUnlocked,
+    isAdminView,
+    isCoachView,
+    coachClientUid,
+    clientAtLimit,
+    mode,
+    assignedCoachUid,
+  ]);
 
   const inputDisabled = !!boardDisabledReason;
 
@@ -319,18 +349,38 @@ export default function CommunicationPageClient() {
     setEditOpen(true);
   };
 
-  const saveEdit = (text: string) => {
+  const saveEdit = async (text: string) => {
     if (!editingId) return;
     const trimmed = text.trim();
     if (!trimmed) return;
-    setMessages((prev) =>
-      prev.map((m) =>
-        m.id === editingId ? { ...m, body: trimmed, edited: true, createdAt: m.createdAt } : m
-      )
-    );
-    setEditOpen(false);
-    setEditingId(null);
-    setEditDraft('');
+    const peerUid = isCoachView ? coachClientUid : assignedCoachUid;
+    if (!user || !peerUid) {
+      window.alert('送信先が確定していません。');
+      return;
+    }
+    try {
+      const authHeaders = await buildJsonAuthHeaders(user);
+      const res = await fetch(`/api/communication/board/message/${encodeURIComponent(editingId)}`, {
+        method: 'PATCH',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ peerUid, body: trimmed }),
+      });
+      const data = (await res.json()) as unknown;
+      if (!res.ok) {
+        throw new Error(messageFromApiErrorPayload(data) || '保存に失敗しました。');
+      }
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === editingId ? { ...m, body: trimmed, edited: true, createdAt: m.createdAt } : m
+        )
+      );
+      setEditOpen(false);
+      setEditingId(null);
+      setEditDraft('');
+    } catch (e) {
+      console.error(e);
+      window.alert(e instanceof Error ? e.message : '保存に失敗しました。');
+    }
   };
 
   const cancelEdit = () => {
@@ -341,23 +391,42 @@ export default function CommunicationPageClient() {
 
   const handleSend = async () => {
     const t = draft.trim();
-    if (!t || inputDisabled || sending) return;
+    if (!t || inputDisabled || sending || !user) return;
+    const peerUid = isCoachView ? coachClientUid : assignedCoachUid;
+    if (!peerUid) {
+      window.alert('送信先が確定していません。');
+      return;
+    }
     setSending(true);
     try {
-      await new Promise((r) => setTimeout(r, 250));
-      const id = `local-${Date.now()}`;
+      const authHeaders = await buildJsonAuthHeaders(user);
+      const res = await fetch('/api/communication/board/message', {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ peerUid, body: t }),
+      });
+      const data = (await res.json()) as {
+        message?: { id: string; body: string; createdAt: string; edited: boolean };
+      };
+      if (!res.ok || !data.message) {
+        throw new Error(messageFromApiErrorPayload(data) || '送信に失敗しました。');
+      }
+      const msg = data.message;
       setMessages((prev) => [
         ...prev,
         {
-          id,
-          body: t,
+          id: msg.id,
+          body: msg.body,
           isMine: true,
-          createdAt: new Date(),
-          edited: false,
+          createdAt: new Date(msg.createdAt),
+          edited: msg.edited,
         },
       ]);
       setDraft('');
       window.setTimeout(() => inputRef.current?.focus(), 0);
+    } catch (e) {
+      console.error(e);
+      window.alert(e instanceof Error ? e.message : '送信に失敗しました。');
     } finally {
       setSending(false);
     }

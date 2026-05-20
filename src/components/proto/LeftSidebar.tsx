@@ -23,8 +23,12 @@ export default function LeftSidebar({
 }: LeftSidebarProps) {
   const pathname = usePathname();
   const isHome = pathname === '/';
-  const isTrial = pathname.startsWith('/trial_4w');
+  /** 気づきノート（旧トライアル本編）: `/trial_4w` および設定。コース選択ランディングは含めない */
+  const isKizukiNote =
+    pathname === '/trial_4w' ||
+    (pathname.startsWith('/trial_4w/') && !pathname.startsWith('/trial_4w/landing'));
   const isTrialSettings = pathname === '/trial_4w/settings';
+  const isStartProgram = pathname.startsWith('/start-program');
   const isMypage = pathname.startsWith('/mypage');
   const isCommunication = pathname === '/communication';
 
@@ -42,13 +46,22 @@ export default function LeftSidebar({
         <span>ホーム</span>
       </Link>
       <Link
-        href="/trial_4w"
-        className={`sidebar-btn ${isTrial && !isTrialSettings ? 'active' : ''}`}
-        aria-label="スタート"
+        href="/start-program"
+        className={`sidebar-btn ${isStartProgram ? 'active' : ''}`}
+        aria-label="スタートプログラム"
         onClick={handleNav}
       >
         <span className="material-symbols-outlined" aria-hidden>play_circle</span>
         <span>スタート</span>
+      </Link>
+      <Link
+        href="/trial_4w"
+        className={`sidebar-btn ${isKizukiNote ? 'active' : ''}`}
+        aria-label="気づきノート"
+        onClick={handleNav}
+      >
+        <span className="material-symbols-outlined" aria-hidden>edit_note</span>
+        <span>実行</span>
       </Link>
       <Link
         href="/communication"
@@ -59,7 +72,7 @@ export default function LeftSidebar({
         <span className="material-symbols-outlined" aria-hidden>forum</span>
         <span>コミュニケーション</span>
       </Link>
-      {pathname.startsWith('/trial_4w') && (
+      {isKizukiNote && (
         <Link
           href="/trial_4w/settings"
           className={`sidebar-btn ${isTrialSettings ? 'active' : ''}`}

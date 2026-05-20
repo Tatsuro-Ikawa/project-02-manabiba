@@ -1,13 +1,19 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { SubscriptionInfo, SubscriptionPlan, SUBSCRIPTION_PLANS } from '@/types/subscription';
+import { buildSubscriptionUiModel } from '@/lib/subscription/buildSubscriptionUiModel';
+import { resolveEntitlements } from '@/lib/subscription/resolveEntitlements';
+import type { FeatureKey } from '@/lib/subscription/featureKeys';
 
 interface SubscriptionContextType {
   subscription: SubscriptionInfo | null;
   loading: boolean;
+  /** 旧 UI 用（`SUBSCRIPTION_PLANS` 由来のキー） */
   canUseFeature: (feature: keyof typeof SUBSCRIPTION_PLANS.free) => boolean;
+  /** entitlement キーで判定（サーバーと同じ `resolveEntitlements`） */
+  canUseEntitlement: (key: FeatureKey) => boolean;
   upgradePlan: (plan: SubscriptionPlan) => Promise<void>;
   getTrialDays: () => number;
   getMeetingCredits: () => number;
@@ -28,100 +34,45 @@ interface SubscriptionProviderProps {
 }
 
 export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ children }) => {
-  const { user } = useAuth();
-  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, userProfile, loading: authLoading } = useAuth();
 
-  // ユーザーのサブスクリプション情報を取得
-  useEffect(() => {
-    const fetchSubscription = async () => {
-      if (!user) {
-        setSubscription(null);
-        setLoading(false);
-        return;
-      }
+  const loading = authLoading;
 
-      try {
-        // TODO: Firestoreからサブスクリプション情報を取得
-        // 仮の実装として、フリープランを設定
-        const defaultSubscription: SubscriptionInfo = {
-          plan: 'free',
-          features: SUBSCRIPTION_PLANS.free,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        
-        setSubscription(defaultSubscription);
-      } catch (error) {
-        console.error('サブスクリプション情報取得エラー:', error);
-        // エラー時はフリープランを設定
-        const fallbackSubscription: SubscriptionInfo = {
-          plan: 'free',
-          features: SUBSCRIPTION_PLANS.free,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        setSubscription(fallbackSubscription);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const subscription = useMemo((): SubscriptionInfo | null => {
+    if (!user || !userProfile) return null;
+    return buildSubscriptionUiModel(userProfile);
+  }, [user, userProfile]);
 
-    fetchSubscription();
-  }, [user]);
+  const entitlements = useMemo(() => {
+    if (!userProfile) return null;
+    return resolveEntitlements(userProfile);
+  }, [userProfile]);
 
-  // 機能の利用可否を判定
   const canUseFeature = (feature: keyof typeof SUBSCRIPTION_PLANS.free): boolean => {
     if (!subscription) return false;
-    
     const featureValue = subscription.features[feature];
-    
-    if (typeof featureValue === 'boolean') {
-      return featureValue;
-    }
-    
-    if (featureValue === 'limited') {
-      // フリープランの制限をチェック
-      // TODO: 具体的な制限ロジックを実装
-      return true;
-    }
-    
+    if (typeof featureValue === 'boolean') return featureValue;
+    if (featureValue === 'limited') return true;
     return featureValue === 'full' || featureValue === 'trial';
   };
 
-  // プランアップグレード
+  const canUseEntitlement = (key: FeatureKey): boolean => {
+    return entitlements?.[key] ?? false;
+  };
+
   const upgradePlan = async (plan: SubscriptionPlan): Promise<void> => {
     if (!user) throw new Error('ユーザーが認証されていません');
-    
-    try {
-      // TODO: 決済処理とサブスクリプション更新
-      const updatedSubscription: SubscriptionInfo = {
-        ...subscription!,
-        plan,
-        features: SUBSCRIPTION_PLANS[plan],
-        updatedAt: new Date(),
-      };
-      
-      setSubscription(updatedSubscription);
-    } catch (error) {
-      console.error('プランアップグレードエラー:', error);
-      throw error;
-    }
+    // 決済（Phase C）までローカルのみ更新しない。Stripe 連携後に差し替え。
+    console.warn('upgradePlan: 決済未実装のため UI のみ。Firestore は更新しません。', plan);
   };
 
-  // トライアル日数を取得
   const getTrialDays = (): number => {
-    if (!subscription?.trialEndDate) return 0;
-    
-    const now = new Date();
-    const trialEnd = new Date(subscription.trialEndDate);
-    const diffTime = trialEnd.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return Math.max(0, diffDays);
+    const end = userProfile?.subscription.trialEndsAt;
+    if (!end) return 0;
+    const diffTime = end.getTime() - Date.now();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
   };
 
-  // 面談クレジット数を取得
   const getMeetingCredits = (): number => {
     return subscription?.meetingCredits || 0;
   };
@@ -130,14 +81,11 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({ chil
     subscription,
     loading,
     canUseFeature,
+    canUseEntitlement,
     upgradePlan,
     getTrialDays,
     getMeetingCredits,
   };
 
-  return (
-    <SubscriptionContext.Provider value={value}>
-      {children}
-    </SubscriptionContext.Provider>
-  );
+  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
 };

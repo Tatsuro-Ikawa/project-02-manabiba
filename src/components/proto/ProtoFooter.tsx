@@ -8,9 +8,14 @@ export default function ProtoFooter() {
       <div className="home-footer-links">
         <Link href="/terms">利用規約</Link>
         <Link href="/privacy">プライバシーポリシー</Link>
+        <Link href="/legal/tokushoho">特定商取引法に基づく表記</Link>
       </div>
       <div className="home-footer-copyright">
-        &copy; 2025 人生学び場　こころ道場 All rights reserved.
+        &copy; 2025 人生学び場　こころ道場
+        <sup className="trade-reg-mark" title="登録商標">
+          ®
+        </sup>{' '}
+        All rights reserved.
       </div>
     </footer>
   );

@@ -44,6 +44,8 @@ import {
   WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
 } from '@/lib/weeklyImprovementAi';
 import { AI_REPORT_INPUT_MIN_TOTAL_CHARS, applyAiReportWriteMode } from '@/lib/journalAiReportWriteMode';
+import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
+import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import { buildWeeklyAiReportInputFromDailies } from '@/lib/weeklyAiReportInputFromDailies';
 import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
 
@@ -259,14 +261,15 @@ export default function TrialWeekly() {
     setSaving(true);
     setMsg(null);
     try {
+      const authHeaders = await buildJsonAuthHeaders(user);
       const res = await fetch('/api/ai/weekly-report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ weeklyInputText }),
       });
-      const payload = (await res.json()) as WeeklyReportsResponse & { error?: string };
+      const payload = (await res.json()) as WeeklyReportsResponse & { error?: string | { message?: string } };
       if (!res.ok || !payload?.reports) {
-        throw new Error(payload?.error || '週次AIレポートの作成に失敗しました。');
+        throw new Error(messageFromApiErrorPayload(payload) || '週次AIレポートの作成に失敗しました。');
       }
 
       const writeMode = userProfile?.weeklyAiReportWriteMode ?? 'append';
@@ -340,17 +343,18 @@ export default function TrialWeekly() {
     setWeeklyImprovementPreviewUsageTokens(null);
     setWeeklyImprovementLoading(true);
     try {
+      const authHeaders = await buildJsonAuthHeaders(user);
       const res = await fetch('/api/ai/weekly-improvement', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ weeklyImprovementInputText: input }),
       });
       const json = (await res.json()) as {
         suggestion?: string;
-        error?: string;
+        error?: string | { message?: string };
         usageTotalTokenCount?: number;
       };
-      if (!res.ok) throw new Error(json.error || 'Ai改善提案の生成に失敗しました。');
+      if (!res.ok) throw new Error(messageFromApiErrorPayload(json) || 'Ai改善提案の生成に失敗しました。');
       if (!json.suggestion || typeof json.suggestion !== 'string') {
         throw new Error('Ai改善提案の形式が不正です。');
       }

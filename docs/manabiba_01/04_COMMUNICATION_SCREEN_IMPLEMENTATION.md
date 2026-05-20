@@ -50,7 +50,8 @@
 | 送信後は入力クリア＋フォーカス維持 | 実装済み。 |
 | クライアント送信上限（定数） | `COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT`（`src/lib/communicationConstants.ts`）。`mode === 'client'` かつ自分の吹き出しの件数で判定。 |
 | 既読（メッセージ単位） | 自分の吹き出しに `readAt` がある場合「既読 …」表示（デモは1件のみ）。 |
-| プレミアムのみ利用可 | `COMMUNICATION_PREMIUM_BOARD_UNLOCKED` が **`false` の間**は案内＋入力不可（Firestore 未接続）。**サブスク処理実装後**は `users/{uid}.subscription` 等の判定に置き換える。 |
+| プレミアムのみ利用可 | `resolveEntitlements` の **`communication.message_board`**（`plan === 'premium'` かつ有効契約）。 |
+| プレミアム→スタンダード後 | **即時**に送信・編集不可。**履歴閲覧は可**。データは **`dataRetentionEndsAt` まで保持**し **90日後削除**（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §4.1）。 |
 | コーチ: 未選択時は案内＋入力不可、初回はクライアントピッカー | `CoachClientPickerModal` を利用。初回のみ自動オープン（解除後は再選択可）。 |
 | 管理者: 右上対象者非表示 | 実装済み。 |
 | 右上: `displayName` / `photoURL` | クライアント: 割当コーチのプロフィール。コーチ: 選択クライアントのプロフィール。 |
@@ -60,10 +61,11 @@
 
 ## プレミアム・サブスク連携（次の作業）
 
-1. **`COMMUNICATION_PREMIUM_BOARD_UNLOCKED` を廃止または内部のみの開発用フラグに降格**し、本番は **`UserProfile.subscription`（例: `plan === 'premium'`）** および必要なら `status` / `endDate` で判定する。  
-2. **メッセージの永続化**: Firestore コレクション設計・セキュリティルール（コーチは割当クライアントのスレッドのみ等）。  
-3. **送信上限**: 現状は「スレッド内・クライアント発の件数」のシミュレーション。要件に応じて **日次／月次リセット**やプラン別上限を [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)（§6.1 の索引参照）と整合させる。  
-4. **既読**: サーバー更新（フィールドまたはサブコレクション）とルール。
+1. **プレミアム判定**: `resolveEntitlements` の `communication.message_board`（実装済みの `SubscriptionContext` 経由）。  
+2. **ダウングレード時**: プレミアム→スタンダードで **入力・編集を即時無効**、**履歴のみ閲覧**（§4.1）。  
+3. **メッセージの永続化**: Firestore コレクション設計・セキュリティルール（コーチは割当クライアントのスレッドのみ等）。  
+4. **送信上限**: 現状は「スレッド内・クライアント発の件数」のシミュレーション。要件に応じて **日次／月次リセット**やプラン別上限を [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)（§6.1 の索引参照）と整合させる。  
+5. **既読**: サーバー更新（フィールドまたはサブコレクション）とルール。
 
 サブスク仕様の**正本・索引**は [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md) の **§6.1（サブスクリプション仕様が記載されているドキュメント索引）** に集約した。
 
@@ -97,3 +99,4 @@
 |------|------|
 | 2026-05-12 | 初版: コミュニケーション UI・定数・プレミアム暫定フラグ・サブスク差し込みメモ。 |
 | 2026-05-12 | Zoom 別アプリ・運用再検討・スコープ外ドキュメントへの参照を追記。 |
+| 2026-05-17 | プレミアム判定を entitlement に更新。プレミアム→スタンダード時の Q&A 挙動（即時不可・履歴可・90日）を追記。 |
