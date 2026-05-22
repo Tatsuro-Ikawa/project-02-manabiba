@@ -206,15 +206,6 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
               acceptedAt: data.consents?.acceptedAt?.toDate?.() ?? data.consents?.acceptedAt,
             }
           : undefined,
-        startProgram7dConsents: data.startProgram7dConsents
-          ? {
-              termsVersion: data.startProgram7dConsents.termsVersion as string,
-              privacyVersion: data.startProgram7dConsents.privacyVersion as string,
-              acceptedAt:
-                data.startProgram7dConsents.acceptedAt?.toDate?.() ??
-                data.startProgram7dConsents.acceptedAt,
-            }
-          : undefined,
         subscription: {
           ...data.subscription,
           startDate: data.subscription?.startDate?.toDate(),
@@ -287,26 +278,6 @@ export const updateUserConsents = async (
     });
   } catch (error) {
     console.error('同意情報更新エラー:', error);
-    throw error;
-  }
-};
-
-/** 7日間スタートプログラム用の規約・プライバシー同意を保存（会員全体の `consents` とは別フィールド） */
-export const updateStartProgram7dConsents = async (
-  uid: string,
-  consents: { termsVersion: string; privacyVersion: string }
-): Promise<void> => {
-  try {
-    const now = serverTimestamp() as Timestamp;
-    await updateDoc(doc(db, 'users', uid), {
-      startProgram7dConsents: {
-        ...consents,
-        acceptedAt: now,
-      },
-      updatedAt: now,
-    });
-  } catch (error) {
-    console.error('7日間プログラム同意情報更新エラー:', error);
     throw error;
   }
 };

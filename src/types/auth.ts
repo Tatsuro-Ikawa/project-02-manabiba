@@ -24,13 +24,8 @@ export interface UserProfile {
   photoURL?: string;
   role: UserRole;
   subscription: SubscriptionInfo;
-  /** 利用規約・プライバシーポリシー同意（初回ログイン時に必須） */
+  /** 利用規約・プライバシーポリシー同意（初回・フリー会員含む。7日間／気づきノートは規約内の章で読み分け） */
   consents?: UserConsents;
-  /**
-   * 7日間スタートプログラム入室前の規約・プライバシー同意。
-   * 会員全体の `consents` とは別に記録し、版は `TERMS_VERSION` / `PRIVACY_VERSION` と同期（`src/lib/consent.ts`）。
-   */
-  startProgram7dConsents?: UserConsents;
   /** アファメーションタブの前回選択・サブメニュー（Firestore。localStorage は使わない） */
   trialAffirmationMeta?: TrialAffirmationUiMeta;
   /** A-11: コーチング実施中のテーマ（`users/{uid}/affirmations/{id}`） */

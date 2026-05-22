@@ -43,11 +43,14 @@
 |--------|------|------|
 | `GOOGLE_CLOUD_PROJECT` | はい | GCP プロジェクト ID（例: `plandosee-project-01`） |
 | `GCP_SA_KEY_JSON` | 推奨（Vercel） | サービスアカウント鍵 JSON の**全文文字列**。設定時はこれを優先して認証する |
-| `GOOGLE_APPLICATION_CREDENTIALS` | ローカルで推奨 | **サービスアカウント鍵の JSON ファイル**への絶対パス。**ディレクトリやプロジェクトルートは不可** |
+| `GOOGLE_APPLICATION_CREDENTIALS` | ローカルで推奨 | **サービスアカウント鍵の JSON ファイル**への絶対パス。**ディレクトリやプロジェクトルートは不可**。Vertex AI に加え **Firebase Admin（Bearer 検証）** でも利用可（`src/lib/firebaseAdmin.ts`） |
 | `GOOGLE_CLOUD_LOCATION` | いいえ | 既定: `asia-northeast1`。モデルリソース名の `locations/...` に使う |
 | `VERTEX_AI_GEMINI_MODEL` | いいえ | 既定: `gemini-2.5-flash`（コード側フォールバックと一致） |
+| `MANABIBA_DISABLE_AI_ENTITLEMENT_CHECK` | ローカルのみ | `true` でプラン entitlement チェックをスキップ（Bearer 認証は維持）。**本番では設定しない** |
 
-認証の優先順位は **`GCP_SA_KEY_JSON` → `GOOGLE_APPLICATION_CREDENTIALS`**。  
+認証の優先順位は **`GCP_SA_KEY_JSON` → `GOOGLE_APPLICATION_CREDENTIALS`**（Vertex AI の `google-auth-library`）。  
+Firebase Admin（`/api/ai/*` の Bearer 検証）は **`FIREBASE_SERVICE_ACCOUNT_JSON` → `GCP_SA_KEY_JSON` → `GOOGLE_APPLICATION_CREDENTIALS`**。  
+entitlement チェック（Firestore の `users/{uid}` 読み取り）を有効にする場合、サービスアカウントに **Cloud Datastore User**（または Firebase Admin 相当）が必要。Vertex AI 専用 SA だけでは `PERMISSION_DENIED` になる。ローカルでは `MANABIBA_DISABLE_AI_ENTITLEMENT_CHECK=true` で Phase B 以前と同様にスキップできる。  
 `.env.local` を変更したら **Next の dev サーバーを再起動**してください。
 
 ### 2.1 Vercel の Branch / Environment 運用ルール

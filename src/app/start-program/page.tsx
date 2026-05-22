@@ -7,7 +7,7 @@ import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
-import { hasAcceptedCurrentConsents, hasAcceptedStartProgram7dConsents } from '@/lib/consent';
+import { hasAcceptedCurrentConsents } from '@/lib/consent';
 
 /**
  * 7日間スタートプログラム（現状はダミー本体）。
@@ -38,10 +38,6 @@ export default function StartProgramPage() {
     if (!userProfile) return;
     if (!hasAcceptedCurrentConsents(userProfile)) {
       router.replace(`/consent?next=${encodeURIComponent('/start-program')}`);
-      return;
-    }
-    if (!hasAcceptedStartProgram7dConsents(userProfile)) {
-      router.replace('/start-program/consent');
       return;
     }
     setAccessOk(true);
@@ -84,7 +80,7 @@ export default function StartProgramPage() {
           <div className="legal-page-content">
             <h1 className="legal-page-title">7日間プログラム（ダミー）</h1>
             <p className="legal-page-lead">
-              セルフコーチングによる「自分を変える7日間プログラム」の画面です。規約・プライバシーへの同意が記録されたうえで表示しています。
+              セルフコーチングによる「自分を変える7日間プログラム」の画面です。会員登録時の利用規約・プライバシー同意（1回）のうえで表示しています。
             </p>
             <p className="legal-page-placeholder">
               コンテンツ・日次タスク・進捗表示などは今後実装予定です。

@@ -43,14 +43,6 @@ export function mapUserProfileFromAdmin(uid: string, data: DocumentData): UserPr
           acceptedAt: data.consents?.acceptedAt?.toDate?.() ?? data.consents?.acceptedAt,
         }
       : undefined,
-    startProgram7dConsents: data.startProgram7dConsents
-      ? {
-          termsVersion: data.startProgram7dConsents.termsVersion as string,
-          privacyVersion: data.startProgram7dConsents.privacyVersion as string,
-          acceptedAt:
-            data.startProgram7dConsents.acceptedAt?.toDate?.() ?? data.startProgram7dConsents.acceptedAt,
-        }
-      : undefined,
     trialAffirmationMeta: data.trialAffirmationMeta,
     activeCoachingAffirmationId: data.activeCoachingAffirmationId,
     coachShareQuotaPerMonth: data.coachShareQuotaPerMonth,

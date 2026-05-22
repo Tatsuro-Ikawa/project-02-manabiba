@@ -21,7 +21,20 @@ export async function guardAiEntitlement(
     return null;
   }
 
-  const profile = await getAdminUserProfile(auth.uid);
+  let profile;
+  try {
+    profile = await getAdminUserProfile(auth.uid);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes('PERMISSION_DENIED') || msg.includes('insufficient permissions')) {
+      return apiJsonError(
+        503,
+        'SERVER_CONFIG',
+        'Firestore の読み取り権限がありません。サービスアカウントに Cloud Datastore User 等を付与するか、ローカルでは MANABIBA_DISABLE_AI_ENTITLEMENT_CHECK=true を .env.local に設定してください。'
+      );
+    }
+    throw e;
+  }
   if (!profile) {
     return apiJsonError(403, 'PLAN_REQUIRED', 'ユーザープロフィールがありません', feature);
   }

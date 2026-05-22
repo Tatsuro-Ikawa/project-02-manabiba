@@ -261,8 +261,7 @@ users/{uid}/journal_monthly/{monthKey}/coach_share_rounds/{roundId}
 | photoURL     | string | undefined | プロフィール画像URL                                      |
 | role         | string             | ロール: `user` | `coach` | `senior_coach` | `admin` |
 | subscription | map                | サブスクリプション情報（下記）                                  |
-| consents     | map                | 利用規約・プライバシーポリシー同意（初回ログイン時に必須。版は日付）            |
-| startProgram7dConsents | map（任意） | **7日間スタートプログラム**入室前の規約・プライバシー同意。`consents` と同形（`termsVersion` / `privacyVersion` / `acceptedAt`）。版は `src/lib/consent.ts` の `TERMS_VERSION` / `PRIVACY_VERSION` と整合。更新は `updateStartProgram7dConsents`（`firestore.ts`）。未設定時は `/start-program` から `/start-program/consent` へ誘導 |
+| consents     | map                | **利用規約（章立て・サービス全体）＋プライバシーポリシー**の同意（会員登録時に1回。7日間・気づきノートとも共通。版は日付） |
 | createdAt    | Timestamp          | 作成日時                                             |
 | updatedAt    | Timestamp          | 更新日時                                             |
 | lastLoginAt  | Timestamp          | 最終ログイン日時                                         |
@@ -299,15 +298,7 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 
 **consents（サブオブジェクト）**
 
-| フィールド | 説明 |
-|---|---|
-| termsVersion | 利用規約の同意バージョン（`YYYY-MM-DD`） |
-| privacyVersion | プライバシーポリシーの同意バージョン（`YYYY-MM-DD`） |
-| acceptedAt | 同意日時（Timestamp） |
-
-**startProgram7dConsents（サブオブジェクト・任意）**
-
-7日間スタートプログラム専用。キー構造は `consents` と同じ。
+フリー会員・有料プラン共通。**7日間・気づきノート専用の二重同意フィールドは持たない**（A案。利用規約本文は章立てで読み分け）。
 
 | フィールド | 説明 |
 |---|---|
@@ -315,8 +306,7 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | privacyVersion | プライバシーポリシーの同意バージョン（`YYYY-MM-DD`） |
 | acceptedAt | 同意日時（Timestamp） |
 
-- 未設定時は `GET /start-program` が `GET /start-program/consent` を必須表示し、同意後 `updateStartProgram7dConsents(uid, {termsVersion, privacyVersion})` で保存する。版は会員登録時の `consents` と同じ定数を用い、文面更新時は両方の再同意を要求できる。
-
+- 未設定時は `GET /consent?next=...` を表示し、同意後 `updateUserConsents(uid, {termsVersion, privacyVersion})` で保存する。版は `src/lib/consent.ts` の `TERMS_VERSION` / `PRIVACY_VERSION`。
 - 実装: `src/lib/firestore.ts` の `createDefaultUserProfile` / `createUserProfile` / `getUserProfile`、型は `src/types/auth.ts` の `UserProfile`。
 
 #### ログイン時のデータの流れ（入出力）
@@ -328,8 +318,7 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | **2回目以降のログイン** | `getUserProfile(uid)` で既存ドキュメントを取得 | 上記 `users/{uid}` から読み取り。`updateLastLogin(uid)` で `lastLoginAt` を更新 |
 
 - ロールの判定は **`users/{uid}.role`** を参照している。このフィールドを `user` / `coach` / `admin` に設定することで、クライアント・ホスト・管理者の区別ができる。
-- 利用規約・プライバシーポリシーの同意は `users/{uid}.consents` を参照する。未同意の場合は `GET /consent?next=...` を表示し、同意後 `updateUserConsents(uid, {termsVersion, privacyVersion})` で保存する（版は `src/lib/consent.ts` で管理）。
-- **7日間スタートプログラム**の同意は `users/{uid}.startProgram7dConsents` を参照する。未同意の場合は `GET /start-program` から `GET /start-program/consent` を必須表示し、同意後 `updateStartProgram7dConsents` で保存する（[04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) §1.3）。
+- 利用規約・プライバシーポリシーの同意は `users/{uid}.consents` のみを参照する（7日間・気づきノート共通）。未同意の場合は `GET /consent?next=...` を表示し、同意後 `updateUserConsents` で保存する（[04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) §1.3）。
 
 ---
 

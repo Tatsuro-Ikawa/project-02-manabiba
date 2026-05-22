@@ -11,6 +11,9 @@ import LatestArticlesEditModal from '@/components/home/LatestArticlesEditModal';
 import ReferenceLinksEditModal from '@/components/home/ReferenceLinksEditModal';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
+
+/** 再ログイン（ログアウト後）: 同意ゲートは post-login が処理 */
+const RETURNING_LOGIN_HREF = `/login?next=${encodeURIComponent('/post-login?next=/')}`;
 import { useViewMode } from '@/context/ViewModeContext';
 import { getHomeContent } from '@/lib/firestore';
 import type { HomeLatestVideoEntry, HomeLatestArticleEntry, HomeReferenceLinkEntry } from '@/lib/firestore';
@@ -93,7 +96,9 @@ export default function HomePage() {
                     <Link href="/trial_4w/landing" className="banner-btn active">
                       試してみる
                     </Link>
-                    <span className="banner-btn inactive">ログインして続きから</span>
+                    <Link href={RETURNING_LOGIN_HREF} className="banner-btn secondary">
+                      ログインして続きから
+                    </Link>
                   </>
                 )}
               </div>

@@ -65,8 +65,8 @@ function ConsentContent() {
       <div className="w-full max-w-3xl bg-white border border-gray-200 rounded-lg shadow-sm p-6 md:p-8">
         <h1 className="text-xl font-bold text-gray-900 mb-2">ご利用にあたっての確認</h1>
         <p className="text-sm text-gray-600 mb-4">
-          まず下の枠内の<strong>利用規約・プライバシーポリシー（ダミー条文）</strong>を末尾までスクロールしてお読みください。
-          続けてチェックボックスに同意のうえ、「同意して続ける」を押してください。
+          フリー会員・有料プランを問わず、本サービス利用前に<strong>利用規約とプライバシーポリシーを1回</strong>ご確認いただきます。
+          利用規約は7日間プログラム・気づきノートなど<strong>章立て</strong>で記載しています。下の枠を末尾までスクロールし、チェックのうえ「同意して続ける」を押してください。
         </p>
         <p className="text-xs text-gray-500 mb-4">
           別タブの
@@ -94,7 +94,7 @@ function ConsentContent() {
               disabled={!legalRead}
             />
             <label htmlFor="agree-terms" className={`text-sm ${legalRead ? 'text-gray-800' : 'text-gray-400'}`}>
-              上記の利用規約（ダミー含む、版: {TERMS_VERSION}）の内容を確認し、同意します。
+              利用規約（7日間プログラム・気づきノート等を含む、版: {TERMS_VERSION}）の内容を確認し、同意します。
             </label>
           </div>
           <div className="flex items-start gap-3">
@@ -107,7 +107,7 @@ function ConsentContent() {
               disabled={!legalRead}
             />
             <label htmlFor="agree-privacy" className={`text-sm ${legalRead ? 'text-gray-800' : 'text-gray-400'}`}>
-              上記のプライバシーポリシー（ダミー含む、版: {PRIVACY_VERSION}）の内容を確認し、同意します。
+              プライバシーポリシー（サービス全体共通、版: {PRIVACY_VERSION}）の内容を確認し、同意します。
             </label>
           </div>
         </fieldset>

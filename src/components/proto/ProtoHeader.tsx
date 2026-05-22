@@ -174,9 +174,16 @@ export default function ProtoHeader({
               )}
             </div>
           ) : (
-            <Link href="/login" className="proto-login-btn">
-              ログイン
-            </Link>
+            <span
+              className="proto-guest-icon"
+              role="img"
+              aria-label="未ログイン"
+              title="未ログイン"
+            >
+              <span className="material-symbols-outlined" aria-hidden>
+                person
+              </span>
+            </span>
           )}
         </div>
       </div>

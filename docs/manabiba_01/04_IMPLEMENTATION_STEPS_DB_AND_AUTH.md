@@ -235,7 +235,7 @@ Phase 1（[04_IMPLEMENTATION_STEPS_HOME_AND_TRIAL.md](./04_IMPLEMENTATION_STEPS_
 ### 完了している項目
 
 - **【1】ユーザー権限（ロール）**: `UserRole`（user / coach / admin）、`users/{uid}.role`、`hasRole`。表示モード切替（ViewModeContext: client / coach / admin）を実装。ヘッダーアバタークリックでロール・モード表示とアカウント設定・ログアウト。
-- **【2】ホーム画面を認証状態に連携**: `HomePage` で `useAuth` を使用。ログイン前は「本日の一番」「昨日までの積重ね」非表示。ログイン後はホームに留まり、マイページはサイドバーから遷移。ログインリダイレクト先を `/` に変更。
+- **【2】ホーム画面を認証状態に連携**: `HomePage` で `useAuth` を使用。ログイン前は「本日の一番」「昨日までの積重ね」非表示。再ログインはホーム「**ログインして続きから**」→ `/login?next=/post-login?next=/` → 同意済みなら `/` に留まる。ヘッダーに「ログイン」ボタンは置かず、ゲスト時は人型アイコン表示のみ（`ProtoHeader`）。
 - **トライアル導線（ランディング + 同意ゲート）**: `GET /trial_4w/landing`。2/2（AIコーチ）の「やってみる」は未ログインなら `/login?next=/trial_4w` → ログイン後 `/post-login?next=/trial_4w` → 未同意なら `/consent?next=/trial_4w` → 同意後 **`/trial_4w`**（気づきノート）。1/2（セルフ7日間）は同意後 **`/start-program`**（スタートプログラム・ダミー）。`users/{uid}.consents` に同意情報（termsVersion/privacyVersion は日付）を保存。
 - **【5】Firestore**: `site_content/home` を追加。`latestVideos`・`latestArticles`・`referenceLinks` の読み書き。セキュリティルールに `site_content/home`（read: 全員、create/update: isAdminUser()）とヘルパー `isAdminUser()` を追加。プロジェクトルートに `firebase.json`・`.firebaserc` を用意し、`firebase deploy --only firestore:rules` でデプロイ可能。
 - **ホーム 管理者編集（最新動画）**: 管理者モード時のみ「編集」ボタン表示。`LatestVideosEditModal` で URL・タイトル・サムネイル・並び・作成者（author_name, author_url）を編集。`/api/youtube-oembed` で YouTube（Shorts 含む）のメタデータ取得。保存で `updateHomeLatestVideos`。カード表示は 4:3（幅 213px・高さ 160px）、object-fit: contain。

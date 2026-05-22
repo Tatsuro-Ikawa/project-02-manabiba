@@ -289,7 +289,15 @@ export default function TrialMorningEvening() {
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
         body: JSON.stringify({ actionResultText: aiInputText }),
       });
-      const json = (await res.json()) as { suggestion?: string; error?: string | { message?: string } };
+      const raw = await res.text();
+      let json: { suggestion?: string; error?: string | { message?: string } } = {};
+      if (raw.trim()) {
+        try {
+          json = JSON.parse(raw) as typeof json;
+        } catch {
+          throw new Error('Aiコーチからのコメントの生成に失敗しました（サーバー応答の解析に失敗）。');
+        }
+      }
       if (!res.ok) throw new Error(messageFromApiErrorPayload(json) || 'Aiコーチからのコメントの生成に失敗しました。');
       if (!json.suggestion || typeof json.suggestion !== 'string') {
         throw new Error('Aiコーチからのコメントの形式が不正です。');

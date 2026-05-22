@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import * as admin from 'firebase-admin';
 
 function parseServiceAccount(json: string): admin.ServiceAccount {
@@ -11,9 +12,24 @@ function parseServiceAccount(json: string): admin.ServiceAccount {
   return { projectId, clientEmail, privateKey };
 }
 
+function loadServiceAccountFromCredentialsFile(): admin.ServiceAccount | null {
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS?.trim();
+  if (!credPath) return null;
+  let raw: string;
+  try {
+    raw = readFileSync(credPath, 'utf8');
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      `GOOGLE_APPLICATION_CREDENTIALS の鍵ファイルを読めません: ${credPath} (${detail})`
+    );
+  }
+  return parseServiceAccount(raw);
+}
+
 /**
  * Firebase Admin（Route Handlers / サーバーのみ）。
- * `FIREBASE_SERVICE_ACCOUNT_JSON`（推奨）または既存の `GCP_SA_KEY_JSON`（同一プロジェクトの SA）で初期化する。
+ * 優先: `FIREBASE_SERVICE_ACCOUNT_JSON` → `GCP_SA_KEY_JSON` → `GOOGLE_APPLICATION_CREDENTIALS`（JSON ファイルパス）
  */
 export function getFirebaseAdminApp(): admin.app.App {
   if (admin.apps.length > 0) {
@@ -41,7 +57,15 @@ export function getFirebaseAdminApp(): admin.app.App {
     });
   }
 
+  const fileCred = loadServiceAccountFromCredentialsFile();
+  if (fileCred) {
+    return admin.initializeApp({
+      credential: admin.credential.cert(fileCred),
+      projectId: fileCred.projectId || projectId,
+    });
+  }
+
   throw new Error(
-    'Firebase Admin が未設定です。FIREBASE_SERVICE_ACCOUNT_JSON または GCP_SA_KEY_JSON を設定してください。'
+    'Firebase Admin が未設定です。FIREBASE_SERVICE_ACCOUNT_JSON、GCP_SA_KEY_JSON、または GOOGLE_APPLICATION_CREDENTIALS（鍵 JSON のファイルパス）を設定してください。'
   );
 }
