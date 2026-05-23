@@ -11,6 +11,7 @@ import LatestArticlesEditModal from '@/components/home/LatestArticlesEditModal';
 import ReferenceLinksEditModal from '@/components/home/ReferenceLinksEditModal';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
+import { isStart7dOnly } from '@/lib/enrollmentCourse';
 
 /** 再ログイン（ログアウト後）: 同意ゲートは post-login が処理 */
 const RETURNING_LOGIN_HREF = `/login?next=${encodeURIComponent('/post-login?next=/')}`;
@@ -25,6 +26,7 @@ export default function HomePage() {
   const { user, loading, userProfile } = useAuth();
   const { mode } = useViewMode();
   const loggedIn = !loading && !!user;
+  const start7dOnly = loggedIn && isStart7dOnly(userProfile);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [latestVideosModalOpen, setLatestVideosModalOpen] = useState(false);
   const [latestArticlesModalOpen, setLatestArticlesModalOpen] = useState(false);
@@ -86,22 +88,28 @@ export default function HomePage() {
           <div className="home-sections-stack">
             <section id="home-banner" className="banner-section">
               <p className="banner-message">一度きりの人生、なりたい自分を目指しませんか？</p>
-              <div className="banner-buttons">
-                {loggedIn ? (
-                  <Link href="/trial_4w" className="banner-btn active">
-                    気づきノートを続ける
-                  </Link>
-                ) : (
-                  <>
-                    <Link href="/trial_4w/landing" className="banner-btn active">
-                      試してみる
+              {start7dOnly ? (
+                <p className="banner-hint">
+                  7日間スタートプログラムは「メニュー」の「スタート」から
+                </p>
+              ) : (
+                <div className="banner-buttons">
+                  {loggedIn ? (
+                    <Link href="/trial_4w" className="banner-btn active">
+                      気づきノートを続ける
                     </Link>
-                    <Link href={RETURNING_LOGIN_HREF} className="banner-btn secondary">
-                      ログインして続きから
-                    </Link>
-                  </>
-                )}
-              </div>
+                  ) : (
+                    <>
+                      <Link href="/trial_4w/landing" className="banner-btn active">
+                        試してみる
+                      </Link>
+                      <Link href={RETURNING_LOGIN_HREF} className="banner-btn secondary">
+                        ログインして続きから
+                      </Link>
+                    </>
+                  )}
+                </div>
+              )}
             </section>
 
             <div className="home-section-divider" aria-hidden />

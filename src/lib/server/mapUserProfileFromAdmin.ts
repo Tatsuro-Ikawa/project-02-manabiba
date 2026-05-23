@@ -1,4 +1,5 @@
 import type { DocumentData } from 'firebase-admin/firestore';
+import { normalizePrimaryCourse } from '@/lib/enrollmentCourse';
 import type { UserProfile, WeeklyAiReportWriteMode } from '@/types/auth';
 import { normalizeJournalWeekStartsOnField } from '@/lib/journalWeek';
 
@@ -41,6 +42,11 @@ export function mapUserProfileFromAdmin(uid: string, data: DocumentData): UserPr
       ? {
           ...data.consents,
           acceptedAt: data.consents?.acceptedAt?.toDate?.() ?? data.consents?.acceptedAt,
+        }
+      : undefined,
+    enrollment: data.enrollment
+      ? {
+          primaryCourse: normalizePrimaryCourse(data.enrollment.primaryCourse) ?? null,
         }
       : undefined,
     trialAffirmationMeta: data.trialAffirmationMeta,

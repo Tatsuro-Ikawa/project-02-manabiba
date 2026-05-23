@@ -12,7 +12,7 @@ import TrialWeekly from '@/components/trial/TrialWeekly';
 import TrialMonthly from '@/components/trial/TrialMonthly';
 import CoachClientPickerModal from '@/components/trial/CoachClientPickerModal';
 import JournalDetailLevelSwitch from '@/components/trial/JournalDetailLevelSwitch';
-import { getUserProfile } from '@/lib/firestore';
+import { getUserProfile, ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
 
 const TAB_KEYS = ['affirmation', 'morning_evening', 'weekly', 'monthly'] as const;
 type TabKey = (typeof TAB_KEYS)[number];
@@ -63,7 +63,7 @@ function Trial4wContent() {
     window.history.replaceState({}, '', url.pathname + url.search);
   }, []);
 
-  const { user, loading, userProfile } = useAuth();
+  const { user, loading, userProfile, refreshUserProfile } = useAuth();
   const loggedIn = !loading && !!user;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { mode } = useViewMode();
@@ -120,6 +120,18 @@ function Trial4wContent() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (!user?.uid || loading || isCoachView) return;
+    void (async () => {
+      try {
+        await ensureUserEnrollmentPrimaryCourse(user.uid, 'kizuki');
+        await refreshUserProfile();
+      } catch (e) {
+        console.error('enrollment kizuki 保存エラー:', e);
+      }
+    })();
+  }, [user?.uid, loading, isCoachView, refreshUserProfile]);
 
   return (
     <div style={{ fontFamily: 'var(--font-family-jp)' }}>

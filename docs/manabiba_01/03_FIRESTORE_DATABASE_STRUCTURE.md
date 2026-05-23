@@ -306,7 +306,7 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | privacyVersion | プライバシーポリシーの同意バージョン（`YYYY-MM-DD`） |
 | acceptedAt | 同意日時（Timestamp） |
 
-- 未設定時は `GET /consent?next=...` を表示し、同意後 `updateUserConsents(uid, {termsVersion, privacyVersion})` で保存する。版は `src/lib/consent.ts` の `TERMS_VERSION` / `PRIVACY_VERSION`。
+- 未設定時は `GET /consent?next=...` を表示し、同意後 `updateUserConsents(uid, {termsVersion, privacyVersion})` で保存する。版の正本は `public/legal/terms.json` / `privacy.json` の `version`（索引: [04_LEGAL_DOCUMENTS.md](./04_LEGAL_DOCUMENTS.md)）。
 - 実装: `src/lib/firestore.ts` の `createDefaultUserProfile` / `createUserProfile` / `getUserProfile`、型は `src/types/auth.ts` の `UserProfile`。
 
 #### ログイン時のデータの流れ（入出力）

@@ -52,38 +52,48 @@
 - ホーム（未ログイン）:
   - 「**試してみる**」→ `GET /trial_4w/landing`（**初回・コース選択**）
   - 「**ログインして続きから**」→ `GET /login?next=/post-login?next=/` → 同意済みなら `GET /`、未同意なら `GET /consent?next=/`（**再ログイン**）
-- ホーム（ログイン済み）: 「**気づきノートを続ける**」→ `GET /trial_4w`（現状はランディングを経由しない。未利用時の出し分けは要検討）。
+- ホーム（ログイン済み）:
+  - **`enrollment.primaryCourse === 'start7d'`（7日間のみ）**: バナーボタン**なし**。案内文「7日間スタートプログラムは「メニュー」の「スタート」から」（B+）
+  - **`kizuki` または未設定（従来）**: 「**気づきノートを続ける**」→ `GET /trial_4w`
 - ランディング: `GET /trial_4w/landing`
   - 1/2（セルフ7日間）の「やってみる」: ログイン・同意完了後に **`/start-program`**（7日間スタートプログラム・現状ダミー画面）
   - 2/2（AIコーチ）の「やってみる」: 未ログインなら `GET /login?next=/trial_4w` → `GET /post-login?next=/trial_4w` → 未同意なら `/consent` → 同意完了後 **`/trial_4w`**（気づきノート）
 
-### 1.2 グローバルナビ（左サイドバー・中央ヘッダー表記）（2026-05-20 確定）
+### 1.2 グローバルナビ（左サイドバー・中央ヘッダー表記）（2026-05-23 更新）
 
 | 左サイドバー | 遷移先 | 備考 |
 |--------------|--------|------|
 | **ホーム** | `/` | — |
-| **スタート** | `/start-program` | 7日間スタートプログラム。**現状はダミー画面**（コンテンツは今後実装）。 |
-| **実行** | `/trial_4w` | **気づきノート**（アファメーション・朝晩・週・月）。`/trial_4w/settings` 利用時も「実行」系としてハイライト。 |
+| **スタート** | `/start-program` | **7日間スタートプログラム**（現状ダミー本体）。 |
+| **ノート** | `/trial_4w` | **気づきノート**。7日間のみ（`start7d`）のときは**非活性**（クリック不可）。 |
 | **コミュニケーション** | `/communication` | — |
-| **気づきノート設定** | `/trial_4w/settings` | `/trial_4w` 配下（`landing` を除く）表示時のみサイドバーに出す。 |
+| **気づきノート設定** | `/trial_4w/settings` | 気づきノート表示時のみ（`start7d` では非表示）。 |
 | **マイページ** | `/mypage` | — |
 
 **中央ヘッダー（`ProtoHeader` の見出し）**
 
 | パス（代表） | 表示文言 |
 |--------------|----------|
-| `/start-program` | スタートプログラム |
+| `/start-program` | **7日間スタートプログラム** |
 | `/trial_4w` および `/trial_4w/*` で **`/trial_4w/landing` を除く** | 気づきノート |
 | 上記以外（`/`、`/trial_4w/landing`、利用規約・プライバシー・特商法等） | 人生学び場　こころ道場 + ®（登録商標） |
 
-- 実装: `src/components/proto/LeftSidebar.tsx`、`src/components/proto/ProtoHeader.tsx`。
+- 実装: `src/components/proto/LeftSidebar.tsx`、`src/components/proto/ProtoHeader.tsx`、`src/lib/enrollmentCourse.ts`。
 - 気づきノートのデータモデル・Firestore パスは従来どおり（`trial_4w` 名の履歴はドキュメント上はそのまま）。
+
+### 1.2.1 コース選択の記録（`users/{uid}.enrollment`）
+
+| フィールド | 値 | 設定タイミング |
+|------------|-----|----------------|
+| `enrollment.primaryCourse` | `start7d` | `/start-program` 到達時（`ensureUserEnrollmentPrimaryCourse`） |
+| 同上 | `kizuki` | `/trial_4w` 到達時（昇格のみ。`kizuki` → `start7d` への降格はしない） |
+| 未設定 | — | 従来ユーザー。気づきノート導線は従来どおり有効 |
 
 ### 1.3 会員同意（利用規約・プライバシー）— 1回のみ（2026-05-20 確定）
 
 **方針（A案）**: フリー会員・有料プランを問わず、**会員登録時に利用規約とプライバシーポリシーを1回**確認・同意する（`users.{uid}.consents`）。7日間プログラム専用の二重同意（`startProgram7dConsents`）は**採用しない**。
 
-**利用規約の読み分け**: 同意画面のスクロール枠内では、利用規約を**章立て**で表示する（例: 共通／7日間スタートプログラム／気づきノート）。利用者は利用予定のプログラムに該当する章を読み、**プライバシーポリシーはサービス全体で1本**として同一画面で確認する。正式文面は `/terms`・`/privacy` および `ConsentLegalScrollPanel` のダミーへ順次反映する。
+**利用規約の読み分け**: 同意画面のスクロール枠内では、利用規約を**章立て**で表示する（例: 共通／7日間スタートプログラム／気づきノート）。利用者は利用予定のプログラムに該当する章を読み、**プライバシーポリシーはサービス全体で1本**として同一画面で確認する。条文の正本は **`public/legal/terms.json`・`privacy.json`**（[04_LEGAL_DOCUMENTS.md](./04_LEGAL_DOCUMENTS.md) 参照）。`/consent`・`/terms`・`/privacy` は同一 JSON を読み込む。
 
 ```mermaid
 sequenceDiagram

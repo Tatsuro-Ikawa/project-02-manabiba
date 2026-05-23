@@ -18,6 +18,7 @@ import {
   getWeekStartDateKeyForToday,
 } from '@/lib/journalWeek';
 import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
+import { isStart7dOnly } from '@/lib/enrollmentCourse';
 
 /** コーチ新着（ダミー・プレミアム仕様確定後に接続） */
 const DUMMY_COACH_NEWS = 'コーチからの新着情報（ダミー）は、プレミアム対象の仕様確定後に表示します。';
@@ -328,6 +329,20 @@ function ClientWeeklyPreview() {
 }
 
 export default function HomeDashboard() {
+  const { user, userProfile, loading } = useAuth();
+  const start7dOnly = !loading && !!user && isStart7dOnly(userProfile);
+
+  if (start7dOnly) {
+    return (
+      <section id="home-section-dashboard-management" className="content-section">
+        <h2 className="section-title">マネジメント情報</h2>
+        <p className="home-dashboard-muted mb-0">
+          7日間スタートプログラム利用中です。気づきノートのマネジメント情報は、ノートを開始したあとに表示されます。
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section id="home-section-dashboard-management" className="content-section">
       <h2 className="section-title">マネジメント情報</h2>

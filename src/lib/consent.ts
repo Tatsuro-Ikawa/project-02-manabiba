@@ -1,18 +1,19 @@
 import type { UserProfile } from '@/types/auth';
 
 /**
- * 利用規約・プライバシーポリシーの同意バージョン（YYYY-MM-DD）。
- * 文面を更新したら日付を更新し、再同意を要求できるようにする。
+ * 利用規約・プライバシーポリシーの同意済みか。
+ * 版の正本は `public/legal/terms.json` / `privacy.json` の `version`。
  */
-export const TERMS_VERSION = '2026-03-18';
-export const PRIVACY_VERSION = '2026-03-18';
-
-export function hasAcceptedCurrentConsents(profile: UserProfile | null | undefined): boolean {
+export function hasAcceptedCurrentConsents(
+  profile: UserProfile | null | undefined,
+  termsVersion: string,
+  privacyVersion: string
+): boolean {
   const c = profile?.consents;
   if (!c) return false;
   return (
-    c.termsVersion === TERMS_VERSION &&
-    c.privacyVersion === PRIVACY_VERSION &&
+    c.termsVersion === termsVersion &&
+    c.privacyVersion === privacyVersion &&
     c.acceptedAt instanceof Date &&
     !Number.isNaN(c.acceptedAt.getTime())
   );

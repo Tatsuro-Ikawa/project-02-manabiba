@@ -124,6 +124,23 @@
   color: var(--color-primary);
 }
 
+.sidebar-btn--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.sidebar-btn--disabled:hover,
+.sidebar-btn--disabled.active {
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.sidebar-btn--disabled:hover .material-symbols-outlined,
+.sidebar-btn--disabled.active .material-symbols-outlined {
+  color: inherit;
+}
+
 .sidebar-btn-icon {
   width: 32px;
   height: 32px;
@@ -1107,6 +1124,21 @@
   color: var(--color-text-primary);
   text-align: center;
   margin-bottom: var(--spacing-lg);
+}
+
+.banner-hint {
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: 0;
+  line-height: 1.6;
+  max-width: 36rem;
+  margin-inline: auto;
+}
+
+.banner-hint strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
 }
 
 .banner-buttons {

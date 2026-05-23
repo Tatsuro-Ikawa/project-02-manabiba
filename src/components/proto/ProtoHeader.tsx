@@ -57,7 +57,7 @@ export default function ProtoHeader({
 
   const headerTitle = (() => {
     if (pathname.startsWith('/start-program')) {
-      return { text: 'スタートプログラム', showReg: false };
+      return { text: '7日間スタートプログラム', showReg: false };
     }
     if (
       pathname === '/trial_4w' ||
@@ -158,6 +158,26 @@ export default function ProtoHeader({
                         settings
                       </span>
                       <span>アカウント設定</span>
+                    </Link>
+                    <Link
+                      href="/terms"
+                      className="flex items-center gap-1 text-left text-blue-600 hover:underline"
+                      onClick={handleCloseMenu}
+                    >
+                      <span className="material-symbols-outlined text-sm" aria-hidden>
+                        description
+                      </span>
+                      <span>利用規約</span>
+                    </Link>
+                    <Link
+                      href="/privacy"
+                      className="flex items-center gap-1 text-left text-blue-600 hover:underline"
+                      onClick={handleCloseMenu}
+                    >
+                      <span className="material-symbols-outlined text-sm" aria-hidden>
+                        policy
+                      </span>
+                      <span>プライバシーポリシー</span>
                     </Link>
                     <button
                       type="button"

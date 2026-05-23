@@ -1,52 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import ProtoHeader from '@/components/proto/ProtoHeader';
-import LeftSidebar from '@/components/proto/LeftSidebar';
-import ProtoFooter from '@/components/proto/ProtoFooter';
+import { useEffect, useState } from 'react';
+import { LegalPageShell } from '@/components/legal/LegalPageShell';
+import { LegalSectionsView } from '@/components/legal/LegalSectionsView';
+import { loadTermsDocument } from '@/lib/legal/loadLegalDocuments';
+import type { TermsDocument } from '@/lib/legal/types';
 
 export default function TermsPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [doc, setDoc] = useState<TermsDocument | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSidebarOpen(false);
+    let cancelled = false;
+    void loadTermsDocument()
+      .then((d) => {
+        if (!cancelled) setDoc(d);
+      })
+      .catch((e) => {
+        console.error(e);
+        if (!cancelled) setError(e instanceof Error ? e.message : '読み込みに失敗しました。');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   return (
-    <div style={{ fontFamily: 'var(--font-family-jp)' }}>
-      <ProtoHeader
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={() => setSidebarOpen((o) => !o)}
-      />
-      <div
-        className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`}
-        onClick={() => setSidebarOpen(false)}
-        aria-hidden
-      />
-      <LeftSidebar
-        variant="home"
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      <div className="home-main-wrapper">
-        <main className="legal-page-main">
-          <div className="legal-page-content">
-            <h1 className="legal-page-title">利用規約</h1>
-            <p className="legal-page-placeholder">本文は準備中です。</p>
-            <p className="legal-page-back">
-              <Link href="/">ホームへ戻る</Link>
-            </p>
-          </div>
-        </main>
-      </div>
-
-      <ProtoFooter />
-    </div>
+    <LegalPageShell title={doc?.title ?? '利用規約'} version={doc?.version} loading={loading} error={error}>
+      {doc ? <LegalSectionsView sections={doc.sections} /> : null}
+    </LegalPageShell>
   );
 }

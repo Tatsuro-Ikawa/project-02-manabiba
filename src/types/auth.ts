@@ -16,6 +16,13 @@ export type WeeklyAiReportWriteMode = 'overwrite' | 'append' | 'skip_if_nonempty
 // サブスクリプションプラン定義
 export type SubscriptionPlan = 'free' | 'standard' | 'premium';
 
+/** ランディング等で最初に選んだプログラム（`users/{uid}.enrollment.primaryCourse`） */
+export type PrimaryCourse = 'start7d' | 'kizuki';
+
+export interface UserEnrollment {
+  primaryCourse?: PrimaryCourse | null;
+}
+
 // ユーザープロファイル拡張
 export interface UserProfile {
   uid: string;
@@ -26,6 +33,8 @@ export interface UserProfile {
   subscription: SubscriptionInfo;
   /** 利用規約・プライバシーポリシー同意（初回・フリー会員含む。7日間／気づきノートは規約内の章で読み分け） */
   consents?: UserConsents;
+  /** コース選択（7日間のみ / 気づきノート）。未設定時は従来どおり気づきノート導線を許可 */
+  enrollment?: UserEnrollment;
   /** アファメーションタブの前回選択・サブメニュー（Firestore。localStorage は使わない） */
   trialAffirmationMeta?: TrialAffirmationUiMeta;
   /** A-11: コーチング実施中のテーマ（`users/{uid}/affirmations/{id}`） */

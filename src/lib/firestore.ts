@@ -22,8 +22,10 @@ import { db } from './firebase';
 import { normalizeJournalWeekStartsOnField } from '@/lib/journalWeek';
 import { decrypt, encrypt } from '@/utils/encryption';
 import { User } from 'firebase/auth';
-import { 
+import { normalizePrimaryCourse } from '@/lib/enrollmentCourse';
+import {
   UserProfile,
+  type PrimaryCourse,
   TrialAffirmationSubmenu, 
   type JournalWeekStartsOn,
   type WeeklyAiReportWriteMode,
@@ -206,6 +208,11 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
               acceptedAt: data.consents?.acceptedAt?.toDate?.() ?? data.consents?.acceptedAt,
             }
           : undefined,
+        enrollment: data.enrollment
+          ? {
+              primaryCourse: normalizePrimaryCourse(data.enrollment.primaryCourse) ?? null,
+            }
+          : undefined,
         subscription: {
           ...data.subscription,
           startDate: data.subscription?.startDate?.toDate(),
@@ -218,6 +225,31 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
     return null;
   } catch (error) {
     console.error('ユーザープロファイル取得エラー:', error);
+    throw error;
+  }
+};
+
+/**
+ * ランディング／プログラム本体到達時に主コースを記録する。
+ * `kizuki` へは昇格のみ可（`start7d` からのダウングレードはしない）。
+ */
+export const ensureUserEnrollmentPrimaryCourse = async (
+  uid: string,
+  course: PrimaryCourse
+): Promise<void> => {
+  try {
+    const ref = doc(db, 'users', uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const current = normalizePrimaryCourse(snap.data()?.enrollment?.primaryCourse);
+    if (course === 'start7d' && current === 'kizuki') return;
+    if (current === course) return;
+    await updateDoc(ref, {
+      enrollment: { primaryCourse: course },
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('enrollment.primaryCourse 更新エラー:', error);
     throw error;
   }
 };

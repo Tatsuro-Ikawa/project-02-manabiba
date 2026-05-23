@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import { isKizukiNoteNavEnabled } from '@/lib/enrollmentCourse';
 
 type SidebarVariant = 'home' | 'trial';
 
@@ -15,6 +17,9 @@ interface LeftSidebarProps {
   onClose?: () => void;
 }
 
+const KIZUKI_NOTE_DISABLED_HINT =
+  '7日間スタートプログラム利用中は、気づきノートはご利用いただけません。';
+
 export default function LeftSidebar({
   variant,
   trialTab,
@@ -22,6 +27,9 @@ export default function LeftSidebar({
   onClose,
 }: LeftSidebarProps) {
   const pathname = usePathname();
+  const { userProfile } = useAuth();
+  const kizukiNoteEnabled = isKizukiNoteNavEnabled(userProfile);
+
   const isHome = pathname === '/';
   /** 気づきノート（旧トライアル本編）: `/trial_4w` および設定。コース選択ランディングは含めない */
   const isKizukiNote =
@@ -48,21 +56,33 @@ export default function LeftSidebar({
       <Link
         href="/start-program"
         className={`sidebar-btn ${isStartProgram ? 'active' : ''}`}
-        aria-label="スタートプログラム"
+        aria-label="7日間スタートプログラム"
         onClick={handleNav}
       >
         <span className="material-symbols-outlined" aria-hidden>play_circle</span>
         <span>スタート</span>
       </Link>
-      <Link
-        href="/trial_4w"
-        className={`sidebar-btn ${isKizukiNote ? 'active' : ''}`}
-        aria-label="気づきノート"
-        onClick={handleNav}
-      >
-        <span className="material-symbols-outlined" aria-hidden>edit_note</span>
-        <span>実行</span>
-      </Link>
+      {kizukiNoteEnabled ? (
+        <Link
+          href="/trial_4w"
+          className={`sidebar-btn ${isKizukiNote ? 'active' : ''}`}
+          aria-label="気づきノート"
+          onClick={handleNav}
+        >
+          <span className="material-symbols-outlined" aria-hidden>edit_note</span>
+          <span>ノート</span>
+        </Link>
+      ) : (
+        <span
+          className={`sidebar-btn sidebar-btn--disabled${isKizukiNote ? ' active' : ''}`}
+          aria-label="気づきノート（利用不可）"
+          aria-disabled="true"
+          title={KIZUKI_NOTE_DISABLED_HINT}
+        >
+          <span className="material-symbols-outlined" aria-hidden>edit_note</span>
+          <span>ノート</span>
+        </span>
+      )}
       <Link
         href="/communication"
         className={`sidebar-btn ${isCommunication ? 'active' : ''}`}
@@ -72,7 +92,7 @@ export default function LeftSidebar({
         <span className="material-symbols-outlined" aria-hidden>forum</span>
         <span>コミュニケーション</span>
       </Link>
-      {isKizukiNote && (
+      {isKizukiNote && kizukiNoteEnabled && (
         <Link
           href="/trial_4w/settings"
           className={`sidebar-btn ${isTrialSettings ? 'active' : ''}`}

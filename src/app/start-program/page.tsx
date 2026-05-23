@@ -7,7 +7,9 @@ import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
+import { useLegalDocuments } from '@/hooks/useLegalDocuments';
 import { hasAcceptedCurrentConsents } from '@/lib/consent';
+import { ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
 
 /**
  * 7日間スタートプログラム（現状はダミー本体）。
@@ -15,7 +17,8 @@ import { hasAcceptedCurrentConsents } from '@/lib/consent';
  */
 export default function StartProgramPage() {
   const router = useRouter();
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, refreshUserProfile } = useAuth();
+  const { bundle, loading: legalLoading } = useLegalDocuments();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accessOk, setAccessOk] = useState(false);
 
@@ -28,7 +31,7 @@ export default function StartProgramPage() {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || legalLoading || !bundle) return;
     if (!user) {
       router.replace(
         `/login?next=${encodeURIComponent('/post-login?next=' + encodeURIComponent('/start-program'))}`
@@ -36,12 +39,24 @@ export default function StartProgramPage() {
       return;
     }
     if (!userProfile) return;
-    if (!hasAcceptedCurrentConsents(userProfile)) {
+    if (!hasAcceptedCurrentConsents(userProfile, bundle.terms.version, bundle.privacy.version)) {
       router.replace(`/consent?next=${encodeURIComponent('/start-program')}`);
       return;
     }
     setAccessOk(true);
-  }, [loading, user, userProfile, router]);
+  }, [loading, legalLoading, bundle, user, userProfile, router]);
+
+  useEffect(() => {
+    if (!accessOk || !user?.uid) return;
+    void (async () => {
+      try {
+        await ensureUserEnrollmentPrimaryCourse(user.uid, 'start7d');
+        await refreshUserProfile();
+      } catch (e) {
+        console.error('enrollment start7d 保存エラー:', e);
+      }
+    })();
+  }, [accessOk, user?.uid, refreshUserProfile]);
 
   if (!accessOk) {
     return (
@@ -78,12 +93,12 @@ export default function StartProgramPage() {
       <div className="home-main-wrapper">
         <main className="legal-page-main">
           <div className="legal-page-content">
-            <h1 className="legal-page-title">7日間プログラム（ダミー）</h1>
+            <h1 className="legal-page-title">7日間スタートプログラム（ダミー）</h1>
             <p className="legal-page-lead">
               セルフコーチングによる「自分を変える7日間プログラム」の画面です。会員登録時の利用規約・プライバシー同意（1回）のうえで表示しています。
             </p>
             <p className="legal-page-placeholder">
-              コンテンツ・日次タスク・進捗表示などは今後実装予定です。
+              左メニューの <strong>スタート</strong> からいつでもこの画面に戻れます。コンテンツ・日次タスク・進捗表示などは今後実装予定です。
             </p>
             <p className="legal-page-back">
               <Link href="/">ホームへ戻る</Link>

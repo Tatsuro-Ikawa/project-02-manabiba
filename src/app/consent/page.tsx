@@ -4,7 +4,8 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { TERMS_VERSION, PRIVACY_VERSION, hasAcceptedCurrentConsents } from '@/lib/consent';
+import { useLegalDocuments } from '@/hooks/useLegalDocuments';
+import { hasAcceptedCurrentConsents } from '@/lib/consent';
 import { updateUserConsents } from '@/lib/firestore';
 import { ConsentLegalScrollPanel } from '@/components/consent/ConsentLegalScrollPanel';
 
@@ -16,6 +17,7 @@ function sanitizeNext(next: string | null): string {
 
 function ConsentContent() {
   const { user, userProfile, loading, refreshUserProfile } = useAuth();
+  const { bundle, loading: legalLoading, error: legalError } = useLegalDocuments();
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = useMemo(() => sanitizeNext(searchParams.get('next')), [searchParams]);
@@ -31,25 +33,28 @@ function ConsentContent() {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || legalLoading || !bundle) return;
     if (!user) {
       router.replace(`/login?next=${encodeURIComponent(`/consent?next=${nextPath}`)}`);
       return;
     }
-    if (userProfile && hasAcceptedCurrentConsents(userProfile)) {
+    if (userProfile && hasAcceptedCurrentConsents(userProfile, bundle.terms.version, bundle.privacy.version)) {
       router.replace(nextPath);
     }
-  }, [loading, user, userProfile, router, nextPath]);
+  }, [loading, legalLoading, bundle, user, userProfile, router, nextPath]);
 
-  const canSubmit = legalRead && agreeTerms && agreePrivacy && !saving;
+  const canSubmit = legalRead && agreeTerms && agreePrivacy && !saving && !!bundle;
 
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user || !bundle) return;
     if (!legalRead || !agreeTerms || !agreePrivacy) return;
     setError(null);
     setSaving(true);
     try {
-      await updateUserConsents(user.uid, { termsVersion: TERMS_VERSION, privacyVersion: PRIVACY_VERSION });
+      await updateUserConsents(user.uid, {
+        termsVersion: bundle.terms.version,
+        privacyVersion: bundle.privacy.version,
+      });
       await refreshUserProfile();
       router.replace(nextPath);
     } catch (e) {
@@ -59,6 +64,24 @@ function ConsentContent() {
       setSaving(false);
     }
   };
+
+  if (loading || legalLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" style={{ fontFamily: 'var(--font-family-jp)' }}>
+        読み込み中...
+      </div>
+    );
+  }
+
+  if (legalError || !bundle) {
+    return (
+      <div className="flex items-center justify-center min-h-screen px-4" style={{ fontFamily: 'var(--font-family-jp)' }}>
+        <p className="text-red-600 text-sm" role="alert">
+          {legalError ?? '条文を読み込めませんでした。'}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8" style={{ fontFamily: 'var(--font-family-jp)' }}>
@@ -77,10 +100,14 @@ function ConsentContent() {
           <Link href="/privacy" className="text-blue-600 hover:underline mx-0.5" target="_blank" rel="noopener noreferrer">
             プライバシーポリシーページ
           </Link>
-          もご参照いただけます（現在はプレースホルダの場合があります）。
+          もご参照いただけます。
         </p>
 
-        <ConsentLegalScrollPanel onScrollEndReached={handleScrollEndReached} />
+        <ConsentLegalScrollPanel
+          terms={bundle.terms}
+          privacy={bundle.privacy}
+          onScrollEndReached={handleScrollEndReached}
+        />
 
         <fieldset className="space-y-3 mb-5 border-0 p-0 m-0" disabled={!legalRead}>
           <legend className="sr-only">同意（条文をスクロールして読了後に選択）</legend>
@@ -94,7 +121,7 @@ function ConsentContent() {
               disabled={!legalRead}
             />
             <label htmlFor="agree-terms" className={`text-sm ${legalRead ? 'text-gray-800' : 'text-gray-400'}`}>
-              利用規約（7日間プログラム・気づきノート等を含む、版: {TERMS_VERSION}）の内容を確認し、同意します。
+              利用規約（7日間プログラム・気づきノート等を含む、版: {bundle.terms.version}）の内容を確認し、同意します。
             </label>
           </div>
           <div className="flex items-start gap-3">
@@ -107,7 +134,7 @@ function ConsentContent() {
               disabled={!legalRead}
             />
             <label htmlFor="agree-privacy" className={`text-sm ${legalRead ? 'text-gray-800' : 'text-gray-400'}`}>
-              プライバシーポリシー（サービス全体共通、版: {PRIVACY_VERSION}）の内容を確認し、同意します。
+              プライバシーポリシー（サービス全体共通、版: {bundle.privacy.version}）の内容を確認し、同意します。
             </label>
           </div>
         </fieldset>
@@ -127,9 +154,7 @@ function ConsentContent() {
           {saving ? '保存中...' : '同意して続ける'}
         </button>
 
-        <p className="text-xs text-gray-500 mt-4">
-          同意しない場合はサービスを利用できません。
-        </p>
+        <p className="text-xs text-gray-500 mt-4">同意しない場合はサービスを利用できません。</p>
       </div>
     </div>
   );
