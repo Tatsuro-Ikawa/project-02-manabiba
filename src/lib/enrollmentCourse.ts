@@ -5,13 +5,67 @@ export function isStart7dOnly(profile: UserProfile | null | undefined): boolean 
   return profile?.enrollment?.primaryCourse === 'start7d';
 }
 
+/**
+ * ホームで「7日間はメニューのスタートから」案内を出すか。
+ * `start7d` かつ気づきノート未申込（AIコーチ／プレミアム／kizuki 昇格前）のときのみ。
+ */
+export function shouldShowStart7dHomeHint(profile: UserProfile | null | undefined): boolean {
+  if (!profile) return false;
+  return isStart7dOnly(profile) && !hasAiCoachOrPremiumSignup(profile);
+}
+
+function isKizukiTrialActive(profile: UserProfile): boolean {
+  const end = profile.subscription.trialEndsAt;
+  if (!end || profile.subscription.plan !== 'free') return false;
+  return Date.now() < end.getTime();
+}
+
+/**
+ * AIコーチまたはプレミアム（プライベートコーチ）相当の「申し込み済み」か。
+ * `start7d` のみ・フリー・お試しなしは false。
+ */
+export function hasAiCoachOrPremiumSignup(profile: UserProfile | null | undefined): boolean {
+  if (!profile?.subscription) return false;
+
+  const plan = profile.subscription.plan;
+  if (plan === 'standard' || plan === 'premium') return true;
+  if (plan === 'free' && isKizukiTrialActive(profile)) return true;
+
+  const course = profile.enrollment?.primaryCourse;
+  if (course === 'kizuki') return true;
+  if (course === 'start7d') return false;
+
+  // primaryCourse 未設定（従来ユーザー）: 有料／お試しが無ければ従来どおり許可
+  if (!course) return true;
+
+  return false;
+}
+
+export type KizukiNoteApplyIntent = 'ai_coach' | null;
+
+/** `/trial_4w` 本体・設定へ入れるか（ランディングは常に可） */
+export function canAccessKizukiNoteApp(
+  profile: UserProfile | null | undefined,
+  applyIntent: KizukiNoteApplyIntent = null
+): boolean {
+  if (!profile) return true;
+  if (applyIntent === 'ai_coach') return true;
+  return hasAiCoachOrPremiumSignup(profile);
+}
+
 /** サイドバー「ノート」・ホームの気づきノート導線を有効にするか */
 export function isKizukiNoteNavEnabled(profile: UserProfile | null | undefined): boolean {
   if (!profile) return true;
-  return profile.enrollment?.primaryCourse !== 'start7d';
+  return hasAiCoachOrPremiumSignup(profile);
 }
 
 export function normalizePrimaryCourse(value: unknown): PrimaryCourse | undefined {
   if (value === 'start7d' || value === 'kizuki') return value;
   return undefined;
 }
+
+/** ランディング AIコーチ CTA 用（申し込み後は `?apply=ai_coach` で本体へ） */
+export const KIZUKI_AI_COACH_APPLY_PATH = '/trial_4w?apply=ai_coach';
+
+export const KIZUKI_AI_COACH_POST_LOGIN =
+  '/post-login?next=' + encodeURIComponent(KIZUKI_AI_COACH_APPLY_PATH);

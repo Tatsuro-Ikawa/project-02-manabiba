@@ -37,7 +37,6 @@ export default function LeftSidebar({
     (pathname.startsWith('/trial_4w/') && !pathname.startsWith('/trial_4w/landing'));
   const isTrialSettings = pathname === '/trial_4w/settings';
   const isStartProgram = pathname.startsWith('/start-program');
-  const isMypage = pathname.startsWith('/mypage');
   const isCommunication = pathname === '/communication';
 
   const handleNav = () => onClose?.();
@@ -103,15 +102,6 @@ export default function LeftSidebar({
           <span>気づきノート設定</span>
         </Link>
       )}
-      <Link
-        href="/mypage"
-        className={`sidebar-btn ${isMypage ? 'active' : ''}`}
-        aria-label="マイページ"
-        onClick={handleNav}
-      >
-        <span className="material-symbols-outlined" aria-hidden>person</span>
-        <span>マイページ</span>
-      </Link>
     </aside>
   );
 }

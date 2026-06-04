@@ -6,13 +6,27 @@ import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  hasAiCoachOrPremiumSignup,
+  isStart7dOnly,
+  KIZUKI_AI_COACH_APPLY_PATH,
+  KIZUKI_AI_COACH_POST_LOGIN,
+} from '@/lib/enrollmentCourse';
+
+const freeSignupNext = '/post-login?next=/start-program';
+const kizukiTrialNext = '/post-login?next=/trial_4w';
+const premiumApplyPath = '/apply?plan=premium';
+const premiumApplyLoginNext = `/login?next=${encodeURIComponent(
+  '/post-login?next=' + encodeURIComponent(premiumApplyPath)
+)}`;
 
 function Trial4wLandingContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const loggedIn = !loading && !!user;
-  const freeSignupNext = '/post-login?next=/start-program';
-  const kizukiTrialNext = '/post-login?next=/trial_4w';
+  const start7dOnly = loggedIn && isStart7dOnly(userProfile);
+  const kizukiSignedUp = loggedIn && hasAiCoachOrPremiumSignup(userProfile);
+  const isPremiumPlan = userProfile?.subscription?.plan === 'premium';
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -21,6 +35,78 @@ function Trial4wLandingContent() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  const aiCoachApplyHref = loggedIn
+    ? KIZUKI_AI_COACH_APPLY_PATH
+    : `/login?next=${encodeURIComponent(KIZUKI_AI_COACH_POST_LOGIN)}`;
+
+  const premiumApplyHref = loggedIn ? premiumApplyPath : premiumApplyLoginNext;
+
+  const render7DayCta = () => {
+    if (start7dOnly) {
+      return (
+        <Link href="/start-program" className="trial-landing-cta trial-landing-cta--in-use">
+          利用中
+        </Link>
+      );
+    }
+    if (loggedIn) {
+      return (
+        <Link href={freeSignupNext} className="trial-landing-cta">
+          やってみる
+        </Link>
+      );
+    }
+    return (
+      <Link href={`/login?next=${encodeURIComponent(freeSignupNext)}`} className="trial-landing-cta">
+        やってみる
+      </Link>
+    );
+  };
+
+  const renderAiCoachCta = () => {
+    if (kizukiSignedUp) {
+      return (
+        <Link href="/trial_4w" className="trial-landing-cta trial-landing-cta--in-use">
+          利用中
+        </Link>
+      );
+    }
+    if (start7dOnly) {
+      return (
+        <Link href={aiCoachApplyHref} className="trial-landing-cta">
+          申し込む
+        </Link>
+      );
+    }
+    if (loggedIn) {
+      return (
+        <Link href={kizukiTrialNext} className="trial-landing-cta">
+          やってみる
+        </Link>
+      );
+    }
+    return (
+      <Link href={`/login?next=${encodeURIComponent(kizukiTrialNext)}`} className="trial-landing-cta">
+        やってみる
+      </Link>
+    );
+  };
+
+  const renderPremiumCta = () => {
+    if (isPremiumPlan) {
+      return (
+        <span className="trial-landing-cta trial-landing-cta--in-use" aria-disabled="true">
+          利用中
+        </span>
+      );
+    }
+    return (
+      <Link href={premiumApplyHref} className="trial-landing-cta">
+        申し込む
+      </Link>
+    );
+  };
 
   return (
     <div style={{ fontFamily: 'var(--font-family-jp)' }}>
@@ -53,18 +139,7 @@ function Trial4wLandingContent() {
                     <div className="trial-landing-price-box">
                       <div className="trial-landing-price">¥0</div>
                     </div>
-                    {loggedIn ? (
-                      <Link href={freeSignupNext} className="trial-landing-cta">
-                        やってみる
-                      </Link>
-                    ) : (
-                      <Link
-                        href={`/login?next=${encodeURIComponent(freeSignupNext)}`}
-                        className="trial-landing-cta"
-                      >
-                        やってみる
-                      </Link>
-                    )}
+                    {render7DayCta()}
                   </div>
                 </div>
               </div>
@@ -87,15 +162,7 @@ function Trial4wLandingContent() {
                       <div className="trial-landing-note small">(オープン期間(2026年末)限定価格)</div>
                       <div className="trial-landing-badge">28日間フリー</div>
                     </div>
-                    {loggedIn ? (
-                      <Link href={kizukiTrialNext} className="trial-landing-cta">
-                        やってみる
-                      </Link>
-                    ) : (
-                      <Link href={`/login?next=${encodeURIComponent(kizukiTrialNext)}`} className="trial-landing-cta">
-                        やってみる
-                      </Link>
-                    )}
+                    {renderAiCoachCta()}
                   </div>
                   <div className="trial-landing-col">
                     <div className="trial-landing-col-header">プライベートコーチ</div>
@@ -106,9 +173,7 @@ function Trial4wLandingContent() {
                       <div className="trial-landing-badge">60分セッション/月*</div>
                       <div className="trial-landing-note small">* 追加対応　6,600円/60分</div>
                     </div>
-                    <button type="button" className="trial-landing-cta disabled" disabled>
-                      やってみる
-                    </button>
+                    {renderPremiumCta()}
                   </div>
                 </div>
                 <p className="trial-landing-tokushoho-note">

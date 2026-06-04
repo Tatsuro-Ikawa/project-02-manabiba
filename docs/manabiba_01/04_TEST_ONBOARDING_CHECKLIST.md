@@ -4,7 +4,7 @@
 
 **法務・条文の正本・版管理**: [04_LEGAL_DOCUMENTS.md](./04_LEGAL_DOCUMENTS.md)
 
-**同意方針（A案・2026-05-20）**: フリー・有料を問わず **利用規約＋プライバシーを1回**（`consents`）。利用規約は同意画面で **章立て**（共通／7日間／気づきノート）を表示し読み分け。7日間専用の二重同意（`/start-program/consent`・`startProgram7dConsents`）は **廃止**。
+**同意方針（A案・2026-05-20）**: フリー・有料を問わず **利用規約＋プライバシーを1回**（`consents`）。利用規約は同意画面で **章立て**（共通／7日間／気づきノート）を表示し読み分け。7日間専用の二重同意（`/start-program/consent`・`startProgram7dConsents`）は **廃止**。**既存会員のコースアップグレード**（例: フリー→STD、STD→PRE）では **再同意なし**（[04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1）。
 
 ### ログイン入口（パッケージ A・2026-05）
 
@@ -146,19 +146,51 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 `/`（試してみる）→ `/trial_4w/landing` → AIコーチ「やってみる」→ `/login?next=…` → `/post-login?next=/trial_4w` →（未同意なら `/consent`）→ `/trial_4w`
 
+→OK:26/05/24
+
 **再ログイン（ログアウト後）** — パッケージ A（2026-05 実装）
 
 `/` → 「**ログインして続きから**」→ `/login?next=/post-login?next=/` → 同意済みなら **`/`**、未同意なら `/consent?next=/`
 
+
 **ログイン後ホーム**（未ログイン時との違い）
 
-| 状態 | バナー | 遷移 |
-|------|--------|------|
-| 未ログイン | 試してみる ／ ログインして続きから | 初回 ／ 再ログイン |
-| ログイン済み | 気づきノートを続ける | `/trial_4w`（`enrollment.primaryCourse === 'kizuki'` または未設定） |
-| 7日間のみ | （ボタンなし）案内文 | 「メニュー」の「スタート」へ誘導（`start7d`） |
+| 状態 | バナー | 遷移 | OK |
+|------|--------|------|------| 
+| 未ログイン | 試してみる ／ ログインして続きから | 初回 ／ 再ログイン | OK |
+| ログイン済み（kizuki または primaryCourse 未設定） | 気づきノートを続ける | `/trial_4w` | NG1 → **要再テスト** |
+| 7日間のみ | （ボタンなし）案内文 | 「メニュー」の「スタート」へ誘導（`start7d` かつ気づき未申込） | OK |
+| 7日間選択なし（上記と同じ UID） | 気づきノートを続ける | `/trial_4w` | NG2 → **要再テスト** |
+
+**NG1 / NG2 の原因（2026-05-20 調査）**
+
+- ホームバナー・マネジメントが `primaryCourse === 'start7d'` **だけ**で案内文に切り替わっていた。
+- 気づきノート側（`kizuki`・未設定・お試し／有料）は `hasAiCoachOrPremiumSignup` で「続ける」が正しいが、判定が揃っていなかった。
+- **修正**: `shouldShowStart7dHomeHint` = `start7d` **かつ** 気づき未申込のときのみ案内文。それ以外のログイン済みは「気づきノートを続ける」＋マネジメント本体。
+
+**再テスト前の確認（Firebase Console）**
+
+| `enrollment.primaryCourse` | 期待バナー |
+|---------------------------|------------|
+| `kizuki` または未設定 | 気づきノートを続ける |
+| `start7d`（かつ AIコーチ未申込・お試しなし） | 7日間案内文 |
+| `start7d` のまま `/start-program` を一度でも開いた UID | 案内文（メニュー「スタート」到達で `start7d` が書き込まれる） |
+
+→NG1（旧）：kizuki／未設定なのに案内文 → 上記ロジック不整合が主因の想定  
+→NG2（旧）：7日間を選んでいないのに案内文 → UID に `start7d` が残っていないか Console で確認
 
 **ヘッダー**: ゲストは人型アイコンのみ（非クリック）。再ログインはホームバナーが正本。
+
+**マネジメント情報**：
+
+| 状態 | 期待 | OK |
+|------|------|-----|
+| 気づきノート利用可（kizuki／未設定／申込済み） | 行動目標・週次・コーチ新着など本体 | NG → **要再テスト** |
+| 7日間のみ（`start7d` かつ気づき未申込） | 下記案内文のみ | OK |
+
+案内文（7日間のみ）: 「7日間スタートプログラム利用中です。気づきノートのマネジメント情報は、ノートを開始したあとに表示されます。」
+
+→旧NG：気づき選択 UID で上記案内文だけ出る → バナーと同じ判定ミス。**修正後は `shouldShowStart7dHomeHint` と同期**。
 
 **想定導線（ゲスト）**: ゲスト → ランディングでスタンダード選択 → ログイン → **会員同意1回**（`/consent`）→ 気づきノート `/trial_4w`  
 **注意**: 7日間プログラムに行かない場合も、同意は **`consents` 1回**（7日間専用同意は廃止）。
@@ -289,6 +321,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 ## 10. 参照
 
+- [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md)（**状態遷移・定常UI・正本（草案）**）
 - [04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) §1.1〜1.3（導線・同意シーケンス）
 - [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §1.4（ランディング CTA）
 - [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md)（`consents`）

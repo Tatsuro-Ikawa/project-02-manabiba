@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,6 +14,7 @@ import TrialMonthly from '@/components/trial/TrialMonthly';
 import CoachClientPickerModal from '@/components/trial/CoachClientPickerModal';
 import JournalDetailLevelSwitch from '@/components/trial/JournalDetailLevelSwitch';
 import { getUserProfile, ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
+import { canAccessKizukiNoteApp, type KizukiNoteApplyIntent } from '@/lib/enrollmentCourse';
 
 const TAB_KEYS = ['affirmation', 'morning_evening', 'weekly', 'monthly'] as const;
 type TabKey = (typeof TAB_KEYS)[number];
@@ -45,8 +47,11 @@ function truncateForShareButton(raw: string, maxLen: number): string {
 }
 
 function Trial4wContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const applyParam = searchParams.get('apply');
+  const applyIntent: KizukiNoteApplyIntent = applyParam === 'ai_coach' ? 'ai_coach' : null;
   const initialTab = useMemo(() => parseTab(tabParam), [tabParam]);
   const [currentTab, setCurrentTab] = useState<TabKey>(initialTab);
   const coachClientParam = searchParams.get('coachClient');
@@ -65,6 +70,7 @@ function Trial4wContent() {
 
   const { user, loading, userProfile, refreshUserProfile } = useAuth();
   const loggedIn = !loading && !!user;
+  const [accessOk, setAccessOk] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { mode } = useViewMode();
   const isCoachView =
@@ -122,7 +128,26 @@ function Trial4wContent() {
   }, []);
 
   useEffect(() => {
-    if (!user?.uid || loading || isCoachView) return;
+    if (loading) return;
+    if (isCoachView) {
+      setAccessOk(true);
+      return;
+    }
+    if (!user) {
+      setAccessOk(true);
+      return;
+    }
+    if (!userProfile) return;
+    if (!canAccessKizukiNoteApp(userProfile, applyIntent)) {
+      router.replace('/trial_4w/landing');
+      return;
+    }
+    setAccessOk(true);
+  }, [loading, user, userProfile, isCoachView, applyIntent, router]);
+
+  useEffect(() => {
+    if (!accessOk || !user?.uid || loading || isCoachView) return;
+    if (userProfile?.enrollment?.primaryCourse === 'start7d' && applyIntent !== 'ai_coach') return;
     void (async () => {
       try {
         await ensureUserEnrollmentPrimaryCourse(user.uid, 'kizuki');
@@ -131,7 +156,19 @@ function Trial4wContent() {
         console.error('enrollment kizuki 保存エラー:', e);
       }
     })();
-  }, [user?.uid, loading, isCoachView, refreshUserProfile]);
+  }, [accessOk, user?.uid, loading, isCoachView, applyIntent, userProfile?.enrollment?.primaryCourse, refreshUserProfile]);
+
+  if (!accessOk) {
+    return (
+        <div className="home-main-wrapper">
+          <main className="legal-page-main">
+            <p className="legal-page-placeholder" style={{ textAlign: 'center' }}>
+              読み込み中...
+            </p>
+          </main>
+        </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: 'var(--font-family-jp)' }}>

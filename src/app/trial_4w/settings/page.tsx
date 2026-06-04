@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
@@ -12,12 +13,14 @@ import {
   type JournalDetailLevel,
 } from '@/lib/journalDetailLevel';
 import type { WeeklyAiReportWriteMode } from '@/types/auth';
+import { canAccessKizukiNoteApp } from '@/lib/enrollmentCourse';
 
 const LEVELS: JournalDetailLevel[] = ['simple', 'normal', 'detailed'];
 
 export default function TrialJournalSettingsPage() {
+  const router = useRouter();
   const { level, setDefaultLevel, hydrated } = useJournalDetailLevel();
-  const { user, userProfile, refreshUserProfile } = useAuth();
+  const { user, userProfile, refreshUserProfile, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draft, setDraft] = useState<JournalDetailLevel>(level);
   const [aiWriteMode, setAiWriteMode] = useState<WeeklyAiReportWriteMode>('append');
@@ -38,6 +41,18 @@ export default function TrialJournalSettingsPage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.replace('/trial_4w/landing');
+      return;
+    }
+    if (!userProfile) return;
+    if (!canAccessKizukiNoteApp(userProfile)) {
+      router.replace('/trial_4w/landing');
+    }
+  }, [loading, user, userProfile, router]);
 
   return (
     <div style={{ fontFamily: 'var(--font-family-jp)' }}>

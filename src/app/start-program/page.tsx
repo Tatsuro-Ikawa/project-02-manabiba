@@ -103,6 +103,17 @@ export default function StartProgramPage() {
             <p className="legal-page-back">
               <Link href="/">ホームへ戻る</Link>
             </p>
+
+            {userProfile?.enrollment?.primaryCourse === 'start7d' ? (
+              <section className="start-program-upgrade" aria-label="気づきノートへのアップグレード">
+                <p className="start-program-upgrade-lead">
+                  自分を変える気づきノートにトライをしてみる →
+                </p>
+                <Link href="/trial_4w/landing" className="start-program-upgrade-cta">
+                  気づきノートへアップグレード
+                </Link>
+              </section>
+            ) : null}
           </div>
         </main>
       </div>

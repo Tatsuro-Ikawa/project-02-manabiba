@@ -53,11 +53,15 @@
   - 「**試してみる**」→ `GET /trial_4w/landing`（**初回・コース選択**）
   - 「**ログインして続きから**」→ `GET /login?next=/post-login?next=/` → 同意済みなら `GET /`、未同意なら `GET /consent?next=/`（**再ログイン**）
 - ホーム（ログイン済み）:
-  - **`enrollment.primaryCourse === 'start7d'`（7日間のみ）**: バナーボタン**なし**。案内文「7日間スタートプログラムは「メニュー」の「スタート」から」（B+）
+  - **`enrollment.primaryCourse === 'start7d'`（7日間のみ）**: バナーボタン**なし**。案内文の **「スタート」** は `/start-program` へのリンク（スマホでメニュー非表示時の誘導）
   - **`kizuki` または未設定（従来）**: 「**気づきノートを続ける**」→ `GET /trial_4w`
-- ランディング: `GET /trial_4w/landing`
-  - 1/2（セルフ7日間）の「やってみる」: ログイン・同意完了後に **`/start-program`**（7日間スタートプログラム・現状ダミー画面）
-  - 2/2（AIコーチ）の「やってみる」: 未ログインなら `GET /login?next=/trial_4w` → `GET /post-login?next=/trial_4w` → 未同意なら `/consent` → 同意完了後 **`/trial_4w`**（気づきノート）
+- ランディング（コース選択・`/trial_4w/landing`）: 用途に応じて CTA を出し分け
+  - **`start7d` ユーザー**: 7日間＝**利用中**（`/start-program`）、AIコーチ／プライベートコーチ＝**申し込む**
+  - **AIコーチ申し込み**: `/trial_4w?apply=ai_coach` → `enrollment.primaryCourse = kizuki` に昇格
+  - **プレミアム申し込み**: `/trial_4w/landing?apply=premium`（**申込フローは準備中**の案内表示。完了処理は別途）
+  - **ゲスト／従来**: 7日間・AIコーチは **やってみる**（従来導線）。ゲストは **ホームに7日間行は出さず**、ランディングでのみ7日間を選択可（[04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.3）
+- **`/trial_4w` 直アクセス**: AIコーチ／プレミアム相当の申し込みが無い（`start7d` のみ）場合は **`/trial_4w/landing` へリダイレクト**
+- **スタート画面**: `start7d` 時のみ「気づきノートへアップグレード」→ ランディング
 
 ### 1.2 グローバルナビ（左サイドバー・中央ヘッダー表記）（2026-05-23 更新）
 
@@ -68,7 +72,7 @@
 | **ノート** | `/trial_4w` | **気づきノート**。7日間のみ（`start7d`）のときは**非活性**（クリック不可）。 |
 | **コミュニケーション** | `/communication` | — |
 | **気づきノート設定** | `/trial_4w/settings` | 気づきノート表示時のみ（`start7d` では非表示）。 |
-| **マイページ** | `/mypage` | — |
+| **マイページ** | `/mypage` | **サイドバーからは非表示**（全コース）。`/mypage` **直アクセスは可**（ヘッダーメニュー「アカウント設定」からも可） |
 
 **中央ヘッダー（`ProtoHeader` の見出し）**
 

@@ -150,6 +150,16 @@ export default function ProtoHeader({
                   </div>
                   <div className="px-3 py-2 flex flex-col gap-1">
                     <Link
+                      href="/courses/change"
+                      className="flex items-center gap-1 text-left text-blue-600 hover:underline"
+                      onClick={handleCloseMenu}
+                    >
+                      <span className="material-symbols-outlined text-sm" aria-hidden>
+                        swap_horiz
+                      </span>
+                      <span>コース変更</span>
+                    </Link>
+                    <Link
                       href="/mypage"
                       className="flex items-center gap-1 text-left text-blue-600 hover:underline"
                       onClick={handleCloseMenu}

@@ -11,7 +11,7 @@ import LatestArticlesEditModal from '@/components/home/LatestArticlesEditModal';
 import ReferenceLinksEditModal from '@/components/home/ReferenceLinksEditModal';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
-import { isStart7dOnly } from '@/lib/enrollmentCourse';
+import { hasAiCoachOrPremiumSignup, shouldShowStart7dHomeHint } from '@/lib/enrollmentCourse';
 
 /** 再ログイン（ログアウト後）: 同意ゲートは post-login が処理 */
 const RETURNING_LOGIN_HREF = `/login?next=${encodeURIComponent('/post-login?next=/')}`;
@@ -26,7 +26,11 @@ export default function HomePage() {
   const { user, loading, userProfile } = useAuth();
   const { mode } = useViewMode();
   const loggedIn = !loading && !!user;
-  const start7dOnly = loggedIn && isStart7dOnly(userProfile);
+  const profileReady = !loading && (!user || !!userProfile);
+  const showStart7dHomeHint =
+    profileReady && loggedIn && shouldShowStart7dHomeHint(userProfile);
+  const showKizukiContinue =
+    profileReady && loggedIn && hasAiCoachOrPremiumSignup(userProfile);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [latestVideosModalOpen, setLatestVideosModalOpen] = useState(false);
   const [latestArticlesModalOpen, setLatestArticlesModalOpen] = useState(false);
@@ -88,16 +92,24 @@ export default function HomePage() {
           <div className="home-sections-stack">
             <section id="home-banner" className="banner-section">
               <p className="banner-message">一度きりの人生、なりたい自分を目指しませんか？</p>
-              {start7dOnly ? (
+              {showStart7dHomeHint ? (
                 <p className="banner-hint">
-                  7日間スタートプログラムは「メニュー」の「スタート」から
+                  7日間スタートプログラムは「メニュー」の
+                  <Link href="/start-program" className="banner-hint-link">
+                    スタート
+                  </Link>
+                  から
                 </p>
+              ) : showKizukiContinue ? (
+                <div className="banner-buttons">
+                  <Link href="/trial_4w" className="banner-btn active">
+                    気づきノートを続ける
+                  </Link>
+                </div>
               ) : (
                 <div className="banner-buttons">
                   {loggedIn ? (
-                    <Link href="/trial_4w" className="banner-btn active">
-                      気づきノートを続ける
-                    </Link>
+                    <p className="banner-hint mb-0">読み込み中...</p>
                   ) : (
                     <>
                       <Link href="/trial_4w/landing" className="banner-btn active">
