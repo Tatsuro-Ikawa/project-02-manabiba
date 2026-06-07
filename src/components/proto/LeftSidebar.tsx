@@ -27,8 +27,9 @@ export default function LeftSidebar({
   onClose,
 }: LeftSidebarProps) {
   const pathname = usePathname();
-  const { userProfile } = useAuth();
-  const kizukiNoteEnabled = isKizukiNoteNavEnabled(userProfile);
+  const { user, userProfile, loading } = useAuth();
+  const loggedIn = !loading && !!user;
+  const kizukiNoteEnabled = loggedIn && isKizukiNoteNavEnabled(userProfile);
 
   const isHome = pathname === '/';
   /** 気づきノート（旧トライアル本編）: `/trial_4w` および設定。コース選択ランディングは含めない */
@@ -52,15 +53,27 @@ export default function LeftSidebar({
         <span className="material-symbols-outlined" aria-hidden>home</span>
         <span>ホーム</span>
       </Link>
-      <Link
-        href="/start-program"
-        className={`sidebar-btn ${isStartProgram ? 'active' : ''}`}
-        aria-label="7日間スタートプログラム"
-        onClick={handleNav}
-      >
-        <span className="material-symbols-outlined" aria-hidden>play_circle</span>
-        <span>スタート</span>
-      </Link>
+      {loggedIn ? (
+        <Link
+          href="/start-program"
+          className={`sidebar-btn ${isStartProgram ? 'active' : ''}`}
+          aria-label="7日間スタートプログラム"
+          onClick={handleNav}
+        >
+          <span className="material-symbols-outlined" aria-hidden>play_circle</span>
+          <span>スタート</span>
+        </Link>
+      ) : (
+        <span
+          className={`sidebar-btn sidebar-btn--disabled${isStartProgram ? ' active' : ''}`}
+          aria-label="スタート（利用不可）"
+          aria-disabled="true"
+          title="ログイン後に利用できます。"
+        >
+          <span className="material-symbols-outlined" aria-hidden>play_circle</span>
+          <span>スタート</span>
+        </span>
+      )}
       {kizukiNoteEnabled ? (
         <Link
           href="/trial_4w"
@@ -76,7 +89,7 @@ export default function LeftSidebar({
           className={`sidebar-btn sidebar-btn--disabled${isKizukiNote ? ' active' : ''}`}
           aria-label="気づきノート（利用不可）"
           aria-disabled="true"
-          title={KIZUKI_NOTE_DISABLED_HINT}
+          title={loggedIn ? KIZUKI_NOTE_DISABLED_HINT : 'ログイン後に利用できます。'}
         >
           <span className="material-symbols-outlined" aria-hidden>edit_note</span>
           <span>ノート</span>

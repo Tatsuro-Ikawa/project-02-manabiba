@@ -1,32 +1,45 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
+import { useLegalDocuments } from '@/hooks/useLegalDocuments';
+import { hasAcceptedCurrentConsents } from '@/lib/consent';
 import {
   hasAiCoachOrPremiumSignup,
   isStart7dOnly,
   KIZUKI_AI_COACH_APPLY_PATH,
-  KIZUKI_AI_COACH_POST_LOGIN,
 } from '@/lib/enrollmentCourse';
 
-const freeSignupNext = '/post-login?next=/start-program';
-const kizukiTrialNext = '/post-login?next=/trial_4w';
+const freeSignupDest = '/start-program';
+const kizukiTrialDest = '/trial_4w';
 const premiumApplyPath = '/apply?plan=premium';
-const premiumApplyLoginNext = `/login?next=${encodeURIComponent(
-  '/post-login?next=' + encodeURIComponent(premiumApplyPath)
-)}`;
+const premiumApplyLoginNext = `/login?next=${encodeURIComponent(premiumApplyPath)}`;
 
 function Trial4wLandingContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, userProfile, loading } = useAuth();
+  const { bundle, loading: legalLoading } = useLegalDocuments();
+  const searchParams = useSearchParams();
   const loggedIn = !loading && !!user;
+  const profileReady = !loading && (!user || !!userProfile);
   const start7dOnly = loggedIn && isStart7dOnly(userProfile);
   const kizukiSignedUp = loggedIn && hasAiCoachOrPremiumSignup(userProfile);
   const isPremiumPlan = userProfile?.subscription?.plan === 'premium';
+  const needsConsentBanner = searchParams.get('needsConsent') === '1';
+
+  const consentAccepted = useMemo(() => {
+    if (!userProfile || !bundle) return false;
+    return hasAcceptedCurrentConsents(userProfile, bundle.terms.version, bundle.privacy.version);
+  }, [userProfile, bundle]);
+
+  const consentNext7d = '/consent?next=' + encodeURIComponent('/start-program');
+  const consentNextKizuki = '/consent?next=' + encodeURIComponent('/trial_4w');
+  const consentNextPremium = '/consent?next=' + encodeURIComponent(premiumApplyPath);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -38,7 +51,7 @@ function Trial4wLandingContent() {
 
   const aiCoachApplyHref = loggedIn
     ? KIZUKI_AI_COACH_APPLY_PATH
-    : `/login?next=${encodeURIComponent(KIZUKI_AI_COACH_POST_LOGIN)}`;
+    : `/login?next=${encodeURIComponent(KIZUKI_AI_COACH_APPLY_PATH)}`;
 
   const premiumApplyHref = loggedIn ? premiumApplyPath : premiumApplyLoginNext;
 
@@ -50,15 +63,25 @@ function Trial4wLandingContent() {
         </Link>
       );
     }
-    if (loggedIn) {
+    if (loggedIn && profileReady) {
+      if (!consentAccepted) {
+        return (
+          <Link href={consentNext7d} className="trial-landing-cta">
+            やってみる
+          </Link>
+        );
+      }
       return (
-        <Link href={freeSignupNext} className="trial-landing-cta">
+        <Link href={freeSignupDest} className="trial-landing-cta">
           やってみる
         </Link>
       );
     }
+    if (loggedIn) {
+      return <span className="trial-landing-cta trial-landing-cta--in-use" aria-disabled="true">読み込み中...</span>;
+    }
     return (
-      <Link href={`/login?next=${encodeURIComponent(freeSignupNext)}`} className="trial-landing-cta">
+      <Link href={`/login?next=${encodeURIComponent(freeSignupDest)}`} className="trial-landing-cta">
         やってみる
       </Link>
     );
@@ -79,15 +102,25 @@ function Trial4wLandingContent() {
         </Link>
       );
     }
-    if (loggedIn) {
+    if (loggedIn && profileReady) {
+      if (!consentAccepted) {
+        return (
+          <Link href={consentNextKizuki} className="trial-landing-cta">
+            やってみる
+          </Link>
+        );
+      }
       return (
-        <Link href={kizukiTrialNext} className="trial-landing-cta">
+        <Link href={kizukiTrialDest} className="trial-landing-cta">
           やってみる
         </Link>
       );
     }
+    if (loggedIn) {
+      return <span className="trial-landing-cta trial-landing-cta--in-use" aria-disabled="true">読み込み中...</span>;
+    }
     return (
-      <Link href={`/login?next=${encodeURIComponent(kizukiTrialNext)}`} className="trial-landing-cta">
+      <Link href={`/login?next=${encodeURIComponent(kizukiTrialDest)}`} className="trial-landing-cta">
         やってみる
       </Link>
     );
@@ -99,6 +132,13 @@ function Trial4wLandingContent() {
         <span className="trial-landing-cta trial-landing-cta--in-use" aria-disabled="true">
           利用中
         </span>
+      );
+    }
+    if (loggedIn && profileReady && !consentAccepted) {
+      return (
+        <Link href={consentNextPremium} className="trial-landing-cta">
+          申し込む
+        </Link>
       );
     }
     return (
@@ -127,6 +167,12 @@ function Trial4wLandingContent() {
           </div>
 
           <h2 className="trial-landing-headline">一度きりの人生、なりたい自分を目指しませんか？</h2>
+
+          {needsConsentBanner && loggedIn && profileReady && !consentAccepted && !legalLoading ? (
+            <p className="trial-landing-premium-notice" role="status">
+              ログインが完了しました。続けるには、下のコースから選び、会員同意のあとにご利用を開始してください。
+            </p>
+          ) : null}
 
           <div className="trial-landing-stack">
             <section className="trial-landing-card" aria-label="7日間プログラム">

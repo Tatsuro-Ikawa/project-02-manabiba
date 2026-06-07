@@ -8,10 +8,12 @@
 
 ### ログイン入口（パッケージ A・2026-05）
 
+**URL 約束**: `/login?next=` には**最終行先のみ**（例: `/`、`/start-program`）。`/login` が `post-login` にラップする。分岐図は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1.2。
+
 | 種別 | 入口 | 遷移 | OK |
 |------|------|------|-------|
 | **初回** | ホーム「**試してみる**」 | `/trial_4w/landing` → コース「やってみる」→ `/login?next=...` → 同意 → コース |   |
-| **再ログイン** | ホーム「**ログインして続きから**」 | `/login?next=/post-login?next=/` → 同意済みなら `/`、未同意なら `/consent?next=/` |   |
+| **再ログイン** | ホーム「**ログインして続きから**」 | `/login?next=/` → 同意済みなら `/`、**初回（コース未選択）**は `/trial_4w/landing?needsConsent=1`、コース選択済み・未同意のみ `/consent?next=/` |   |
 | **ヘッダー（ゲスト）** | 人型アイコン **表示のみ**（クリック不可） | `/login` へは行かない |   |
 | **ヘッダー（ログイン済）** | アバター | メニュー（マイページ・ログアウト等） |  |
 
@@ -101,13 +103,14 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 ## 3. 7日間プログラム（フリーコース）
 
-**想定導線（A案）**: ゲスト → ランディングでフリー選択 → ログイン → **会員同意1回**（`/consent`）→ `/start-program`（7日間ダミー）
+**想定導線（A案・2026-06-05 修正）**: ゲスト → ランディングでフリー選択 → ログイン → **ランディングへ戻る**（`needsConsent=1`）→ 再度フリー **やってみる** → **会員同意1回**（`/consent`）→ `/start-program`（7日間ダミー）。詳細は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1.1
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
 | 7-1 | **ログアウト**した状態で `/trial_4w/landing` を開く | コース選択が表示される（7日間1列・気づきノート2列） |OK |
 | 7-2 | 「自分を変える7日間」／セルフ（フリーコース）の **やってみる** を押す | `/login?next=...` へ（未ログイン時） |OK |
-| 7-3 | Google でログイン | `/post-login?next=/start-program` 経由 |OK |
+| 7-3 | Google でログイン | `/post-login?next=/start-program` 経由後、**`/trial_4w/landing?needsConsent=1&next=...`** に戻る（案内バナー表示） | |
+| 7-3b | ランディングで再度フリー **やってみる**（ログイン済・未同意） | **`/consent?next=/start-program`** へ | |
 | 7-4 | **会員同意** `/consent?next=/start-program` | 章立てのダミー条文（第1章共通／第2章7日間／第3章気づきノート／第4章免責）＋プライバシー1本が**同一スクロール枠**に表示される |OK |
 | 7-5 | 条文を**末尾までスクロール** | チェックボックスが有効になる |OK |
 | 7-6 | 利用規約・プライバシーの **2つにチェック** → **同意して続ける** | Firestore に **`consents` のみ** 保存（`termsVersion` / `privacyVersion` / `acceptedAt`） | OK|
@@ -123,7 +126,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
-| 7-L1 | `consents` 削除後、ログイン済みでランディングの **やってみる**（フリー） | `/post-login` → `/consent` → `/start-program`（7-4〜7-7 と同じ） | OK|
+| 7-L1 | `consents` 削除後、ログイン済みでランディングの **やってみる**（フリー） | **直接** `/consent?next=/start-program` → `/start-program`（7-4〜7-7 と同じ） | OK|
 | 7-L2 | `consents` 済みでランディングの **やってみる**（フリー） | **直接** `/start-program`（同意画面スキップ） |OK |
 
 **同意画面*の読み分け（目視）**
@@ -150,7 +153,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 **再ログイン（ログアウト後）** — パッケージ A（2026-05 実装）
 
-`/` → 「**ログインして続きから**」→ `/login?next=/post-login?next=/` → 同意済みなら **`/`**、未同意なら `/consent?next=/`
+`/` → 「**ログインして続きから**」→ `/login?next=/` → 同意済みなら **`/`**、初回（コース未選択）なら `/trial_4w/landing?needsConsent=1`
 
 
 **ログイン後ホーム**（未ログイン時との違い）
@@ -266,7 +269,8 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 | H-1 | ログアウト → `/` | 「試してみる」→ `/trial_4w/landing` | |
 | H-2 | 未ログイン `/` | 「**ログインして続きから**」がリンクとして有効 | |
 | H-3 | 「ログインして続きから」→ 同意済み UID | Google → **`/`**（`/consent` なし） | |
-| H-4 | 「ログインして続きから」→ `consents` 無し UID | Google → `/consent?next=/` → 同意後 `/` | |
+| H-4 | 「ログインして続きから」→ **初回**（`consents` 無し・コース未選択） | Google → **`/trial_4w/landing?needsConsent=1`**（同意画面は出ない） | |
+| H-4b | 同上 UID でランディングからコース選択後 | `/consent?next=...` → 同意後コース先 | |
 | H-5 | ログイン済み → `/` | 「気づきノートを続ける」→ `/trial_4w` | |
 | H-6 | 未ログイン時ヘッダー | 人型アイコンのみ。**「ログイン」テキストリンクなし** | |
 
@@ -286,6 +290,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
+| B-0 | **初回**（`users/{uid}` 削除・未同意）で「ログインして続きから」→ Google | `/post-login?next=/` → **`/trial_4w/landing?needsConsent=1`**（**同意画面は出ない**）→ コース選択後に `/consent` | |
 | B-1 | 一度同意済み UID でログアウト → `/` | 「試してみる」＋「ログインして続きから」表示 | |
 | B-2 | 「ログインして続きから」→ Google | `/post-login?next=/` → **`/consent` は出ない** → `/` | |
 | B-3 | `/` ログイン後 | 「気づきノートを続ける」→ `/trial_4w`（ランディング不要） | |

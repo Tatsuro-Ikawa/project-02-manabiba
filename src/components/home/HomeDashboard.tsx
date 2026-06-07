@@ -18,7 +18,7 @@ import {
   getWeekStartDateKeyForToday,
 } from '@/lib/journalWeek';
 import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
-import { shouldShowStart7dHomeHint } from '@/lib/enrollmentCourse';
+import { hasAiCoachOrPremiumSignup, shouldShowStart7dHomeHint } from '@/lib/enrollmentCourse';
 
 /** コーチ新着（ダミー・プレミアム仕様確定後に接続） */
 const DUMMY_COACH_NEWS = 'コーチからの新着情報（ダミー）は、プレミアム対象の仕様確定後に表示します。';
@@ -333,6 +333,8 @@ export default function HomeDashboard() {
   const profileReady = !loading && (!user || !!userProfile);
   const showStart7dHint =
     profileReady && !!user && shouldShowStart7dHomeHint(userProfile);
+  const showKizukiMgmt =
+    profileReady && !!user && hasAiCoachOrPremiumSignup(userProfile);
 
   if (showStart7dHint) {
     return (
@@ -340,6 +342,18 @@ export default function HomeDashboard() {
         <h2 className="section-title">マネジメント情報</h2>
         <p className="home-dashboard-muted mb-0">
           7日間スタートプログラム利用中です。気づきノートのマネジメント情報は、ノートを開始したあとに表示されます。
+        </p>
+      </section>
+    );
+  }
+
+  // フリー（7日間のみ／未申込）ではマネジメント情報は出さない（Firestore も読まない）
+  if (!!user && profileReady && !showKizukiMgmt) {
+    return (
+      <section id="home-section-dashboard-management" className="content-section">
+        <h2 className="section-title">マネジメント情報</h2>
+        <p className="home-dashboard-muted mb-0">
+          気づきノートを開始すると、マネジメント情報が表示されます。
         </p>
       </section>
     );

@@ -29,7 +29,7 @@ export function ApplyFormPanel() {
     if (loading) return;
     if (!user) {
       const next = plan ? `/apply?plan=${plan}` : '/apply';
-      router.replace(`/login?next=${encodeURIComponent(`/post-login?next=${encodeURIComponent(next)}`)}`);
+      router.replace(`/login?next=${encodeURIComponent(next)}`);
       return;
     }
     if (!plan) {

@@ -34,7 +34,7 @@ export default function StartProgramPage() {
     if (loading || legalLoading || !bundle) return;
     if (!user) {
       router.replace(
-        `/login?next=${encodeURIComponent('/post-login?next=' + encodeURIComponent('/start-program'))}`
+        `/login?next=${encodeURIComponent('/start-program')}`
       );
       return;
     }

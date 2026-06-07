@@ -2031,8 +2031,8 @@ export const createDefaultUserProfile = async (user: User): Promise<UserProfile>
       plan: 'free',
       status: 'active',
       startDate: new Date(),
-      /** 28 日お試し終了（登録から 28×24h。暦日 JST 境界は後続で共通化可） */
-      trialEndsAt: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+      // 仕様: 28日お試しはスタンダード／プレミアム初回申込時のみ。
+      // 新規作成（plan: free）では付与しない。
       features: {
         pdca: true,
         aiComments: false,

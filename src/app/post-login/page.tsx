@@ -5,19 +5,19 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLegalDocuments } from '@/hooks/useLegalDocuments';
 import { hasAcceptedCurrentConsents } from '@/lib/consent';
-
-function sanitizeNext(next: string | null): string {
-  if (!next) return '/';
-  if (next.startsWith('/')) return next;
-  return '/';
-}
+import {
+  isFirstTimeOnboardingNext,
+  isPreOnboardingUser,
+  landingWithNeedsConsent,
+  normalizeAuthNext,
+} from '@/lib/onboardingFlow';
 
 function PostLoginContent() {
   const { user, userProfile, loading } = useAuth();
   const { bundle, loading: legalLoading } = useLegalDocuments();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = useMemo(() => sanitizeNext(searchParams.get('next')), [searchParams]);
+  const nextPath = useMemo(() => normalizeAuthNext(searchParams.get('next')), [searchParams]);
 
   useEffect(() => {
     if (loading || legalLoading || !bundle) return;
@@ -30,6 +30,20 @@ function PostLoginContent() {
     if (!userProfile) return;
 
     if (!hasAcceptedCurrentConsents(userProfile, bundle.terms.version, bundle.privacy.version)) {
+      // 初回入会（コース未選択）: 同意前にランディングでコース選択（NG_02）。
+      if (nextPath === '/' && isPreOnboardingUser(userProfile)) {
+        router.replace(landingWithNeedsConsent('/'));
+        return;
+      }
+      // 再ログイン（コース選択済み・未同意のみ）: 同意→ホーム。
+      if (nextPath === '/') {
+        router.replace(`/consent?next=${encodeURIComponent('/')}`);
+        return;
+      }
+      if (isFirstTimeOnboardingNext(nextPath)) {
+        router.replace(landingWithNeedsConsent(nextPath));
+        return;
+      }
       router.replace(`/consent?next=${encodeURIComponent(nextPath)}`);
       return;
     }

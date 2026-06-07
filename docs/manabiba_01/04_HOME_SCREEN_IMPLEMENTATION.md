@@ -51,10 +51,12 @@
 - **ヘッダー（未ログイン）**: 「ログイン」ボタンは**なし**。人型アイコン（`person`）を**表示のみ**（`ProtoHeader`）。ログイン入口はホームへ集約。
 - ホーム（未ログイン）:
   - 「**試してみる**」→ `GET /trial_4w/landing`（**初回・コース選択**）
-  - 「**ログインして続きから**」→ `GET /login?next=/post-login?next=/` → 同意済みなら `GET /`、未同意なら `GET /consent?next=/`（**再ログイン**）
+  - 「**ログインして続きから**」→ `GET /login?next=/` → 同意済みなら `GET /`、**初回（コース未選択）**は `GET /trial_4w/landing?needsConsent=1`、コース選択済み・未同意のみ `GET /consent?next=/`（**再ログイン**）
+- **初回入会・未同意ログイン直後**（表1）: `post-login` の `next` がコース先のとき **`/trial_4w/landing?needsConsent=1&next=...`** へ戻す。ランディングでコース再選択 → `GET /consent?next=...`（[04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1.1）
 - ホーム（ログイン済み）:
   - **`enrollment.primaryCourse === 'start7d'`（7日間のみ）**: バナーボタン**なし**。案内文の **「スタート」** は `/start-program` へのリンク（スマホでメニュー非表示時の誘導）
-  - **`kizuki` または未設定（従来）**: 「**気づきノートを続ける**」→ `GET /trial_4w`
+  - **フリー（気づき未申込）**: 「**スタートから始める**」→ `/start-program`、「**気づきノートを試す**」→ `/trial_4w/landing`
+  - **`kizuki` または有料／お試し相当**: 「**気づきノートを続ける**」→ `GET /trial_4w`
 - ランディング（コース選択・`/trial_4w/landing`）: 用途に応じて CTA を出し分け
   - **`start7d` ユーザー**: 7日間＝**利用中**（`/start-program`）、AIコーチ／プライベートコーチ＝**申し込む**
   - **AIコーチ申し込み**: `/trial_4w?apply=ai_coach` → `enrollment.primaryCourse = kizuki` に昇格
@@ -68,8 +70,8 @@
 | 左サイドバー | 遷移先 | 備考 |
 |--------------|--------|------|
 | **ホーム** | `/` | — |
-| **スタート** | `/start-program` | **7日間スタートプログラム**（現状ダミー本体）。 |
-| **ノート** | `/trial_4w` | **気づきノート**。7日間のみ（`start7d`）のときは**非活性**（クリック不可）。 |
+| **スタート** | `/start-program` | **7日間スタートプログラム**（現状ダミー本体）。**ゲスト時は非活性**（グレー表示）。 |
+| **ノート** | `/trial_4w` | **気づきノート**。7日間のみ（`start7d`）または**ゲスト**のときは**非活性**（クリック不可）。 |
 | **コミュニケーション** | `/communication` | — |
 | **気づきノート設定** | `/trial_4w/settings` | 気づきノート表示時のみ（`start7d` では非表示）。 |
 | **マイページ** | `/mypage` | **サイドバーからは非表示**（全コース）。`/mypage` **直アクセスは可**（ヘッダーメニュー「アカウント設定」からも可） |
@@ -99,29 +101,35 @@
 
 **利用規約の読み分け**: 同意画面のスクロール枠内では、利用規約を**章立て**で表示する（例: 共通／7日間スタートプログラム／気づきノート）。利用者は利用予定のプログラムに該当する章を読み、**プライバシーポリシーはサービス全体で1本**として同一画面で確認する。条文の正本は **`public/legal/terms.json`・`privacy.json`**（[04_LEGAL_DOCUMENTS.md](./04_LEGAL_DOCUMENTS.md) 参照）。`/consent`・`/terms`・`/privacy` は同一 JSON を読み込む。
 
+**分岐の正本・フローチャート**: [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1.2
+
 ```mermaid
 sequenceDiagram
   participant U as ユーザー
   participant L as /login
   participant P as /post-login
+  participant LD as /trial_4w/landing
   participant C as /consent
   participant S as /start-program
   participant FS as Firestore
 
-  Note over U,FS: 7日間（フリー）— ランディング等
-  U->>L: やってみる（next=post-login→start-program）
-  L->>P: ログイン成功
-  P->>C: 未同意なら consent?next=/start-program
-  U->>C: スクロール＋規約・プライバシーにチェック
+  Note over U,FS: 7日間（フリー）— 初回・ランディング経由
+  U->>L: やってみる（login?next=/start-program）
+  L->>P: post-login?next=/start-program
+  P->>LD: 未同意 → needsConsent=1（ランディングへ戻す）
+  U->>C: ランディングで再選択 → consent?next=/start-program
   C->>FS: updateUserConsents（consents）
   C->>S: /start-program（本体）
 
-  Note over U,FS: 気づきノート — 同一の consents で可
-  U->>L: AIコーチ やってみる
-  L->>P: post-login?next=/trial_4w
-  P->>C: 未同意時のみ consent
-  C->>FS: consents
-  C->>T: /trial_4w
+  Note over U,FS: 誤操作「ログインして続きから」（初回・コース未選択）
+  U->>L: login?next=/
+  L->>P: post-login?next=/
+  P->>LD: 未同意・primaryCourse無し → needsConsent=1（同意画面は出さない）
+
+  Note over U,FS: 再ログイン（同意済み）
+  U->>L: login?next=/
+  L->>P: post-login?next=/
+  P->>U: / へ直行
 ```
 
 | ルート | 役割 |

@@ -13,8 +13,8 @@ import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
 import { hasAiCoachOrPremiumSignup, shouldShowStart7dHomeHint } from '@/lib/enrollmentCourse';
 
-/** 再ログイン（ログアウト後）: 同意ゲートは post-login が処理 */
-const RETURNING_LOGIN_HREF = `/login?next=${encodeURIComponent('/post-login?next=/')}`;
+/** 再ログイン（ログアウト後）: login が post-login にラップするため next は最終行先 `/` のみ */
+const RETURNING_LOGIN_HREF = `/login?next=${encodeURIComponent('/')}`;
 import { useViewMode } from '@/context/ViewModeContext';
 import { getHomeContent } from '@/lib/firestore';
 import type { HomeLatestVideoEntry, HomeLatestArticleEntry, HomeReferenceLinkEntry } from '@/lib/firestore';
@@ -108,7 +108,16 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="banner-buttons">
-                  {loggedIn ? (
+                  {loggedIn && userProfile ? (
+                    <>
+                      <Link href="/start-program" className="banner-btn active">
+                        スタートから始める
+                      </Link>
+                      <Link href="/trial_4w/landing" className="banner-btn secondary">
+                        気づきノートを試す
+                      </Link>
+                    </>
+                  ) : loggedIn ? (
                     <p className="banner-hint mb-0">読み込み中...</p>
                   ) : (
                     <>

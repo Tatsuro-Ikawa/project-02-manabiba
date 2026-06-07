@@ -134,7 +134,7 @@ function Trial4wContent() {
       return;
     }
     if (!user) {
-      setAccessOk(true);
+      router.replace('/trial_4w/landing');
       return;
     }
     if (!userProfile) return;

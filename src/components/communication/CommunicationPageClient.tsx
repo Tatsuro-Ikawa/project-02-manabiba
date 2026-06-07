@@ -502,9 +502,17 @@ export default function CommunicationPageClient() {
             </button>
             <button
               type="button"
-              className={`trial-menu-item ${currentTab === 'board' ? 'active' : ''}`}
+              className={`trial-menu-item ${currentTab === 'board' ? 'active' : ''}${
+                !premiumUnlocked ? ' sidebar-btn--disabled' : ''
+              }`}
               aria-current={currentTab === 'board' ? 'page' : undefined}
-              onClick={() => setTab('board')}
+              aria-disabled={!premiumUnlocked}
+              disabled={!premiumUnlocked}
+              title={!premiumUnlocked ? 'プレミアムプランのみ利用できます。' : undefined}
+              onClick={() => {
+                if (!premiumUnlocked) return;
+                setTab('board');
+              }}
             >
               <span className="material-symbols-outlined" aria-hidden="true">
                 forum

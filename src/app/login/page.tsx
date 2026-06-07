@@ -1,8 +1,9 @@
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
+import { normalizeAuthNext } from '@/lib/onboardingFlow';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 
 function LoginPageInner() {
   const { user, loading, signInWithGoogle } = useAuth();
@@ -10,13 +11,7 @@ function LoginPageInner() {
   const searchParams = useSearchParams();
   const [isSigningIn, setIsSigningIn] = useState(false);
 
-  const nextPath = (() => {
-    const next = searchParams.get('next');
-    if (!next) return '/';
-    // open redirect 対策: 相対パスのみ許可
-    if (next.startsWith('/')) return next;
-    return '/';
-  })();
+  const nextPath = useMemo(() => normalizeAuthNext(searchParams.get('next')), [searchParams]);
 
   useEffect(() => {
     if (!loading && user) {
