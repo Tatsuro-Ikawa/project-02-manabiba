@@ -22,23 +22,33 @@ function isKizukiTrialActive(profile: UserProfile): boolean {
 
 /**
  * AIコーチまたはプレミアム（プライベートコーチ）相当の「申し込み済み」か。
- * `start7d` のみ・フリー・お試しなしは false。
+ * `start7d` のみ・コース未選択・お試しなしは false。
  */
 export function hasAiCoachOrPremiumSignup(profile: UserProfile | null | undefined): boolean {
   if (!profile?.subscription) return false;
 
   const plan = profile.subscription.plan;
   if (plan === 'standard' || plan === 'premium') return true;
-  if (plan === 'free' && isKizukiTrialActive(profile)) return true;
 
   const course = profile.enrollment?.primaryCourse;
-  if (course === 'kizuki') return true;
   if (course === 'start7d') return false;
 
-  // primaryCourse 未設定（従来ユーザー）: 有料／お試しが無ければ従来どおり許可
-  if (!course) return true;
+  // 気づきノート（kizuki）: 28日お試し中（trialEndsAt 未来）または有料プラン
+  if (course === 'kizuki') {
+    return isKizukiTrialActive(profile);
+  }
 
   return false;
+}
+
+/** 会員同意の `next` が7日間スタートへ向かうか */
+export function consentNextImpliesStart7d(nextPath: string): boolean {
+  return nextPath === '/start-program' || nextPath.startsWith('/start-program?');
+}
+
+/** 会員同意の `next` が気づきノート本体へ向かうか */
+export function consentNextImpliesKizuki(nextPath: string): boolean {
+  return nextPath === '/trial_4w' || nextPath.startsWith('/trial_4w?');
 }
 
 export type KizukiNoteApplyIntent = 'ai_coach' | null;
@@ -66,6 +76,24 @@ export function normalizePrimaryCourse(value: unknown): PrimaryCourse | undefine
 
 /** ランディング AIコーチ CTA 用（申し込み後は `?apply=ai_coach` で本体へ） */
 export const KIZUKI_AI_COACH_APPLY_PATH = '/trial_4w?apply=ai_coach';
+
+/** スタンダード（AIコーチ）デモ申込 */
+export const STANDARD_APPLY_PATH = '/apply?plan=standard';
+
+/** プレミアム（パーソナルコーチ）デモ申込 */
+export const PREMIUM_APPLY_PATH = '/apply?plan=premium';
+
+/** 申込フォームをスキップして気づきノートへ直行すべきか */
+export function shouldSkipDemoApplyForm(
+  profile: UserProfile | null | undefined,
+  plan: 'standard' | 'premium'
+): boolean {
+  if (!profile?.subscription) return false;
+  const userPlan = profile.subscription.plan;
+  if (plan === 'premium') return userPlan === 'premium';
+  if (userPlan === 'standard' || userPlan === 'premium') return true;
+  return hasAiCoachOrPremiumSignup(profile);
+}
 
 export const KIZUKI_AI_COACH_POST_LOGIN =
   '/post-login?next=' + encodeURIComponent(KIZUKI_AI_COACH_APPLY_PATH);

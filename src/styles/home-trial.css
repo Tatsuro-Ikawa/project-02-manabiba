@@ -2126,6 +2126,69 @@
   cursor: pointer;
 }
 
+/* 週・月タブ: 見出し右上のコーチ共有（行動宣言タイトルバーと同趣旨） */
+.trial-tab-heading-row--journal {
+  position: relative;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding-right: 0;
+}
+
+.journal-coach-share-header {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: min(48vw, 11rem);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.journal-coach-share-header-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.journal-coach-share-header-input {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.journal-coach-share-header:has(.journal-coach-share-header-input:checked) {
+  color: var(--color-primary);
+}
+
+.journal-coach-share-header:has(.journal-coach-share-header-input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.journal-coach-share-header:has(.journal-coach-share-header-input:disabled) .journal-coach-share-header-input {
+  cursor: not-allowed;
+}
+
+@media (max-width: 425px) {
+  .journal-coach-share-header {
+    font-size: 0.62rem;
+    max-width: min(42vw, 9rem);
+  }
+
+  .journal-coach-share-header-input {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+}
+
 .affirmation-coach-guide-box {
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);

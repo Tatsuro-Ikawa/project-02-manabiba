@@ -5,12 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLegalDocuments } from '@/hooks/useLegalDocuments';
 import { hasAcceptedCurrentConsents } from '@/lib/consent';
-import {
-  isFirstTimeOnboardingNext,
-  isPreOnboardingUser,
-  landingWithNeedsConsent,
-  normalizeAuthNext,
-} from '@/lib/onboardingFlow';
+import { isPreOnboardingUser, landingWithNeedsConsent, normalizeAuthNext, resolveOnboardingDestination } from '@/lib/onboardingFlow';
+import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 
 function PostLoginContent() {
   const { user, userProfile, loading } = useAuth();
@@ -23,6 +19,7 @@ function PostLoginContent() {
     if (loading || legalLoading || !bundle) return;
 
     if (!user) {
+      if (!shouldRedirectUnauthenticatedToLogin()) return;
       router.replace(`/login?next=${encodeURIComponent(`/post-login?next=${nextPath}`)}`);
       return;
     }
@@ -30,25 +27,17 @@ function PostLoginContent() {
     if (!userProfile) return;
 
     if (!hasAcceptedCurrentConsents(userProfile, bundle.terms.version, bundle.privacy.version)) {
-      // 初回入会（コース未選択）: 同意前にランディングでコース選択（NG_02）。
+      // コース未選択の誤操作（「ログインして続きから」等）のみランディングへ。
+      // コース選択済み（login?next=/start-program 等）は同意へ直行（ランディングは1回のみ）。
       if (nextPath === '/' && isPreOnboardingUser(userProfile)) {
         router.replace(landingWithNeedsConsent('/'));
-        return;
-      }
-      // 再ログイン（コース選択済み・未同意のみ）: 同意→ホーム。
-      if (nextPath === '/') {
-        router.replace(`/consent?next=${encodeURIComponent('/')}`);
-        return;
-      }
-      if (isFirstTimeOnboardingNext(nextPath)) {
-        router.replace(landingWithNeedsConsent(nextPath));
         return;
       }
       router.replace(`/consent?next=${encodeURIComponent(nextPath)}`);
       return;
     }
 
-    router.replace(nextPath);
+    router.replace(resolveOnboardingDestination(userProfile, nextPath));
   }, [loading, legalLoading, bundle, user, userProfile, router, nextPath]);
 
   return (

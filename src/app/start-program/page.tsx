@@ -9,6 +9,7 @@ import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
 import { useLegalDocuments } from '@/hooks/useLegalDocuments';
 import { hasAcceptedCurrentConsents } from '@/lib/consent';
+import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 import { ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
 
 /**
@@ -33,6 +34,7 @@ export default function StartProgramPage() {
   useEffect(() => {
     if (loading || legalLoading || !bundle) return;
     if (!user) {
+      if (!shouldRedirectUnauthenticatedToLogin()) return;
       router.replace(
         `/login?next=${encodeURIComponent('/start-program')}`
       );

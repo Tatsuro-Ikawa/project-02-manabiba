@@ -26,6 +26,7 @@ import VideoZoomToggle from '@/components/VideoZoomToggle';
 import SupportSlideBar from '@/components/SupportSlideBar';
 import { useProgress } from '@/hooks/useProgress';
 import { SubscriptionPlan } from '@/types/auth';
+import { signOutAndRedirect } from '@/lib/intentionalSignOut';
 
 function MyPageContent() {
   const { user, signOut } = useAuth();
@@ -92,8 +93,7 @@ function MyPageContent() {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      router.push('/');
+      await signOutAndRedirect(signOut, router, '/');
     } catch (error) {
       console.error('ログアウトエラー:', error);
       alert('ログアウトに失敗しました。');

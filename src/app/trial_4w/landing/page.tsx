@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import ProtoFooter from '@/components/proto/ProtoFooter';
@@ -12,17 +12,21 @@ import { hasAcceptedCurrentConsents } from '@/lib/consent';
 import {
   hasAiCoachOrPremiumSignup,
   isStart7dOnly,
-  KIZUKI_AI_COACH_APPLY_PATH,
+  PREMIUM_APPLY_PATH,
+  STANDARD_APPLY_PATH,
 } from '@/lib/enrollmentCourse';
+import { isLandingBackRequiresSignOut } from '@/lib/onboardingFlow';
+import { signOutAndRedirect } from '@/lib/intentionalSignOut';
 
 const freeSignupDest = '/start-program';
-const kizukiTrialDest = '/trial_4w';
-const premiumApplyPath = '/apply?plan=premium';
-const premiumApplyLoginNext = `/login?next=${encodeURIComponent(premiumApplyPath)}`;
+const premiumApplyLoginNext = `/login?next=${encodeURIComponent(PREMIUM_APPLY_PATH)}`;
+const standardApplyLoginNext = `/login?next=${encodeURIComponent(STANDARD_APPLY_PATH)}`;
 
 function Trial4wLandingContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, userProfile, loading } = useAuth();
+  const [backingOut, setBackingOut] = useState(false);
+  const { user, userProfile, loading, signOut } = useAuth();
+  const router = useRouter();
   const { bundle, loading: legalLoading } = useLegalDocuments();
   const searchParams = useSearchParams();
   const loggedIn = !loading && !!user;
@@ -31,6 +35,7 @@ function Trial4wLandingContent() {
   const kizukiSignedUp = loggedIn && hasAiCoachOrPremiumSignup(userProfile);
   const isPremiumPlan = userProfile?.subscription?.plan === 'premium';
   const needsConsentBanner = searchParams.get('needsConsent') === '1';
+  const backRequiresSignOut = isLandingBackRequiresSignOut(needsConsentBanner, loggedIn);
 
   const consentAccepted = useMemo(() => {
     if (!userProfile || !bundle) return false;
@@ -38,8 +43,8 @@ function Trial4wLandingContent() {
   }, [userProfile, bundle]);
 
   const consentNext7d = '/consent?next=' + encodeURIComponent('/start-program');
-  const consentNextKizuki = '/consent?next=' + encodeURIComponent('/trial_4w');
-  const consentNextPremium = '/consent?next=' + encodeURIComponent(premiumApplyPath);
+  const consentNextStandard = '/consent?next=' + encodeURIComponent(STANDARD_APPLY_PATH);
+  const consentNextPremium = '/consent?next=' + encodeURIComponent(PREMIUM_APPLY_PATH);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -49,11 +54,22 @@ function Trial4wLandingContent() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const aiCoachApplyHref = loggedIn
-    ? KIZUKI_AI_COACH_APPLY_PATH
-    : `/login?next=${encodeURIComponent(KIZUKI_AI_COACH_APPLY_PATH)}`;
+  const handleBack = async () => {
+    if (backRequiresSignOut) {
+      setBackingOut(true);
+      try {
+        await signOutAndRedirect(signOut, router, '/');
+      } catch (e) {
+        console.error('landing back signOut error:', e);
+        setBackingOut(false);
+      }
+      return;
+    }
+    router.replace('/');
+  };
 
-  const premiumApplyHref = loggedIn ? premiumApplyPath : premiumApplyLoginNext;
+  const premiumApplyHref = loggedIn ? PREMIUM_APPLY_PATH : premiumApplyLoginNext;
+  const standardApplyHref = loggedIn ? STANDARD_APPLY_PATH : standardApplyLoginNext;
 
   const render7DayCta = () => {
     if (start7dOnly) {
@@ -88,6 +104,20 @@ function Trial4wLandingContent() {
   };
 
   const renderAiCoachCta = () => {
+    if (loggedIn && profileReady && !consentAccepted) {
+      return (
+        <Link href={consentNextStandard} className="trial-landing-cta">
+          やってみる
+        </Link>
+      );
+    }
+    if (start7dOnly) {
+      return (
+        <Link href={standardApplyHref} className="trial-landing-cta">
+          申し込む
+        </Link>
+      );
+    }
     if (kizukiSignedUp) {
       return (
         <Link href="/trial_4w" className="trial-landing-cta trial-landing-cta--in-use">
@@ -95,23 +125,9 @@ function Trial4wLandingContent() {
         </Link>
       );
     }
-    if (start7dOnly) {
-      return (
-        <Link href={aiCoachApplyHref} className="trial-landing-cta">
-          申し込む
-        </Link>
-      );
-    }
     if (loggedIn && profileReady) {
-      if (!consentAccepted) {
-        return (
-          <Link href={consentNextKizuki} className="trial-landing-cta">
-            やってみる
-          </Link>
-        );
-      }
       return (
-        <Link href={kizukiTrialDest} className="trial-landing-cta">
+        <Link href={STANDARD_APPLY_PATH} className="trial-landing-cta">
           やってみる
         </Link>
       );
@@ -120,7 +136,7 @@ function Trial4wLandingContent() {
       return <span className="trial-landing-cta trial-landing-cta--in-use" aria-disabled="true">読み込み中...</span>;
     }
     return (
-      <Link href={`/login?next=${encodeURIComponent(kizukiTrialDest)}`} className="trial-landing-cta">
+      <Link href={standardApplyLoginNext} className="trial-landing-cta">
         やってみる
       </Link>
     );
@@ -161,9 +177,21 @@ function Trial4wLandingContent() {
       <div className="trial-main-wrapper">
         <div className="trial-main">
           <div className="trial-landing-top">
-            <Link href="/" className="trial-landing-back" aria-label="ホームへ戻る">
-              戻る
-            </Link>
+            {backRequiresSignOut ? (
+              <button
+                type="button"
+                className="trial-landing-back"
+                aria-label="ホームへ戻る"
+                onClick={handleBack}
+                disabled={backingOut}
+              >
+                {backingOut ? 'ログアウト中...' : '戻る'}
+              </button>
+            ) : (
+              <Link href="/" className="trial-landing-back" aria-label="ホームへ戻る">
+                戻る
+              </Link>
+            )}
           </div>
 
           <h2 className="trial-landing-headline">一度きりの人生、なりたい自分を目指しませんか？</h2>
@@ -193,8 +221,7 @@ function Trial4wLandingContent() {
             <section className="trial-landing-card" aria-label="ページ 2/2">
               <div className="trial-landing-subtitle">◆ 習慣化へのはじめの一歩</div>
               <div className="trial-landing-card-inner">
-                <div className="trial-landing-card-title">気づきと学びのマネジメント日誌「学び帳(仮)」
-                </div>
+                <div className="trial-landing-card-title">気づきと学びのマネジメント日誌「気づきノート」</div>
                 <div className="trial-landing-cols">
                   <div className="trial-landing-col">
                     <div className="trial-landing-col-header">AIコーチ</div>

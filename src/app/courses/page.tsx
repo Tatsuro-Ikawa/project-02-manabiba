@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 
 /** 旧 `/courses` → コース変更画面へ */
 export default function CoursesRedirectPage() {
@@ -12,6 +13,7 @@ export default function CoursesRedirectPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) {
+      if (!shouldRedirectUnauthenticatedToLogin()) return;
       router.replace(`/login?next=${encodeURIComponent('/courses/change')}`);
       return;
     }

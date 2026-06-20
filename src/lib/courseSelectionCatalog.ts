@@ -1,0 +1,72 @@
+/** コース変更・選択画面の機能一覧表（外部仕様・ランディング整合） */
+export type CoursePlanKey = 'free' | 'standard' | 'premium';
+
+/** ○ / ○* / ○○ / — */
+export type FeatureMark = 'yes' | 'yesFootnote' | 'yesDouble' | 'no';
+
+export type CourseFeatureRow = {
+  label: string;
+  indent?: boolean;
+  free: FeatureMark;
+  standard: FeatureMark;
+  premium: FeatureMark;
+};
+
+export const COURSE_PLAN_LABELS: Record<CoursePlanKey, string> = {
+  free: 'フリー',
+  standard: 'スタンダード',
+  premium: 'プレミアム',
+};
+
+export const COURSE_FEATURE_SECTIONS: { heading?: string; rows: CourseFeatureRow[] }[] = [
+  {
+    rows: [{ label: 'ホーム画面→情報提供サービス', free: 'yesFootnote', standard: 'yes', premium: 'yes' }],
+  },
+  {
+    rows: [{ label: '7日間スタートプログラム（開発中）', free: 'yes', standard: 'yes', premium: 'yes' }],
+  },
+  {
+    heading: 'マネジメント日誌（気づきノート）機能',
+    rows: [
+      { label: '行動宣言', indent: true, free: 'no', standard: 'yes', premium: 'yes' },
+      { label: '朝・晩→AIコメント', indent: true, free: 'no', standard: 'yes', premium: 'yes' },
+      { label: '週→AIレポート＆AI改善提案', indent: true, free: 'no', standard: 'yes', premium: 'yes' },
+      { label: '月→AIレポート＆AI改善提案', indent: true, free: 'no', standard: 'yes', premium: 'yes' },
+      { label: '28日間トライアル', indent: true, free: 'no', standard: 'yes', premium: 'yes' },
+    ],
+  },
+  {
+    rows: [{ label: 'コーチ面談サービス（Zoom）', free: 'no', standard: 'no', premium: 'yes' }],
+  },
+  {
+    heading: 'コミュニケーション機能',
+    rows: [
+      { label: '学び日記共有', indent: true, free: 'no', standard: 'no', premium: 'yesDouble' },
+      { label: 'Q&Aメッセージボード', indent: true, free: 'no', standard: 'no', premium: 'yesDouble' },
+    ],
+  },
+];
+
+export function featureMarkToDisplay(mark: FeatureMark): string {
+  if (mark === 'yes') return '○';
+  if (mark === 'yesFootnote') return '○*';
+  if (mark === 'yesDouble') return '○○';
+  return '—';
+}
+
+/** 表示用定価（ランディングの打ち消し線と整合） */
+export const COURSE_LIST_PRICING = {
+  standard: {
+    listMonthly: 1650,
+    listYearly: 15840,
+    listYearlyPerMonth: 1320,
+  },
+  premium: {
+    listMonthly: 6600,
+  },
+} as const;
+
+export const OPEN_PERIOD_PRICE_NOTE = '(オープン期間(2026年末)限定価格)';
+
+export const DATA_RETENTION_MSG =
+  'コースを変更すると、不要になったデータは90日間保存した後、削除されます。';

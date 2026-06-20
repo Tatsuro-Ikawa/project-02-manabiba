@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
 import {
   getJournalMonthlyPlain,
   getJournalWeeklyPlain,
@@ -22,6 +23,7 @@ import {
 import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
+import { JournalCoachShareHeader } from '@/components/trial/JournalCoachShareHeader';
 import { AutosizeTextarea } from '@/components/trial/AutosizeTextarea';
 import {
   journalShowMonthlyActionReviewText,
@@ -151,7 +153,7 @@ export default function TrialMonthly() {
   const displayMonthKey = monthKey || fallbackMonthKey;
   const todayKey = useMemo(() => getTodayDateKeyTokyo(), []);
   const canEdit = !!user && !loading;
-  const coachCommentsEnabled = !!userProfile?.subscription?.features?.coachComments;
+  const coachCommentsEnabled = hasCoachCommentsFeature(userProfile);
   const monthBounds = useMemo(() => getMonthStartEndDateKey(displayMonthKey), [displayMonthKey]);
 
   useEffect(() => {
@@ -531,8 +533,18 @@ export default function TrialMonthly() {
   return (
     <div className="trial-tab-content">
       <div className="trial-monthly-container">
-        <div className="trial-tab-heading-row">
+        <div className="trial-tab-heading-row trial-tab-heading-row--journal">
           <h2 id="monthly-section-title">月</h2>
+          <JournalCoachShareHeader
+            enabled={coachCommentsEnabled}
+            checked={!!data.sharedWithCoach}
+            disabled={!canEdit || saving}
+            ariaLabel="今月の学び帳をコーチに共有する"
+            onChange={(v) => {
+              setData((prev) => (prev ? { ...prev, sharedWithCoach: v } : prev));
+              void savePatch({ sharedWithCoach: v });
+            }}
+          />
         </div>
         <div className="week-nav" aria-label="月ナビ">
           <button
@@ -852,32 +864,30 @@ export default function TrialMonthly() {
           </div>
         ) : null}
 
-        <div className="action-sub-section">
-          <h3>コーチ共有</h3>
-          <label className="flex gap-2 items-center text-gray-600 text-sm">
-            <input
-              type="checkbox"
-              checked={!!data.sharedWithCoach}
-              disabled={!canEdit || !coachCommentsEnabled}
-              onChange={(e) => {
-                const v = e.target.checked;
-                setData((prev) => (prev ? { ...prev, sharedWithCoach: v } : prev));
-                void savePatch({ sharedWithCoach: v });
-              }}
-            />
-            コーチに共有する（閲覧）
-          </label>
-          {!coachCommentsEnabled && user && (
-            <p className="mt-2 text-gray-600 text-xs">現在のプランではパーソナルコーチ機能が無効です。</p>
-          )}
-          <div className="mt-3">
-            <button type="button" className="trial-action-btn" disabled>
-              コーチへ質問を送信（後続）
-            </button>
-            <p className="mt-2 text-gray-600 text-xs">
-              ※送信（＝暦月1回の消費）とスレッド作成は、クォータ実装（M2/M6）で対応します。
-            </p>
-          </div>
+        <div className="action-sub-section" data-section="monthly-coach-share">
+          {!coachCommentsEnabled && user ? (
+            <>
+              <h3>コーチ共有</h3>
+              <p className="mt-2 text-gray-600 text-xs">現在のプランではパーソナルコーチ機能が無効です。</p>
+            </>
+          ) : coachCommentsEnabled ? (
+            <>
+              <h3>コーチへの質問</h3>
+              <p className="text-xs text-gray-600 mb-2">
+                閲覧共有は右上の「コーチと共有」で切り替えられます。
+              </p>
+            </>
+          ) : null}
+          {coachCommentsEnabled ? (
+            <div className="mt-1">
+              <button type="button" className="trial-action-btn" disabled>
+                コーチへ質問を送信（後続）
+              </button>
+              <p className="mt-2 text-gray-600 text-xs">
+                ※送信（＝暦月1回の消費）とスレッド作成は、クォータ実装（M2/M6）で対応します。
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

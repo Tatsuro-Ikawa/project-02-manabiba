@@ -6,14 +6,24 @@
 
 **同意方針（A案・2026-05-20）**: フリー・有料を問わず **利用規約＋プライバシーを1回**（`consents`）。利用規約は同意画面で **章立て**（共通／7日間／気づきノート）を表示し読み分け。7日間専用の二重同意（`/start-program/consent`・`startProgram7dConsents`）は **廃止**。**既存会員のコースアップグレード**（例: フリー→STD、STD→PRE）では **再同意なし**（[04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1）。
 
+**導線別 E2E（ゲスト→フリー・7日間）**: 導線①〜⑧ **すべて OK**（**2026-06-14** 実施）。正本は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §5.0「**導線チェックリスト_1**」。
+
+**導線別 E2E（ゲスト→スタンダード・AIコーチ）**: 導線①〜⑧ **すべて OK**。正本は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §5.1「**導線チェックリスト_2**」。
+
+**導線別 E2E（ゲスト→プレミアム・パーソナルコーチ）**: 導線①〜⑧・申込手順 A-1〜A-7 **すべて OK**（**2026-06-05** 実施）。正本は同 §5.2「**導線チェックリスト_3**」。
+
+**導線別 E2E（フリー会員→ゲスト・ログアウト）**: 導線①〜③のチェックリストは同 §5.3「**導線チェックリスト_4**」（結果欄は未実施）。
+
+**導線別 E2E（フリー会員→スタンダード・アップグレード）**: 導線①〜②のチェックリストは同 §5.4「**導線チェックリスト_5**」および **申込手順（デモ）　フリー→スタンダード**（B-1〜B-5）（結果欄は未実施）。
+
 ### ログイン入口（パッケージ A・2026-05）
 
-**URL 約束**: `/login?next=` には**最終行先のみ**（例: `/`、`/start-program`）。`/login` が `post-login` にラップする。分岐図は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1.2。
+**URL 約束**: `/login?next=` には**最終行先のみ**（例: `/`、`/start-program`）。`/login` が `post-login` にラップする。分岐図は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1.2。**検証用フィールド一覧**は同 §2.1.3。
 
 | 種別 | 入口 | 遷移 | OK |
 |------|------|------|-------|
 | **初回** | ホーム「**試してみる**」 | `/trial_4w/landing` → コース「やってみる」→ `/login?next=...` → 同意 → コース |   |
-| **再ログイン** | ホーム「**ログインして続きから**」 | `/login?next=/` → 同意済みなら `/`、**初回（コース未選択）**は `/trial_4w/landing?needsConsent=1`、コース選択済み・未同意のみ `/consent?next=/` |   |
+| **再ログイン** | ホーム「**ログインして続きから**」 | `/login?next=/` → 同意済み **`start7d` のみ** → `/start-program`、**kizuki/有料** → `/`、**初回** → `needsConsent=1` ランディング |   |
 | **ヘッダー（ゲスト）** | 人型アイコン **表示のみ**（クリック不可） | `/login` へは行かない |   |
 | **ヘッダー（ログイン済）** | アバター | メニュー（マイページ・ログアウト等） |  |
 
@@ -55,6 +65,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 - **`users/{uid}` ドキュメントを削除**（サブコレクション `journal_*` 等も消えるので注意）。
 - 次回ログインで `createDefaultUserProfile` が走り、`plan: free` 等の初期値で再作成される（`consents` は無い＝未同意）。
+- **表1（7日間）再テスト時**: AI 検証で入れた **`subscription.trialEndsAt`** や誤訪問で残った **`enrollment.primaryCourse`**（`kizuki`）も削除すること。残るとランディング AI が「利用中」になる（§2.1.3）。
 
 ### パターン C：完全に別ユーザー
 
@@ -72,7 +83,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 ### 注意
 
-- **利用規約とプライバシーは別画面ではない。** いずれも **1画面**（`/consent`）でスクロール条文（規約は章立て＋プライバシー1本）＋**チェック2つ**（規約／プライバシー）＋「同意して続ける」。
+- **利用規約とプライバシーは別画面ではない。** いずれも **1画面**（`/consent`）でスクロール条文（規約は章立て＋プライバシー1本）＋**チェック2つ**（規約／プライバシー）＋「同意して続ける」＋**「キャンセル（コース選択に戻る）」**（キャンセル時は **ログオフ** してゲストとしてランディングへ）。
 - ランディング（`/trial_4w/landing`）はログイン済みでも「やってみる」から再入可能。ブロックされるのは **同意済みのあと、目的 URL へ直行してしまう**場合。同意を消せば再度 `/consent` が出る。
 - `/start-program/consent` は **存在しない**（旧 URL は 404 相当。必要なら将来 `/consent` へリダイレクトを検討）。
 
@@ -103,17 +114,18 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 ## 3. 7日間プログラム（フリーコース）
 
-**想定導線（A案・2026-06-05 修正）**: ゲスト → ランディングでフリー選択 → ログイン → **ランディングへ戻る**（`needsConsent=1`）→ 再度フリー **やってみる** → **会員同意1回**（`/consent`）→ `/start-program`（7日間ダミー）。詳細は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1.1
+**想定導線（A案・2026-06-07）**: ゲスト → ランディングで7日間選択 → ログイン → **会員同意**（`/consent`）→ `/start-program`。ランディングは**1回のみ**（試してみる経路）。詳細は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §2.1.1・§5.0
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
 | 7-1 | **ログアウト**した状態で `/trial_4w/landing` を開く | コース選択が表示される（7日間1列・気づきノート2列） |OK |
-| 7-2 | 「自分を変える7日間」／セルフ（フリーコース）の **やってみる** を押す | `/login?next=...` へ（未ログイン時） |OK |
-| 7-3 | Google でログイン | `/post-login?next=/start-program` 経由後、**`/trial_4w/landing?needsConsent=1&next=...`** に戻る（案内バナー表示） | |
-| 7-3b | ランディングで再度フリー **やってみる**（ログイン済・未同意） | **`/consent?next=/start-program`** へ | |
-| 7-4 | **会員同意** `/consent?next=/start-program` | 章立てのダミー条文（第1章共通／第2章7日間／第3章気づきノート／第4章免責）＋プライバシー1本が**同一スクロール枠**に表示される |OK |
+| 7-2 | 「自分を変える7日間」／セルフ（フリーコース）の **やってみる** を押す | `/login?next=/start-program` へ（未ログイン時） |OK |
+| 7-3 | Google でログイン | `/post-login?next=/start-program` 経由後、**`/consent?next=/start-program`** へ直行（**ランディング再表示なし**） | |
+| 7-3b | **既会員（同意済み・start7d）**がゲストから同導線（**導線⑦**） | ログイン後 **`/start-program` 直行**（ランディング・同意スキップ。誤操作フロー） | OK |
+| 7-4 | **会員同意** `/consent?next=/start-program` | 章立てのダミー条文（第1章共通／第2章7日間／第3章気づきノート／第4章免責）＋プライバシー1本が**同一スクロール枠**に表示される。**キャンセル**ボタンあり |OK |
 | 7-5 | 条文を**末尾までスクロール** | チェックボックスが有効になる |OK |
 | 7-6 | 利用規約・プライバシーの **2つにチェック** → **同意して続ける** | Firestore に **`consents` のみ** 保存（`termsVersion` / `privacyVersion` / `acceptedAt`） | OK|
+| 7-6b | 同意画面で **キャンセル（コース選択に戻る）** | **ログオフ** → **`/trial_4w/landing`**（ゲスト表示）。`consents` 未保存 | OK |
 | 7-7 | **`/start-program` に直行** | **二重同意画面なし**。ヘッダー「7日間スタートプログラム」、7日間ダミー本文。Firestore に `enrollment.primaryCourse = start7d` | |
 | 7-8 | Firestore（任意） | `startProgram7dConsents` は**保存されない**（フィールド無しでよい） |OK |
 | 7-9 | サイドバー **スタート** | `/start-program` で同画面。同意済みなら `/consent` は出ない |OK |
@@ -143,17 +155,19 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 ## 4. 気づきノート・スタンダード（AIコーチ／28日お試し導線）
 
+**導線チェック**: [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §5.1「**導線チェックリスト_2**」（導線①〜⑧）および **申込手順（デモ）　スタンダード**（A-1〜A-6）。フロー図は同 §5.1 Mermaid。
+
 ### 4.0 導線の整理（仕様 vs 現状・2026-05-20）
 
 **ゲスト導線（未ログイン）** — 実装・ドキュメント一致
 
-`/`（試してみる）→ `/trial_4w/landing` → AIコーチ「やってみる」→ `/login?next=…` → `/post-login?next=/trial_4w` →（未同意なら `/consent`）→ `/trial_4w`
+`/`（試してみる）→ `/trial_4w/landing` → AIコーチ「やってみる」→ `/login?next=/apply?plan=standard` → `/post-login` →（未同意なら `/consent?next=/apply?plan=standard`）→ デモ申込 `/apply?plan=standard` → **`/trial_4w`**
 
 →OK:26/05/24
 
 **再ログイン（ログアウト後）** — パッケージ A（2026-05 実装）
 
-`/` → 「**ログインして続きから**」→ `/login?next=/` → 同意済みなら **`/`**、初回（コース未選択）なら `/trial_4w/landing?needsConsent=1`
+`/` → 「**ログインして続きから**」→ `/login?next=/` → 同意済み **`start7d` のみ** → **`/start-program`**、**kizuki/STD/PRE** → **`/trial_4w`**（**導線⑧**）、初回（コース未選択）→ `/trial_4w/landing?needsConsent=1`
 
 
 **ログイン後ホーム**（未ログイン時との違い）
@@ -195,16 +209,17 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 →旧NG：気づき選択 UID で上記案内文だけ出る → バナーと同じ判定ミス。**修正後は `shouldShowStart7dHomeHint` と同期**。
 
-**想定導線（ゲスト）**: ゲスト → ランディングでスタンダード選択 → ログイン → **会員同意1回**（`/consent`）→ 気づきノート `/trial_4w`  
+**想定導線（ゲスト）**: ゲスト → ランディングでスタンダード選択 → ログイン → **会員同意1回**（`/consent`）→ **デモ申込**（`/apply?plan=standard`、特定商取引法情報表示）→ 気づきノート `/trial_4w`  
 **注意**: 7日間プログラムに行かない場合も、同意は **`consents` 1回**（7日間専用同意は廃止）。
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
 | S-1 | ログアウト → `/trial_4w/landing` | ランディング表示 |OK |
-| S-2 | 気づきノート **AIコーチ** の **やってみる** | `/login?next=...trial_4w` |OK |
-| S-3 | ログイン | `/post-login?next=/trial_4w` |OK |
-| S-4 | 未同意なら `/consent?next=/trial_4w` | 章立て条文＋プライバシー。スクロール＋2チェック＋同意 |OK |
-| S-5 | `/trial_4w` | ヘッダー「気づきノート」、タブ（行動宣言／朝・晩／週／月） |OK |
+| S-2 | 気づきノート **AIコーチ** の **やってみる** | `/login?next=/apply?plan=standard` | |
+| S-3 | ログイン | `/post-login?next=/apply?plan=standard` | |
+| S-4 | 未同意なら `/consent?next=/apply?plan=standard` | 章立て条文＋プライバシー。スクロール＋2チェック＋同意 | |
+| S-4b | デモ申込 `/apply?plan=standard` | 販売事業者情報・料金表示。送信後 **`/trial_4w` へ自動遷移** | |
+| S-5 | `/trial_4w` | ヘッダー「気づきノート」、タブ（行動宣言／朝・晩／週／月） | |
 | S-6 | サイドバー **ノート**（旧・実行） | `/trial_4w`、ノートが active | |
 | S-7 | ランディング付近 | 特商法「こちら」→ `/legal/tokushoho` |OK |
 | S-8 | Firestore（任意） | **`consents` のみ**。`startProgram7dConsents` は不要 |OK |
@@ -214,14 +229,14 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
 | S-L0 | ログアウト後、ホーム「ログインして続きから」 | `/` に戻る（同意済み UID） | |
-| S-L1 | **§4.0 ②を経て** ランディングで AIコーチ **やってみる** | `/post-login?next=/trial_4w` → 同意済みなら **`/trial_4w`**（ランディングは通過済み） | |
-| S-L1b | 同上・未同意 | `/consent?next=/trial_4w` のあと `/trial_4w` | |
+| S-L1 | **§4.0 ②を経て** ランディングで AIコーチ **やってみる** | `/post-login?next=/apply?plan=standard` → 同意済みなら **申込 or `/trial_4w`** | |
+| S-L1b | 同上・未同意 | `/consent?next=/apply?plan=standard` → 申込 → `/trial_4w` | |
 
 **7日間同意済みアカウントで気づきノートへ（横断）**
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
-| S-X1 | 7日間導線で既に `consents` 済みの UID で AIコーチ **やってみる** | **再度 `/consent` は出ない**。直接 `/trial_4w` | |
+| S-X1 | 7日間導線で既に `consents` 済みの UID で AIコーチ **やってみる** | **再度 `/consent` は出ない**。申込 → `/trial_4w` | |
 
 **サブスク状態の手動確認（Stripe 未接続時）**
 
@@ -232,14 +247,20 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 ---
 
-## 5. 気づきノート・プレミアム（プライベートコーチ）
+## 5. 気づきノート・プレミアム（パーソナルコーチ）
 
-**現状 UI**: ランディングのプレミアム **やってみる** は **disabled**（申込フロー未実装）。
+**導線 E2E（ゲスト→プレミアム）**: 正本は [04_SUBSCRIPTION_STATE_TRANSITIONS.md](./04_SUBSCRIPTION_STATE_TRANSITIONS.md) §5.2「**導線チェックリスト_3**」（導線①〜⑧）および **申込手順（デモ）　プレミアム**（A-1〜A-6）。
+
+**現状 UI**: ランディングのプレミアム CTA は「**申し込む**」（`/apply?plan=premium`）。Stripe 連携前のデモ申込フォームあり。
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
-| P-1 | `/trial_4w/landing` | プレミアム列は表示、CTA は押せない | |
-| P-2 | （将来）申込実装後 | ログイン → **同意1回**（`/consent`）→ 申込 → `/trial_4w` 等を再定義 | |
+| P-1 | `/trial_4w/landing` | プレミアム列「申し込む」→ `login?next=/apply?plan=premium`（ゲスト） | OK |
+| P-2 | 導線①（未会員） | 同意 → `/apply?plan=premium`（デモ事業者情報）→ 送信後 **`/trial_4w`** | OK |
+| P-2a | 導線①・プレミアム到達後 | **月**タブ「コーチと共有」（見出し右上）が有効 | OK |
+| P-2b | 同上・**週**タブ | 「コーチと共有」（見出し右上）が有効（閲覧のみ。質問は月タブ） | OK |
+| P-2c | 同上・**行動宣言** | 発行済みテーマ「表示」後、タイトルバーに「コーチと共有」 | OK |
+| P-3 | 導線⑦⑧（既会員・`plan=premium`） | 気づきノート `/trial_4w` へ | OK |
 
 **手動でプレミアム挙動だけ試す場合**
 
@@ -268,9 +289,11 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 |---|------|----------|-----|
 | H-1 | ログアウト → `/` | 「試してみる」→ `/trial_4w/landing` | |
 | H-2 | 未ログイン `/` | 「**ログインして続きから**」がリンクとして有効 | |
-| H-3 | 「ログインして続きから」→ 同意済み UID | Google → **`/`**（`/consent` なし） | |
+| H-3 | 「ログインして続きから」→ 同意済み UID（**気づきノート / STD / PRE**） | Google → **`/`**（`/consent` なし） | |
+| H-3b | 同上（**start7d のみ**・**導線⑧**） | Google → **`/start-program`** | OK |
 | H-4 | 「ログインして続きから」→ **初回**（`consents` 無し・コース未選択） | Google → **`/trial_4w/landing?needsConsent=1`**（同意画面は出ない） | |
-| H-4b | 同上 UID でランディングからコース選択後 | `/consent?next=...` → 同意後コース先 | |
+| H-4b | 同上ランディングで **戻る**（**導線⑤**） | **ログオフ** → **`/`**（ゲストホーム。「試してみる」バナー） | OK |
+| H-4c | 同上ランディング → 7日間 → 同意 → **キャンセル**（**導線⑥**） | **ログオフ** → **`/trial_4w/landing`**（ゲスト）。`consents` 未保存 | OK |
 | H-5 | ログイン済み → `/` | 「気づきノートを続ける」→ `/trial_4w` | |
 | H-6 | 未ログイン時ヘッダー | 人型アイコンのみ。**「ログイン」テキストリンクなし** | |
 
@@ -290,9 +313,10 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
-| B-0 | **初回**（`users/{uid}` 削除・未同意）で「ログインして続きから」→ Google | `/post-login?next=/` → **`/trial_4w/landing?needsConsent=1`**（**同意画面は出ない**）→ コース選択後に `/consent` | |
+| B-0 | **初回**（`users/{uid}` 削除・未同意）で「ログインして続きから」→ Google | `/post-login?next=/` → **`/trial_4w/landing?needsConsent=1`** → コース選択後に `/consent`（**導線④** の前提） | |
 | B-1 | 一度同意済み UID でログアウト → `/` | 「試してみる」＋「ログインして続きから」表示 | |
-| B-2 | 「ログインして続きから」→ Google | `/post-login?next=/` → **`/consent` は出ない** → `/` | |
+| B-2 | 「ログインして続きから」→ Google（**start7d**） | `/post-login?next=/` → **`/start-program`**（**導線⑧**） | OK |
+| B-2b | 同上（**kizuki / 有料**） | `/post-login?next=/` → **`/`** | |
 | B-3 | `/` ログイン後 | 「気づきノートを続ける」→ `/trial_4w`（ランディング不要） | |
 
 ---
@@ -307,6 +331,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 | C-2 | スクロール前 | チェックボックスは無効（または送信不可） | |
 | C-3 | スクロール未到達で送信 | エラーまたは送信不可 | |
 | C-4 | 同意送信後 | `consents` 保存 → `next` クエリ先へ遷移 | |
+| C-4b | **キャンセル**（チェック未完了でも可） | **`signOut`** → **`/trial_4w/landing`**（ゲスト）。`consents` は保存されない | OK |
 | C-5 | 版不一致（Console で古い `termsVersion` に変更） | 再同意が要求される | |
 
 ---
@@ -315,7 +340,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 | 項目 | 内容 |
 |------|------|
-| 実施日 | |
+| 実施日 | 2026-06-14（導線チェックリスト_1 OK）／2026-06-05（導線チェックリスト_3 OK） |
 | 実施者 | |
 | 環境（local / preview URL） | |
 | テスト UID | |

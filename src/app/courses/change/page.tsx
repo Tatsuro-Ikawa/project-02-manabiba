@@ -8,6 +8,7 @@ import LeftSidebar from '@/components/proto/LeftSidebar';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { CourseChangePanel } from '@/components/subscription/CourseChangePanel';
 import { useAuth } from '@/hooks/useAuth';
+import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 import '@/styles/subscription-flow.css';
 
 function CourseChangeContent() {
@@ -26,6 +27,7 @@ function CourseChangeContent() {
   useEffect(() => {
     if (loading) return;
     if (!user) {
+      if (!shouldRedirectUnauthenticatedToLogin()) return;
       router.replace(`/login?next=${encodeURIComponent('/courses/change')}`);
     }
   }, [loading, user, router]);
@@ -41,16 +43,13 @@ function CourseChangeContent() {
       <LeftSidebar variant="home" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="trial-main-wrapper">
-        <div className="trial-main">
-          <div className="sub-flow-page-head">
-            <Link href="/" className="sub-flow-back">
-              ホームへ戻る
+        <div className="trial-main course-change-main">
+          <div className="trial-landing-top">
+            <Link href="/" className="trial-landing-back" aria-label="ホームへ戻る">
+              戻る
             </Link>
-            <h1>コース変更</h1>
-            <p className="sub-flow-note">
-              Stripe 連携前の仮画面です。プラン変更の表示・導線確認用。
-            </p>
           </div>
+          <h1 className="course-change-page-title">コース変更・選択画面</h1>
           {!loading && user ? <CourseChangePanel userProfile={userProfile} /> : <p>読み込み中...</p>}
         </div>
       </div>

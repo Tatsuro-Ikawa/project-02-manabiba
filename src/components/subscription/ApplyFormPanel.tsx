@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { DEMO_MERCHANT, DEMO_PLAN_PRICING, type ApplyPlan } from '@/lib/demoMerchantInfo';
+import { shouldSkipDemoApplyForm } from '@/lib/enrollmentCourse';
+import { applyDemoPlanEnrollment } from '@/lib/firestore';
+import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 
 function parsePlan(raw: string | null): ApplyPlan | null {
   if (raw === 'standard' || raw === 'premium') return raw;
@@ -12,7 +15,7 @@ function parsePlan(raw: string | null): ApplyPlan | null {
 }
 
 export function ApplyFormPanel() {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, refreshUserProfile } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = useMemo(() => parsePlan(searchParams.get('plan')), [searchParams]);
@@ -23,11 +26,13 @@ export function ApplyFormPanel() {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [agreeTokushoho, setAgreeTokushoho] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
+      if (!shouldRedirectUnauthenticatedToLogin()) return;
       const next = plan ? `/apply?plan=${plan}` : '/apply';
       router.replace(`/login?next=${encodeURIComponent(next)}`);
       return;
@@ -37,12 +42,23 @@ export function ApplyFormPanel() {
     }
   }, [loading, user, plan, router]);
 
+  const profilePending = !!user && !userProfile;
+  const skipApply =
+    !loading && !!userProfile && !!plan && shouldSkipDemoApplyForm(userProfile, plan);
+
+  useEffect(() => {
+    if (loading || !userProfile || !plan) return;
+    if (shouldSkipDemoApplyForm(userProfile, plan)) {
+      router.replace('/trial_4w');
+    }
+  }, [loading, userProfile, plan, router]);
+
   useEffect(() => {
     if (!user) return;
     setName(user.displayName ?? '');
   }, [user]);
 
-  if (loading || !plan || !pricing) {
+  if (loading || !plan || !pricing || profilePending || skipApply) {
     return (
       <div className="sub-flow-panel">
         <p>読み込み中...</p>
@@ -50,31 +66,20 @@ export function ApplyFormPanel() {
     );
   }
 
-  if (submitted) {
-    return (
-      <div className="sub-flow-panel sub-flow-success">
-        <h2 className="sub-flow-title">お申し込みを受け付けました（デモ）</h2>
-        <p className="sub-flow-lead">
-          Stripe 連携前のデモ画面です。実際の課金・契約更新は行われていません。
-        </p>
-        <p className="sub-flow-note">
-          {pricing.trialDays}日間の無料お試し終了後、月額 {pricing.openPriceMonthly.toLocaleString()}
-          円（税込）の課金が開始される予定です。
-        </p>
-        <Link href="/trial_4w" className="trial-landing-cta sub-flow-cta-link">
-          気づきノートへ
-        </Link>
-        <Link href="/courses/change" className="sub-flow-text-link">
-          コース変更画面へ
-        </Link>
-      </div>
-    );
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agreeTokushoho) return;
-    setSubmitted(true);
+    if (!agreeTokushoho || !user || !plan) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await applyDemoPlanEnrollment(user.uid, plan);
+      await refreshUserProfile();
+      router.replace('/trial_4w');
+    } catch (err) {
+      console.error('demo apply enrollment error:', err);
+      setError('お申し込みの保存に失敗しました。しばらくしてから再試行してください。');
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -181,11 +186,21 @@ export function ApplyFormPanel() {
           </span>
         </label>
 
-        <button type="submit" className="trial-landing-cta sub-flow-submit" disabled={!agreeTokushoho}>
-          申し込む（デモ）
+        {error ? (
+          <p className="text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <button
+          type="submit"
+          className="trial-landing-cta sub-flow-submit"
+          disabled={!agreeTokushoho || submitting}
+        >
+          {submitting ? '送信中...' : '申し込む（デモ）'}
         </button>
         <p className="sub-flow-note">
-          決済（Stripe）は未接続です。送信しても課金は発生しません。
+          決済（Stripe）は未接続です。送信後、気づきノート画面へ移動します（課金は発生しません）。
         </p>
       </form>
     </div>

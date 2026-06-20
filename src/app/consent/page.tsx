@@ -6,7 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLegalDocuments } from '@/hooks/useLegalDocuments';
 import { hasAcceptedCurrentConsents } from '@/lib/consent';
-import { updateUserConsents } from '@/lib/firestore';
+import { applyConsentCourseEnrollment, updateUserConsents } from '@/lib/firestore';
+import { CONSENT_CANCEL_LANDING, resolveOnboardingDestination } from '@/lib/onboardingFlow';
+import { shouldRedirectUnauthenticatedToLogin, signOutAndRedirect } from '@/lib/intentionalSignOut';
 import { ConsentLegalScrollPanel } from '@/components/consent/ConsentLegalScrollPanel';
 
 function sanitizeNext(next: string | null): string {
@@ -16,7 +18,7 @@ function sanitizeNext(next: string | null): string {
 }
 
 function ConsentContent() {
-  const { user, userProfile, loading, refreshUserProfile } = useAuth();
+  const { user, userProfile, loading, refreshUserProfile, signOut } = useAuth();
   const { bundle, loading: legalLoading, error: legalError } = useLegalDocuments();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,6 +28,7 @@ function ConsentContent() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleScrollEndReached = useCallback(() => {
@@ -35,15 +38,29 @@ function ConsentContent() {
   useEffect(() => {
     if (loading || legalLoading || !bundle) return;
     if (!user) {
+      if (!shouldRedirectUnauthenticatedToLogin()) return;
       router.replace(`/login?next=${encodeURIComponent(`/consent?next=${nextPath}`)}`);
       return;
     }
     if (userProfile && hasAcceptedCurrentConsents(userProfile, bundle.terms.version, bundle.privacy.version)) {
-      router.replace(nextPath);
+      router.replace(resolveOnboardingDestination(userProfile, nextPath));
     }
   }, [loading, legalLoading, bundle, user, userProfile, router, nextPath]);
 
-  const canSubmit = legalRead && agreeTerms && agreePrivacy && !saving && !!bundle;
+  const handleCancel = async () => {
+    setError(null);
+    setCancelling(true);
+    try {
+      await signOutAndRedirect(signOut, router, CONSENT_CANCEL_LANDING);
+    } catch (e) {
+      console.error('consent cancel signOut error:', e);
+      setError('キャンセル処理に失敗しました。しばらくしてから再試行してください。');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const canSubmit = legalRead && agreeTerms && agreePrivacy && !saving && !cancelling && !!bundle;
 
   const handleSubmit = async () => {
     if (!user || !bundle) return;
@@ -55,6 +72,7 @@ function ConsentContent() {
         termsVersion: bundle.terms.version,
         privacyVersion: bundle.privacy.version,
       });
+      await applyConsentCourseEnrollment(user.uid, nextPath);
       await refreshUserProfile();
       router.replace(nextPath);
     } catch (e) {
@@ -145,16 +163,28 @@ function ConsentContent() {
           </p>
         )}
 
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? '保存中...' : '同意して続ける'}
-        </button>
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? '保存中...' : '同意して続ける'}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={saving || cancelling}
+            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-4 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {cancelling ? 'ログアウト中...' : 'キャンセル（コース選択に戻る）'}
+          </button>
+        </div>
 
-        <p className="text-xs text-gray-500 mt-4">同意しない場合はサービスを利用できません。</p>
+        <p className="text-xs text-gray-500 mt-4">
+          同意しない場合は「キャンセル」で一度ログアウトし、ゲストとしてランディングで別のコースを選べます。
+        </p>
       </div>
     </div>
   );

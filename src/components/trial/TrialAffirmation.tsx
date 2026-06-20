@@ -26,6 +26,7 @@ import {
   updateTrialAffirmationUiMetaFields,
 } from '@/lib/firestore';
 import type { TrialAffirmationSubmenu } from '@/types/auth';
+import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
 import { AffirmationMarkdownView } from '@/components/common/AffirmationMarkdownView';
 import { useViewMode } from '@/context/ViewModeContext';
 import { getAffirmationCoachShareState, setAffirmationSharedWithCoach } from '@/lib/coachAffirmationShare';
@@ -108,6 +109,7 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
   const { user, loading, userProfile } = useAuth();
   const { mode } = useViewMode();
   const loggedIn = !loading && !!user;
+  const coachCommentsEnabled = hasCoachCommentsFeature(userProfile);
   const profile = AFFIRMATION_PROFILE_V1;
   const [slots, setSlots] = useState<SlotValues>({});
   const [initialLoading, setInitialLoading] = useState(true);
@@ -1767,15 +1769,17 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
                     {lastSelectedAffirmationId && !lastSelectedAffirmationId.startsWith('draft:') ? (
                       <div className="affirmation-theme-title-bar">
                         <span className="affirmation-theme-title-text">{selectedThemeTitleBar}</span>
-                        <label className="affirmation-coach-share-label">
-                          <input
-                            type="checkbox"
-                            checked={clientShareWithCoach}
-                            disabled={clientShareLoading}
-                            onChange={(e) => void handleClientCoachShareToggle(e.target.checked)}
-                          />
-                          コーチ共有
-                        </label>
+                        {coachCommentsEnabled ? (
+                          <label className="affirmation-coach-share-label">
+                            <input
+                              type="checkbox"
+                              checked={clientShareWithCoach}
+                              disabled={clientShareLoading}
+                              onChange={(e) => void handleClientCoachShareToggle(e.target.checked)}
+                            />
+                            コーチと共有
+                          </label>
+                        ) : null}
                       </div>
                     ) : null}
                     <AffirmationMarkdownView markdown={mainPreviewMarkdown} className="affirmation-preview-body" />

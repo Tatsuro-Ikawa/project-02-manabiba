@@ -203,3 +203,139 @@
   font-size: 0.875rem;
   color: var(--brand, #3a86ff);
 }
+
+/* コース変更・選択画面（3プラン＋機能一覧） */
+.course-change-main {
+  max-width: min(100%, 980px);
+}
+
+.course-change-page-title {
+  margin: 0 0 20px;
+  font-size: 1.375rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--ink, #121212);
+}
+
+.course-change-panel {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 4px 32px;
+}
+
+.course-change-lead {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--muted, #525866);
+}
+
+.course-change-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+
+.course-change-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  background: var(--color-background-secondary, #f8faf8);
+  border: 1px solid var(--color-border, #e6ebf5);
+  border-radius: var(--radius-md, 8px);
+}
+
+.course-change-col .trial-landing-col-header {
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.course-change-col .trial-landing-price-box {
+  flex: 1;
+}
+
+.course-change-col .trial-landing-cta,
+.course-change-col .sub-flow-cta-btn {
+  width: 100%;
+  margin-top: auto;
+}
+
+.course-change-feature-wrap {
+  margin-top: 8px;
+}
+
+.course-change-feature-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.45;
+  color: var(--ink, #121212);
+}
+
+.course-change-feature-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.course-change-feature-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  background: #fff;
+  border: 1px solid var(--color-border, #e6ebf5);
+}
+
+.course-change-feature-table th,
+.course-change-feature-table td {
+  border: 1px solid var(--color-border, #e6ebf5);
+  padding: 8px 10px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.course-change-feature-table thead th {
+  background: var(--color-secondary, #e8f0e8);
+  font-weight: 700;
+}
+
+.course-change-feature-table tbody th[scope='row'] {
+  text-align: left;
+  font-weight: 500;
+  background: #fafafa;
+}
+
+.course-change-feature-section-row th {
+  text-align: left;
+  font-weight: 700;
+  background: #f0f4f0;
+}
+
+.course-change-feature-indent {
+  padding-left: 1.75rem !important;
+}
+
+.course-change-footnote {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: var(--muted, #525866);
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .course-change-cols {
+    grid-template-columns: 1fr;
+  }
+
+  .course-change-page-title {
+    font-size: 1.125rem;
+    text-align: left;
+  }
+}

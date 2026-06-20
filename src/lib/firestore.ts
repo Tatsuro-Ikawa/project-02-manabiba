@@ -22,7 +22,8 @@ import { db } from './firebase';
 import { normalizeJournalWeekStartsOnField } from '@/lib/journalWeek';
 import { decrypt, encrypt } from '@/utils/encryption';
 import { User } from 'firebase/auth';
-import { normalizePrimaryCourse } from '@/lib/enrollmentCourse';
+import { consentNextImpliesKizuki, consentNextImpliesStart7d, normalizePrimaryCourse } from '@/lib/enrollmentCourse';
+import { featuresForPlan, normalizeUserSubscription } from '@/lib/subscription/planDefaults';
 import {
   UserProfile,
   type PrimaryCourse,
@@ -213,13 +214,9 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
               primaryCourse: normalizePrimaryCourse(data.enrollment.primaryCourse) ?? null,
             }
           : undefined,
-        subscription: {
-          ...data.subscription,
-          startDate: data.subscription?.startDate?.toDate(),
-          endDate: data.subscription?.endDate?.toDate(),
-          trialEndsAt: data.subscription?.trialEndsAt?.toDate?.() ?? undefined,
-          currentPeriodEnd: data.subscription?.currentPeriodEnd?.toDate?.() ?? undefined,
-        },
+        subscription: normalizeUserSubscription(
+          data.subscription as Record<string, unknown> | undefined
+        ),
       } as UserProfile;
     }
     return null;
@@ -313,6 +310,79 @@ export const updateUserConsents = async (
     throw error;
   }
 };
+
+const KIZUKI_TRIAL_DAYS = 28;
+
+/**
+ * 気づきノート（AIコーチ）初回開始時に 28日お試しの `trialEndsAt` を付与する。
+ * 既に未来日が設定されていれば変更しない。`plan: free` のみ対象。
+ */
+export async function ensureKizukiTrialEndsAtIfNeeded(uid: string): Promise<void> {
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const sub = snap.data()?.subscription as Record<string, unknown> | undefined;
+  if (sub?.plan !== 'free') return;
+  const rawEnd = sub.trialEndsAt as { toDate?: () => Date } | undefined;
+  const existing = rawEnd?.toDate?.();
+  if (existing && existing.getTime() > Date.now()) return;
+
+  const ends = new Date();
+  ends.setDate(ends.getDate() + KIZUKI_TRIAL_DAYS);
+  await updateDoc(ref, {
+    'subscription.trialEndsAt': Timestamp.fromDate(ends),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * デモ申込フォーム送信後: 主コース・プラン・28日お試しを反映する（Stripe 連携前）。
+ */
+export async function applyDemoPlanEnrollment(
+  uid: string,
+  plan: 'standard' | 'premium'
+): Promise<void> {
+  await ensureUserEnrollmentPrimaryCourse(uid, 'kizuki');
+
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+
+  const sub = snap.data()?.subscription as Record<string, unknown> | undefined;
+  const rawEnd = sub?.trialEndsAt as { toDate?: () => Date } | undefined;
+  const existingEnd = rawEnd?.toDate?.();
+
+  const updates: Record<string, unknown> = {
+    'subscription.plan': plan,
+    'subscription.status': 'active',
+    'subscription.features': featuresForPlan(plan),
+    updatedAt: serverTimestamp(),
+  };
+
+  if (!existingEnd || existingEnd.getTime() <= Date.now()) {
+    const ends = new Date();
+    ends.setDate(ends.getDate() + KIZUKI_TRIAL_DAYS);
+    updates['subscription.trialEndsAt'] = Timestamp.fromDate(ends);
+  }
+
+  await updateDoc(ref, updates);
+}
+
+/**
+ * 会員同意直後: `next` に応じて主コースを記録する。
+ * - `/start-program` → `start7d`（同意保存時。`/start-program` 到達時も idempotent に再設定）
+ * - `/trial_4w` 系 → `kizuki` ＋ お試し `trialEndsAt`（未設定時）
+ */
+export async function applyConsentCourseEnrollment(uid: string, nextPath: string): Promise<void> {
+  if (consentNextImpliesKizuki(nextPath)) {
+    await ensureUserEnrollmentPrimaryCourse(uid, 'kizuki');
+    await ensureKizukiTrialEndsAtIfNeeded(uid);
+    return;
+  }
+  if (consentNextImpliesStart7d(nextPath)) {
+    await ensureUserEnrollmentPrimaryCourse(uid, 'start7d');
+  }
+}
 
 // アファメーション（穴埋め）下書き
 const AFFIRMATION_DRAFTS_SUBCOLLECTION = 'affirmation_drafts';
@@ -913,6 +983,8 @@ export type JournalWeeklyPlain = {
   weeklyAiImprovementRunCount: number | null;
   /** 上記回数を集計した日付キー（YYYY-MM-DD, JST） */
   weeklyAiImprovementRunDateKey: string | null;
+  /** 人コーチへの共有（閲覧）を許可するか。週次は共有のみ（質問・回答は月次） */
+  sharedWithCoach?: boolean;
 
   /**
    * 互換（旧）: 以前の週次UIで使っていた統合欄。
@@ -947,6 +1019,7 @@ export type JournalWeeklyEncrypted = {
   weeklyAiReportRunDateKey: string | null;
   weeklyAiImprovementRunCount: number | null;
   weeklyAiImprovementRunDateKey: string | null;
+  sharedWithCoach?: boolean;
 
   // 互換（旧）: 過去フィールド（残して読み出し可能にする）
   actionContentAndOutcomeTextEncrypted?: string | null;
@@ -978,6 +1051,7 @@ export function journalWeeklyPlainEmpty(weekStartKey: string): JournalWeeklyPlai
     weeklyAiReportRunDateKey: null,
     weeklyAiImprovementRunCount: null,
     weeklyAiImprovementRunDateKey: null,
+    sharedWithCoach: false,
   };
 }
 
@@ -1032,6 +1106,7 @@ export async function getJournalWeeklyPlain(
       typeof data.weeklyAiImprovementRunDateKey === 'string' && data.weeklyAiImprovementRunDateKey
         ? data.weeklyAiImprovementRunDateKey
         : null,
+    sharedWithCoach: data.sharedWithCoach ?? false,
 
     // 互換（旧）
     actionContentAndOutcomeText: await decryptOrNull(data.actionContentAndOutcomeTextEncrypted),
@@ -1055,6 +1130,10 @@ export async function saveJournalWeeklyPlain(params: {
     tz: 'Asia/Tokyo',
     updatedAt: now as FieldValue,
   };
+
+  if ('sharedWithCoach' in params.patch) {
+    payload.sharedWithCoach = !!params.patch.sharedWithCoach;
+  }
 
   const encPairs: Array<[keyof JournalWeeklyEncrypted, string | null]> = [];
   if ('thisWeekActionGoalText' in params.patch) {

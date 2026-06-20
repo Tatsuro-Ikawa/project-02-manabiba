@@ -13,8 +13,13 @@ import TrialWeekly from '@/components/trial/TrialWeekly';
 import TrialMonthly from '@/components/trial/TrialMonthly';
 import CoachClientPickerModal from '@/components/trial/CoachClientPickerModal';
 import JournalDetailLevelSwitch from '@/components/trial/JournalDetailLevelSwitch';
-import { getUserProfile, ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
+import {
+  ensureKizukiTrialEndsAtIfNeeded,
+  ensureUserEnrollmentPrimaryCourse,
+  getUserProfile,
+} from '@/lib/firestore';
 import { canAccessKizukiNoteApp, type KizukiNoteApplyIntent } from '@/lib/enrollmentCourse';
+import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 
 const TAB_KEYS = ['affirmation', 'morning_evening', 'weekly', 'monthly'] as const;
 type TabKey = (typeof TAB_KEYS)[number];
@@ -134,6 +139,7 @@ function Trial4wContent() {
       return;
     }
     if (!user) {
+      if (!shouldRedirectUnauthenticatedToLogin()) return;
       router.replace('/trial_4w/landing');
       return;
     }
@@ -145,18 +151,26 @@ function Trial4wContent() {
     setAccessOk(true);
   }, [loading, user, userProfile, isCoachView, applyIntent, router]);
 
+  // 申込直後・Console 手修正後など、Firestore と Auth キャッシュのズレを解消する
   useEffect(() => {
     if (!accessOk || !user?.uid || loading || isCoachView) return;
-    if (userProfile?.enrollment?.primaryCourse === 'start7d' && applyIntent !== 'ai_coach') return;
+    void refreshUserProfile();
+  }, [accessOk, user?.uid, loading, isCoachView, refreshUserProfile]);
+
+  // 7日間のみから AIコーチ申込（?apply=ai_coach）のときだけ kizuki へ昇格。通常の kizuki は同意時に設定済み。
+  useEffect(() => {
+    if (!accessOk || !user?.uid || loading || isCoachView) return;
+    if (applyIntent !== 'ai_coach') return;
     void (async () => {
       try {
         await ensureUserEnrollmentPrimaryCourse(user.uid, 'kizuki');
+        await ensureKizukiTrialEndsAtIfNeeded(user.uid);
         await refreshUserProfile();
       } catch (e) {
         console.error('enrollment kizuki 保存エラー:', e);
       }
     })();
-  }, [accessOk, user?.uid, loading, isCoachView, applyIntent, userProfile?.enrollment?.primaryCourse, refreshUserProfile]);
+  }, [accessOk, user?.uid, loading, isCoachView, applyIntent, refreshUserProfile]);
 
   if (!accessOk) {
     return (

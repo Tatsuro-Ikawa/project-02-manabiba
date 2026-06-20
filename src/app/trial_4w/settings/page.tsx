@@ -14,6 +14,7 @@ import {
 } from '@/lib/journalDetailLevel';
 import type { WeeklyAiReportWriteMode } from '@/types/auth';
 import { canAccessKizukiNoteApp } from '@/lib/enrollmentCourse';
+import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 
 const LEVELS: JournalDetailLevel[] = ['simple', 'normal', 'detailed'];
 
@@ -45,6 +46,7 @@ export default function TrialJournalSettingsPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) {
+      if (!shouldRedirectUnauthenticatedToLogin()) return;
       router.replace('/trial_4w/landing');
       return;
     }

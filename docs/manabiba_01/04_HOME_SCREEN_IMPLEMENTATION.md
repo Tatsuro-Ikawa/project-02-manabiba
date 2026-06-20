@@ -116,8 +116,7 @@ sequenceDiagram
   Note over U,FS: 7日間（フリー）— 初回・ランディング経由
   U->>L: やってみる（login?next=/start-program）
   L->>P: post-login?next=/start-program
-  P->>LD: 未同意 → needsConsent=1（ランディングへ戻す）
-  U->>C: ランディングで再選択 → consent?next=/start-program
+  P->>C: 未同意・コース選択済み → consent?next=/start-program（ランディング再表示なし）
   C->>FS: updateUserConsents（consents）
   C->>S: /start-program（本体）
 

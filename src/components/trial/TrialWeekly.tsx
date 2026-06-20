@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   formatWeekRangeShortJa,
@@ -15,6 +16,7 @@ import {
 } from '@/lib/journalWeek';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
+import { JournalCoachShareHeader } from '@/components/trial/JournalCoachShareHeader';
 import { AutosizeTextarea } from '@/components/trial/AutosizeTextarea';
 import {
   journalShowWeeklyActionReviewText,
@@ -118,6 +120,8 @@ export default function TrialWeekly() {
   const displayWeekStartKey = weekStartKey || fallbackWeekStart;
   const weekEndKey = useMemo(() => (displayWeekStartKey ? addDaysDateKey(displayWeekStartKey, 6) : ''), [displayWeekStartKey]);
   const todayKey = useMemo(() => getTodayDateKeyTokyo(), []);
+  const canEdit = !!user && !loading;
+  const coachCommentsEnabled = hasCoachCommentsFeature(userProfile);
   const weekDates = useMemo(() => {
     if (!displayWeekStartKey) return [];
     return Array.from({ length: 7 }, (_, i) => addDaysDateKey(displayWeekStartKey, i));
@@ -515,8 +519,18 @@ export default function TrialWeekly() {
   return (
     <div className="trial-tab-content">
       <div className="trial-weekly-container">
-        <div className="trial-tab-heading-row">
+        <div className="trial-tab-heading-row trial-tab-heading-row--journal">
           <h2 id="weekly-section-title">週</h2>
+          <JournalCoachShareHeader
+            enabled={coachCommentsEnabled}
+            checked={!!data.sharedWithCoach}
+            disabled={!canEdit || saving}
+            ariaLabel="今週の学び帳をコーチに共有する"
+            onChange={(v) => {
+              setData((prev) => (prev ? { ...prev, sharedWithCoach: v } : prev));
+              void savePatch({ sharedWithCoach: v });
+            }}
+          />
         </div>
         <p className="text-sm text-gray-600 mb-2">週の開始：{effectiveStart === 'monday' ? '月曜' : '日曜'}（JST）</p>
 
@@ -849,6 +863,13 @@ export default function TrialWeekly() {
                 onBlur={() => void savePatch({ weeklySelfPraiseText: data.weeklySelfPraiseText })}
                 placeholder="入力してください"
               />
+            </div>
+          ) : null}
+
+          {!coachCommentsEnabled && user ? (
+            <div className="action-sub-section" data-section="weekly-coach-share">
+              <h3>コーチ共有</h3>
+              <p className="mt-2 text-gray-600 text-xs">現在のプランではパーソナルコーチ機能が無効です。</p>
             </div>
           ) : null}
         </div>

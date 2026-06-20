@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/context/ViewModeContext';
 import { useRouter } from 'next/navigation';
+import { signOutAndRedirect } from '@/lib/intentionalSignOut';
 
 interface ProtoHeaderProps {
   /** ログイン風表示（モック） */
@@ -50,9 +51,8 @@ export default function ProtoHeader({
   }, [menuOpen]);
 
   const handleSignOut = async () => {
-    await signOut();
     setMenuOpen(false);
-    router.push('/');
+    await signOutAndRedirect(signOut, router, '/');
   };
 
   const headerTitle = (() => {
