@@ -8,22 +8,24 @@ function nz(v: string | null | undefined): string {
   return hasText(v) ? v.trim() : '無し';
 }
 
-function executionLabel(v: Trial4wDailyPlain['eveningExecution']): string {
-  if (v === 'done') return 'できた';
-  if (v === 'partial') return '一部できた';
-  if (v === 'none') return 'できなかった';
+function eveningExecutionLabel(v: Trial4wDailyPlain['eveningExecution']): string {
+  if (v === 'done') return 'およそできた';
+  if (v === 'partial') return 'まあまあできた';
+  if (v === 'none') return 'あまりできなかった';
   return '無し';
 }
 
-function brakeLabel(v: Trial4wDailyPlain['eveningBrake']): string {
-  if (v === 'yes') return '働いた';
-  if (v === 'partial') return '一部働いた';
-  if (v === 'no') return '働かなかった';
-  return '無し';
+function morningActionGoal(d: Trial4wDailyPlain | undefined): string {
+  return nz(d?.morningActionGoalText ?? d?.morningTodayActionText);
+}
+
+function eveningTomorrowGoal(d: Trial4wDailyPlain | undefined): string {
+  return nz(d?.eveningTomorrowGoalText ?? d?.eveningTomorrowActionSeedText);
 }
 
 /**
  * 週次 Aiレポート用インプット：当該週の各日について朝・晩の項目を連結する。
+ * 構造は 04_VERTEX_AI_TRIAL_IMPROVEMENT.md §11.0.3（§4.z 晩 UI 改訂に準拠）。
  * 値が無い項目は「無し」とする（全日分を出力し、文字数下限の安定化に寄与する）。
  */
 export function buildWeeklyAiReportInputFromDailies(
@@ -38,34 +40,33 @@ export function buildWeeklyAiReportInputFromDailies(
     const lines: string[] = [`【日付】${dk}`];
 
     lines.push('【今日の行動】');
-    lines.push(`- 行動目標: ${nz(d?.morningActionGoalText)}`);
+    lines.push(`- 行動目標: ${morningActionGoal(d)}`);
     lines.push(`- 行動内容: ${nz(d?.morningActionContentText)}`);
 
-    lines.push('【行動の実行状況】', `- 実行状況: ${executionLabel(d?.eveningExecution ?? null)}`);
-
-    lines.push('【行動の結果】');
-    lines.push(`- どのように行いどの程度できたか: ${nz(d?.eveningResultExecutionText)}`);
-    lines.push(`- 目標・指標に対しどの程度近づけたか: ${nz(d?.eveningResultGoalProgressText)}`);
+    lines.push('【行動】');
     lines.push(
-      `- 満足度: ${
+      `- 行動目標に対してどのくらい実施できましたか？: ${eveningExecutionLabel(d?.eveningExecution ?? null)}`
+    );
+    lines.push(`- どのように行動できましたか？: ${nz(d?.eveningSpecificActionsText)}`);
+    lines.push(
+      `- 行動の満足度を10点のうちどのくらいでしたか？: ${
         d && typeof d.eveningSatisfaction === 'number' && !Number.isNaN(d.eveningSatisfaction)
           ? `${d.eveningSatisfaction}/10`
           : '無し'
       }`
     );
 
-    lines.push('【行動時の感情・思考】', `- 内容: ${nz(d?.eveningEmotionThoughtText)}`);
+    lines.push('【気づき】');
+    lines.push(`- 今日印象に残ったできごとは何でしたか？: ${nz(d?.eveningResultExecutionText)}`);
+    lines.push(`- その時、どんな気持ちになりましたか？: ${nz(d?.eveningEmotionThoughtText)}`);
+    lines.push(`- その時、どのような考えが思い浮かびましたか？: ${nz(d?.eveningReflectionThoughtText)}`);
+    lines.push(`- そこから、なにか気づくことはありましたか？: ${nz(d?.eveningBrakeWorkedText)}`);
+    lines.push(`- この出来事から何を学びましたか？: ${nz(d?.eveningInsightText)}`);
+    lines.push(`- 今日の学びをどう明日に活かしますか？: ${nz(d?.eveningImprovementText)}`);
 
-    const brake = brakeLabel(d?.eveningBrake ?? null);
-    const brakeLines = [`- 作動: ${brake}`];
-    if (d?.eveningBrake === 'yes' || d?.eveningBrake === 'partial') {
-      brakeLines.push(`- どんなブレーキだったか: ${nz(d?.eveningBrakeWorkedText)}`);
-      brakeLines.push(`- どんな反論の言葉を使ったか: ${nz(d?.eveningBrakeWordsText)}`);
-    }
-    lines.push('【こころのブレーキ】', ...brakeLines);
-
-    lines.push('【今日の気づき・感動・学びと課題】', `- 内容: ${nz(d?.eveningInsightText)}`);
-    lines.push('【明日への改善点】', `- 内容: ${nz(d?.eveningImprovementText)}`);
+    lines.push('【明日の行動】');
+    lines.push(`- 明日の行動目標（1文）: ${eveningTomorrowGoal(d)}`);
+    lines.push(`- 明日の行動内容: ${nz(d?.eveningTomorrowActionContentText)}`);
 
     blocks.push(lines.join('\n'));
   }

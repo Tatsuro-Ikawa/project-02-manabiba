@@ -150,7 +150,7 @@
 - **ブレーキ・反論の記述**: `eveningBrakeWorkedTextEncrypted` / `eveningBrakeRebuttedTextEncrypted` / `eveningBrakeWordsTextEncrypted: string|null`（UI ラベルに準拠。旧単一欄は `eveningRebuttalTextEncrypted` で互換）
 - **今日の気づき・感動・学びと課題**: `eveningInsightTextEncrypted: string|null`
 - **明日への改善点**: `eveningImprovementTextEncrypted: string|null`
-- **Aiコーチからのコメント**（Vertex 生成・任意保存）: `eveningAiSuggestionTextEncrypted: string|null`、**同日の生成回数**: `eveningAiSuggestionRunCount: number|null`（UI は同日 3 回まで等。API 仕様は [VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)）
+- **Aiコーチからのコメント**（Vertex 生成・任意保存）: `eveningAiSuggestionTextEncrypted: string|null`、**同日の生成回数**: `eveningAiSuggestionRunCount: number|null`（UI は同日 3 回まで等。API 仕様は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md)）
 - **今日の自分へのねぎらいの一言**: `eveningMessageToSelfTextEncrypted: string|null`
 - **今日の振り返りを踏まえた あすの行動内容（目標）**: `eveningTomorrowActionSeedTextEncrypted: string|null`
 - **明日の目標・行動内容・イメージング**: `eveningTomorrowGoalTextEncrypted` / `eveningTomorrowActionContentTextEncrypted` / `eveningTomorrowImagingDone`
@@ -161,18 +161,276 @@
 - **保存先**: `users/{uid}/journal_weekly/{weekStartKey}`（`weekStartKey` は週の開始日 `YYYY-MM-DD`、JST 基準）。
 - **Aiレポート作成**（Vertex・4観点 JSON）: API の `reports.actionAspect` / `outcomeAspect` / `psychologyAspect` / `insightGrowth` を、それぞれ **`weeklyActionReviewText`** / **`weeklyOutcomeReviewText`** / **`weeklyPsychologyText`** / **`insightAndLearningText`** に書き込む。反映はユーザープロファイルの **`weeklyAiReportWriteMode`**（`append`／`overwrite`／`skip_if_nonempty`＝既存入力がある欄は変更しない）。**インプット**は当週の日次（朝・晩）を **`無し` 埋め**で連結し、**合計 150 文字以上**（実装: `buildWeeklyAiReportInputFromDailies`）。**同日の成功回数のみ** `weeklyAiReportRunCount` / `weeklyAiReportRunDateKey`（1 日 3 回まで。朝・晩の回数とは独立）。API: `POST /api/ai/weekly-report`。
 - **Ai改善提案**（Vertex・プレーンテキスト、**詳細**表示モード時のみ UI 表示）: 確定後は `aiImprovementSuggestionText`（暗号化版あり）。**同日の成功回数のみ** `weeklyAiImprovementRunCount` / `weeklyAiImprovementRunDateKey`（1 日 3 回まで）は **API 成功時点**で更新（プレビュー表示の有無に関わらず）。本文はプレビューから「Ai改善提案に保存」で反映。API: `POST /api/ai/weekly-improvement`。入力は週報 8 項目を固定順連結（各ブロック 10 文字以上）。**生成本文は 100〜500 文字**目安（サーバ上限 500）。トークンは JSON のみ返し、Firestore 保存本文には含めない（プレビュー時のみ UI で文末表示）。
-- スキーマの正本: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2 / §2.x-2-0 / §2.x-2-1。Vertex 詳細: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §9。
+- スキーマの正本: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2 / §2.x-2-0 / §2.x-2-1。Vertex 詳細: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §9。
 
 ### 月（monthly）
 
 - **保存先**: `users/{uid}/journal_monthly/{monthKey}`（`monthKey = YYYY-MM`、JST）。
 - **Aiレポート作成**（Vertex・4観点 JSON）: 応答 4 キーを **`monthlyActionReviewText`** / **`monthlyOutcomeReviewText`** / **`monthlyPsychologyText`** / **`insightAndLearningText`** に反映。反映モードは週次と同じ **`weeklyAiReportWriteMode`**。**インプット**は暦月内に週開始日が入る各週の **週報**を連結（欠損は `無し`、**合計 150 文字以上**）。**同日の成功回数のみ** `monthlyAiReportRunCount` / `monthlyAiReportRunDateKey`（1 日 3 回）。API: `POST /api/ai/monthly-report`。
-- **Ai改善提案**: `aiImprovementSuggestionText` へ保存（プレビューから確定）。カウンタ `monthlyAiImprovementRunCount` / `monthlyAiImprovementRunDateKey`（1 日 3 回・成功時のみ）。入力は月報 **9 項目**固定順（**特記事項は任意**、他は各 10 文字以上）。**生成本文 100〜500 文字**目安。API: `POST /api/ai/monthly-improvement`。Vertex 詳細: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §10。
+- **Ai改善提案**: `aiImprovementSuggestionText` へ保存（プレビューから確定）。カウンタ `monthlyAiImprovementRunCount` / `monthlyAiImprovementRunDateKey`（1 日 3 回・成功時のみ）。入力は月報 **9 項目**固定順（**特記事項は任意**、他は各 10 文字以上）。**生成本文 100〜500 文字**目安。API: `POST /api/ai/monthly-improvement`。Vertex 詳細: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §10。
 - スキーマの正本: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-3 / §2.x-3-0。
 
 ### 日付ナビ（前日/翌日）
 
 - 「今日」基準では制限しない（週・月から任意日付を開き、前後日を見て修正できることを重視）
+
+---
+
+## 4.y 決定: 入力表示レベル（簡易・普通・詳細）
+
+気づきノート（`/trial_4w`）の **朝・晩・週・月** タブで、入力欄の表示量を **3 段階**で切り替える。**本節が表示可否の正本**。フィールド名・保存先は §4.x および [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x を参照。
+
+### 概要
+
+| 項目 | 内容 |
+|------|------|
+| **区分** | **簡易**（`simple`）／**普通**（`normal`）／**詳細**（`detailed`） |
+| **初期値** | **普通**（未設定・不正値も `normal` にフォールバック） |
+| **切替 UI** | `/trial_4w` メニューバー右のラジオ（`JournalDetailLevelSwitch`） |
+| **デフォルト設定** | `/trial_4w/settings` でデフォルトを保存。画面上部ラジオと同期 |
+| **永続化（現行）** | ブラウザ `localStorage`（`manabiba:journal-detail-level` / `…-default`）。**Firestore には未保存** |
+| **実装** | 表示判定: `src/lib/journalDetailLevel.ts`。状態: `JournalDetailLevelContext` |
+
+**設計意図**
+
+- **簡易**: 毎日の最低限（目標・実行・満足度・気づき・明日の目標一文など）に絞り、習慣化のハードルを下げる。
+- **普通**: ワークシート相当の標準入力。AI レポート作成（週・月）や晩の Aiコーチコメントも利用可。
+- **詳細**: 深掘り欄・ブレーキの記述・指標・Ai改善提案（週・月）など上級者向け。
+
+**非表示でもデータは保持**: 表示レベルを下げても、既に Firestore に保存済みの値は**削除しない**。非表示中は UI から編集できないだけ。
+
+### 表の見方
+
+| 記号 | 意味 |
+|------|------|
+| **●** | そのレベルで表示 |
+| **—** | 非表示 |
+| **△** | 表示するが、**直前の選択肢**（例: 実行状況が「できた／一部できた」）に依存 |
+
+「補足」＝各ブロック上の `InfoDetails`（クリックで開く説明文）。**普通以上**で表示。
+
+---
+
+### 朝・晩タブ（SCREEN-005）
+
+#### 朝
+
+| UI 項目 | Firestore フィールド（代表） | 簡易 | 普通 | 詳細 |
+|---------|------------------------------|:----:|:----:|:----:|
+| アファメーション宣言（実施） | `morningAffirmationDeclaration` | ● | ● | ● |
+| 今日の行動 — 補足 | — | — | ● | ● |
+| 今日の行動 — 行動目標（1文） | `morningTodayActionText` 等 | ● | ● | ● |
+| 今日の行動 — 行動内容（どのように） | `morningActionContentText` | — | ● | ● |
+| 今日の行動のイメージング — 補足 | — | — | ● | ● |
+| 今日の行動のイメージング（実施） | `morningImagingDone` | — | ● | ● |
+
+#### 晩
+
+| UI 項目 | Firestore フィールド（代表） | 簡易 | 普通 | 詳細 |
+|---------|------------------------------|:----:|:----:|:----:|
+| 行動の実行状況（できた／一部／できなかった） | `eveningExecution` | ● | ● | ● |
+| 具体的な行動内容 | `eveningSpecificActionsText` | — | △ | △ |
+| 行動の結果 — 補足 | — | — | ● | ● |
+| どのように行いどの程度できたか | `eveningResultText` | — | — | ● |
+| 目標・指標に対しどの程度近づけたか | `eveningResultGoalProgressText` | — | — | ● |
+| 満足度（0〜10） | `eveningSatisfaction` | ● | ● | ● |
+| 行動時の感情・思考 | `eveningEmotionThoughtText` | — | ● | ● |
+| こころのブレーキ（働いた／一部／働かなかった） | `eveningBrake` | ● | ● | ● |
+| どんなブレーキだったか | `eveningBrakeWorkedText` | — | — | △ |
+| 反論できたか | `eveningBrakeRebuttalChoice` | — | △ | △ |
+| どんな反論の言葉を使ったか | `eveningBrakeWordsText` | — | — | △ |
+| 今日の気づき・感動・学びと課題 | `eveningInsightText` | ● | ● | ● |
+| 明日への改善点 | `eveningImprovementText` | — | ● | ● |
+| Aiコーチからのコメント（生成・保存） | `eveningAiSuggestionText` 等 | — | ● | ● |
+| 明日の行動 — 目標（1文） | `eveningTomorrowActionSeedText` 等 | ● | ● | ● |
+| 明日の行動 — 行動内容（具体的に） | `eveningTomorrowActionContentText` | — | ● | ● |
+| 明日の行動のイメージング（実施） | `eveningTomorrowImagingDone` | — | — | ● |
+| 今日の自分へのねぎらいの一言 | `eveningMessageToSelfText` | — | — | ● |
+
+**簡易時の案内文**（「明日の行動」見出し下）: 「簡易表示では目標を一文で十分です。『詳細』表示にすると『明日への改善点』と Aiコーチからのコメントを利用できます。」
+
+**AI 連携**: 晩の **Aiコーチからのコメント**は **普通・詳細のみ**（`journalShowEveningImprovement`）。簡易ではボタン自体を出さない。API: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §4。
+
+---
+
+### 週タブ（SCREEN-006）
+
+| UI 項目 | Firestore フィールド（代表） | 簡易 | 普通 | 詳細 |
+|---------|------------------------------|:----:|:----:|:----:|
+| 今週の行動 — 行動目標（1文） | `thisWeekActionGoalText` | ● | ● | ● |
+| 今週の行動 — 行動内容（どのように） | `thisWeekActionContentText` | — | ● | ● |
+| Aiレポート作成（ボタン・説明） | `weeklyAiReportRunCount` 等 | — | ● | ● |
+| 行動面 — 7日グリッド（朝・晩記号） | （日次 `journal_daily` 参照） | ● | ● | ● |
+| 行動面 — 行動の振り返り | `weeklyActionReviewText` | — | ● | ● |
+| 成果面 — 満足度平均・折れ線チャート | （日次から集計） | ● | ● | ● |
+| 成果面 — 成果への振り返り | `weeklyOutcomeReviewText` | — | ● | ● |
+| 成果面 — 指標の達成度 | `weeklyMetricAchievementText` | — | — | ● |
+| 心理面 — 行動時の思考・感情の変化 | `weeklyPsychologyText` | ● | ● | ● |
+| 気づき・学び・成長 | `insightAndLearningText` | ● | ● | ● |
+| 課題と原因の深掘り | `weeklyIssueRootCauseText` | — | — | ● |
+| 来週への改善点 | `nextWeekImprovementText` | — | ● | ● |
+| 来週への改善点 — Ai改善提案 | `aiImprovementSuggestionText` 等 | — | — | ● |
+| 来週の行動 — 目標（1文） | `nextWeekGoalText` | ● | ● | ● |
+| 来週の行動 — 行動内容（具体的に） | `nextWeekActionContentText` | — | ● | ● |
+| 今週の自分へのねぎらいの言葉 | `weeklySelfPraiseText` | — | — | ● |
+
+**AI 連携**: **Ai改善提案**は **詳細のみ** UI 表示。API: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §9。
+
+---
+
+### 月タブ（SCREEN-007）
+
+| UI 項目 | Firestore フィールド（代表） | 簡易 | 普通 | 詳細 |
+|---------|------------------------------|:----:|:----:|:----:|
+| 今月の行動 — 行動目標（1文） | `thisMonthActionGoalText` | ● | ● | ● |
+| 今月の行動 — 行動内容（どのように） | `thisMonthActionContentText` | — | ● | ● |
+| Aiレポート作成 | `monthlyAiReportRunCount` 等 | — | ● | ● |
+| 行動面 — 月間カレンダーグリッド | （日次参照） | ● | ● | ● |
+| 行動面 — 行動の振り返り | `monthlyActionReviewText` | — | ● | ● |
+| 成果面 — 満足度・チャート | （日次から集計） | ● | ● | ● |
+| 成果面 — 成果への振り返り | `monthlyOutcomeReviewText` | — | ● | ● |
+| 成果面 — 指標の達成度 | `monthlyMetricAchievementText` | — | — | ● |
+| 心理面 | `monthlyPsychologyText` | ● | ● | ● |
+| 気づき・学び・成長 | `insightAndLearningText` | ● | ● | ● |
+| 課題と原因の深掘り | `monthlyIssueRootCauseText` | — | — | ● |
+| 来月への改善点 | `nextMonthImprovementText` | — | ● | ● |
+| 来月への改善点 — Ai改善提案 | `aiImprovementSuggestionText` 等 | — | — | ● |
+| 来月の行動 — 目標（1文） | `nextMonthGoalText` | ● | ● | ● |
+| 来月の行動 — 行動内容（具体的に） | `nextMonthActionContentText` | — | ● | ● |
+| 特記事項（その他自由欄） | `monthlySpecialNotesText` 等 | — | — | ● |
+
+**AI 連携**: **Ai改善提案**は **詳細のみ**。API: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §10。
+
+---
+
+### 行動宣言タブ
+
+入力表示レベルの対象外（サブメニュー・モーダルは [04_AFFIRMATION_DESIGN.md](./04_AFFIRMATION_DESIGN.md) を正とする）。
+
+### 実装との対応
+
+| 種別 | パス |
+|------|------|
+| 表示判定関数 | `src/lib/journalDetailLevel.ts`（`journalShow*`） |
+| 朝・晩 UI | `src/components/trial/TrialMorningEvening.tsx` |
+| 週 UI | `src/components/trial/TrialWeekly.tsx` |
+| 月 UI | `src/components/trial/TrialMonthly.tsx` |
+| ラジオ切替 | `src/components/trial/JournalDetailLevelSwitch.tsx` |
+| 設定画面 | `src/app/trial_4w/settings/page.tsx` |
+
+仕様変更時は **本節の表を先に更新**し、続けて `journalDetailLevel.ts` と各 `Trial*.tsx` を揃える。
+
+**晩タブの UI・表示レベル**は **§4.z（2026-06 改訂）** で上書きする。以下の「朝・晩タブ」表の **晩** 部分は §4.z 参照。
+
+---
+
+## 4.z 決定: 朝・晩タブ UI 改訂（2026-06）— 晩の入力再構成
+
+気づきノート `/trial_4w`（タブ「朝・晩」）の **晩** 入力を、モック（行動／気づき／明日の行動）に合わせて改訂する。**本節が晩タブの UI・表示レベル・AI 連携の正本**。朝は §4.y の朝表をベースに、**イメージングは普通非表示**（下記「朝の追記」）。フィールド定義の土台は §4.x・[03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x `journal_daily`。
+
+### 画面上部（朝・晩共通）
+
+| 項目 | 変更後 |
+|------|--------|
+| メイン見出し（h2） | **朝・晩のアクション** |
+| 日付行 | **日付のみ**（例: `3月10日`。「朝・晩のアクション」文言は付けない） |
+| タブ名（メニューバー） | **朝・晩**（変更なし） |
+
+### 朝のアクション
+
+入力項目・ラベルは **現行維持**。表示レベルのみ次を適用する。
+
+| UI 項目 | Firestore | 簡易 | 普通 | 詳細 |
+|---------|-----------|:----:|:----:|:----:|
+| アファメーション宣言（実施） | `morningAffirmationDeclaration` | ● | ● | ● |
+| 今日の行動 — 行動目標（1文） | `morningTodayActionText` 等 | ● | ● | ● |
+| 今日の行動 — 行動内容 | `morningActionContentText` | — | ● | ● |
+| 今日の行動のイメージング | `morningImagingDone` | — | — | ● |
+
+**`morningAffirmationDeclaration`**: 未チェックは **`null`**。実施 ON のとき **`done`**。既存の **`undone`** は読み取り時に未実施（`null` 相当）として扱う。新規保存では `undone` を書かない。
+
+### 晩のアクション — セクション構成
+
+1. **◇行動**
+2. **◇気づき**
+3. **◇明日の行動**
+
+UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラベルは先頭 **・**（中見出し **◇** はセクションのみ）。
+
+### 晩 — 表示レベルとフィールド対応（正本）
+
+| 順 | UI 見出し | Firestore（平文名） | 簡易 | 普通 | 詳細 | 備考 |
+|----|----------|---------------------|:----:|:----:|:----:|------|
+| | **◇行動** | | | | | |
+| 1 | 行動目標に対してどのくらい実施できましたか？ | `eveningExecution` | ● | ● | ● | 値は `done`/`partial`/`none` 維持。表示ラベル: およそできた／まあまあできた／あまりできなかった |
+| 1.a | どのように行動できましたか？ | `eveningSpecificActionsText` | — | — | ● | **詳細のみ**。`eveningExecution` が `done` または `partial` のとき表示（現行と同型） |
+| 2 | 行動の満足度を10点のうちどのくらいでしたか？ | `eveningSatisfaction` | ● | ● | ● | 0〜10 |
+| | **◇気づき** | | | | | |
+| 3 | 今日印象に残ったできごとは何でしたか？ | `eveningResultExecutionText` | ● | ● | ● | 旧 `eveningResultText` は UI 非表示。読取時フォールバックは現行維持可 |
+| 4 | その時、どんな気持ちになりましたか？ | `eveningEmotionThoughtText` | — | ● | ● | |
+| 5 | その時、どのような考えが思い浮かびましたか？ | **`eveningReflectionThoughtText`（新規）** | — | ● | ● | 暗号化: `eveningReflectionThoughtTextEncrypted` |
+| 6 | そこから、なにか気づくことはありましたか？ | `eveningBrakeWorkedText` | — | ● | ● | 旧「どんなブレーキだったか」欄の流用 |
+| 7 | この出来事から何を学びましたか？ | `eveningInsightText` | ● | ● | ● | |
+| 8 | 今日の学びをどう明日に活かしますか？ | `eveningImprovementText` | ● | ● | ● | ◇気づき内に配置（◇明日の行動とは別） |
+| 9 | Aiコーチに聞きたい事はありますか？ | **`eveningAiQuestionText`（新規）** | — | ● | ● | 暗号化: `eveningAiQuestionTextEncrypted` |
+| 10 | Aiコーチからのコメント | `eveningAiSuggestionText` | — | ● | ● | 生成結果の保存先。表示は読取専用テキスト＋保存フロー |
+| 11 | 他に残しておきたいこと | `eveningMessageToSelfText` | — | — | ● | |
+| | **◇明日の行動** | | | | | |
+| 12 | 明日の行動目標（1文） | `eveningTomorrowActionSeedText` | ● | ● | ● | 保存時、翌朝「今日の行動」未入力ならコピー（現行維持） |
+| 13 | 明日の行動内容 | `eveningTomorrowActionContentText` | — | — | ● | モック表記に合わせる |
+| 14 | 明日の行動のイメージング（実施） | `eveningTomorrowImagingDone` | — | — | ● | |
+
+### UI 非表示（フィールドは削除しない）
+
+`eveningResultText`, `eveningResultGoalProgressText`, `eveningBrake`, `eveningBrakeRebuttalChoice`, `eveningBrakeRebuttedText`, `eveningBrakeWordsText`, `eveningRebuttalText`, `eveningTomorrowGoalText`（画面の目標は `eveningTomorrowActionSeedText` を正とする）
+
+### Aiコーチ（晩）— API・UI
+
+| 項目 | 内容 |
+|------|------|
+| **UI** | 項目9の入力欄の下に **「Aiコーチへ送信」** ボタン。項目10に応答表示・保存（モック準拠） |
+| **リクエスト** | **A案**: `POST /api/ai/improvement` の body を `{ reflectionText, userQuestion? }` に拡張（後方互換は実装時に判断） |
+| **`reflectionText`** | 項目 **3〜8** を新ラベル順で連結（ブレーキ・反論は含めない） |
+| **`userQuestion`** | 項目9。任意 |
+| **実行条件** | `reflectionText` の合計 **50 文字以上**（項目3〜8。項目9は実行条件に含めない） |
+| **1日上限** | **3 回**（`eveningAiSuggestionRunCount`／JST 同日）。UI に回数表示は **出さない**。超過時のみエラー |
+| **プロンプト** | 確定版: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) **§11.0**（`buildImprovementApiPrompt`） |
+| **出力形式・文字数** | **400〜500 文字**（Unicode）。見出し＋改行＋本文。サーバ上限 `MAX_SUGGESTION_CHARS = 500` |
+
+### 週次・月次・ホーム連携
+
+| 対象 | 対応 |
+|------|------|
+| `buildWeeklyAiReportInputFromDailies` | **反映済み**（§11.0.3・【明日の行動】含む・空欄は `無し`） |
+| `computeMorningCompletionSymbol` | アファメーション `done` と行動目標テキストの **2 要素**で判定（イメージングは **対象外**）。`null` と `undone` は **どちらも未実施**（下記「FAQ」） |
+| `computeEveningExecutionSymbol` | `eveningExecution` の enum 維持のため **変更不要**（ラベルのみ変更） |
+
+### 実装ファイル（晩改訂）
+
+| 種別 | パス |
+|------|------|
+| 型・永続化 | `src/lib/firestore.ts`（`Trial4wDailyPlain` ＋ 新規2フィールド） |
+| 表示レベル | `src/lib/journalDetailLevel.ts`（晩用 `journalShow*` 刷新） |
+| 晩 UI | `src/components/trial/TrialMorningEvening.tsx` |
+| AI API | `src/app/api/ai/improvement/route.ts` |
+| 週次 AI 入力 | `src/lib/weeklyAiReportInputFromDailies.ts`（**朝・晩 UI 改訂後に実施**） |
+
+**実装状況（2026-07-03）**: 朝・晩 UI（§4.z）、`journalDetailLevel.ts`（晩）、AI API・入力連結、週次 Aiレポート入力・朝記号（イメージング除外）は反映済み。
+
+### FAQ: `morningAffirmationDeclaration` を `null` にすると週表示が × にならないか
+
+**ならない（心配不要）**。週・月グリッド・ホームの朝記号は `computeMorningCompletionSymbol`（`src/lib/trialDailyWeekSymbols.ts`）で、次の **2 要素のうち何個満たしたか**で判定する（**イメージングは判別対象外**）。
+
+1. アファメーション **`done`** のみ 1 点（`null` も `undone` も **0 点**）
+2. 今日の行動目標テキストあり 1 点（`morningTodayActionText` または `morningActionGoalText`）
+
+- 合計 **0** → **×**
+- 合計 **1** → **△**
+- 合計 **2** → **〇**
+
+`undone` から `null` に変えても、「`done` ではない」点は同じなので **週表示のロジックは変わらない**。未入力の日は従来どおり、2 項目すべて未達なら **×** になる。
+
+**正本**: 朝・晩記号の判定仕様は本書 **§4.z「週次・月次・ホーム連携」** および上記 FAQ。実装は `src/lib/trialDailyWeekSymbols.ts`。
 
 ---
 
@@ -451,4 +709,5 @@ Firestore では **2 段所**に日時があります。
 - [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md) — A-11 コーチ共有・コメントのフィールド・パス（現状案）
 - [01_UI_UX_DESIGN.md](./01_UI_UX_DESIGN.md) — 5.10.4 28日間トライアル画面
 - プロトタイプ: `docs/manabiba_01/prototypes/interactive/` — SCREEN-004〜007
+- **入力表示レベル（簡易・普通・詳細）**: 本書 **§4.y**（週・月・朝）、**§4.z**（晩改訂・2026-06）、実装 `src/lib/journalDetailLevel.ts`
 

@@ -7,7 +7,7 @@
 気づきノート（`journal_daily` / `journal_weekly` / 将来 `journal_monthly`）について、**人間パーソナルコーチ**と **AI コーチ**の役割を区別し、**サブスクのコース（プラン）**で ON/OFF を切り替えるための**正本**とする。
 
 - **関連**: [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)（アファメーション共有）、[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §5、[01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)
-- **実装（Vertex・トライアル朝晩の「Aiコーチからのコメント」PoC）**: [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md)（環境変数・IAM・モデル ID・REST エンドポイント・短文時の再生成・トークン付記）
+- **実装（Vertex・トライアル朝晩の「Aiコーチからのコメント」PoC）**: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md)（環境変数・IAM・モデル ID・REST エンドポイント・短文時の再生成・トークン付記）
 
 ---
 
@@ -138,7 +138,7 @@ coachCapabilities.ai.journal.monthly    = { share, question, reply }
 
 ## 6. AI 実装フェーズで決めること（チェックリスト）
 
-以下は本書では**枠だけ**固定し、詳細は AI 実装時に記載する。**トライアル週次・月次**の Vertex 呼び出しは [VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §9〜§10、[03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2-0 / §2.x-2-1 / §2.x-3-0 で現行実装を参照。
+以下は本書では**枠だけ**固定し、詳細は AI 実装時に記載する。**トライアル週次・月次**の Vertex 呼び出しは [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §9〜§10、[03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2-0 / §2.x-2-1 / §2.x-3-0 で現行実装を参照。
 
 - [x] 日次・**週次・月次**の **API 入力**（日次: `/api/ai/improvement` の連結テキスト。週次レポート: 当週の日次を `無し` 埋めで連結し合計 **150 文字以上**。週次改善: 8 項目固定順・各 10 文字以上。月次レポート: 暦月内の週開始に該当する **週報**を連結し **150 文字以上**・欠損は `無し`。月次改善: 9 項目（**特記事項は任意**）固定順・ほか各 10 文字以上）
 - [x] **レート制限**（トライアル: 朝・晩・週の各 AI 機能で JST 1 日 3 回・**成功時のみ**カウント。週はレポート用と改善提案用でカウンタ分離）

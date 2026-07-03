@@ -16,6 +16,8 @@ import {
   COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT,
 } from '@/lib/communicationConstants';
 import { resolveEntitlements } from '@/lib/subscription/resolveEntitlements';
+import { canViewMessageBoardRetentionHistory } from '@/lib/subscription/dataRetention';
+import { DataRetentionBanner } from '@/components/subscription/DataRetentionBanner';
 import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 
@@ -207,6 +209,13 @@ export default function CommunicationPageClient() {
     return resolveEntitlements(userProfile)['communication.message_board'];
   }, [userProfile]);
 
+  const boardRetentionReadOnly = useMemo(() => {
+    if (!userProfile || premiumUnlocked) return false;
+    return canViewMessageBoardRetentionHistory(userProfile);
+  }, [userProfile, premiumUnlocked]);
+
+  const boardTabEnabled = premiumUnlocked || boardRetentionReadOnly;
+
   const setTab = useCallback(
     (next: CommTab) => {
       const p = new URLSearchParams(searchParams.toString());
@@ -297,23 +306,23 @@ export default function CommunicationPageClient() {
   }, [coachClientUid]);
 
   useEffect(() => {
-    if (!premiumUnlocked || currentTab !== 'board' || !isCoachView || coachClientUid) return;
+    if ((!premiumUnlocked && !boardRetentionReadOnly) || currentTab !== 'board' || !isCoachView || coachClientUid) return;
     if (coachAutoPickerOnce.current) return;
     coachAutoPickerOnce.current = true;
     setCoachPickerOpen(true);
-  }, [premiumUnlocked, currentTab, isCoachView, coachClientUid]);
+  }, [premiumUnlocked, boardRetentionReadOnly, currentTab, isCoachView, coachClientUid]);
 
   useEffect(() => {
-    if (premiumUnlocked && currentTab === 'board' && loggedIn && (!isCoachView || coachClientUid)) {
+    if ((premiumUnlocked || boardRetentionReadOnly) && currentTab === 'board' && loggedIn && (!isCoachView || coachClientUid)) {
       setMessages((prev) => {
         if (prev.some((m) => m.id.startsWith('local-'))) return prev;
         return buildDemoMessages(isCoachView);
       });
     }
-    if (!premiumUnlocked || currentTab !== 'board') {
+    if ((!premiumUnlocked && !boardRetentionReadOnly) || currentTab !== 'board') {
       setMessages([]);
     }
-  }, [premiumUnlocked, currentTab, loggedIn, isCoachView, coachClientUid]);
+  }, [premiumUnlocked, boardRetentionReadOnly, currentTab, loggedIn, isCoachView, coachClientUid]);
 
   const clientSendCount = useMemo(
     () => messages.filter((m) => m.isMine && mode === 'client').length,
@@ -324,6 +333,9 @@ export default function CommunicationPageClient() {
 
   const boardDisabledReason = useMemo(() => {
     if (!loggedIn) return 'ログインが必要です。';
+    if (boardRetentionReadOnly) {
+      return 'プレミアムプラン終了のため、メッセージボードは閲覧のみです（90日間）。';
+    }
     if (!premiumUnlocked) return 'プレミアムプランのみ利用できます。';
     if (isAdminView) return '管理者モードではメッセージボードを利用できません。';
     if (isCoachView && !coachClientUid) return 'クライアントを選択してください。';
@@ -332,6 +344,7 @@ export default function CommunicationPageClient() {
     return null;
   }, [
     loggedIn,
+    boardRetentionReadOnly,
     premiumUnlocked,
     isAdminView,
     isCoachView,
@@ -340,6 +353,12 @@ export default function CommunicationPageClient() {
     mode,
     assignedCoachUid,
   ]);
+
+  const canShowBoardMessages =
+    loggedIn &&
+    (premiumUnlocked || boardRetentionReadOnly) &&
+    (!isCoachView || !!coachClientUid) &&
+    (isCoachView || mode !== 'client' || !!assignedCoachUid);
 
   const inputDisabled = !!boardDisabledReason;
 
@@ -486,6 +505,8 @@ export default function CommunicationPageClient() {
         <main className="home-main-content communication-page-shell">
           <h1 className="section-title communication-page-title">コミュニケーション</h1>
 
+          <DataRetentionBanner userProfile={userProfile} className="communication-data-retention" />
+
           <nav className="trial-menu-bar communication-tab-bar" aria-label="コミュニケーション内メニュー">
             <button
               type="button"
@@ -503,14 +524,20 @@ export default function CommunicationPageClient() {
             <button
               type="button"
               className={`trial-menu-item ${currentTab === 'board' ? 'active' : ''}${
-                !premiumUnlocked ? ' sidebar-btn--disabled' : ''
+                !boardTabEnabled ? ' sidebar-btn--disabled' : ''
               }`}
               aria-current={currentTab === 'board' ? 'page' : undefined}
-              aria-disabled={!premiumUnlocked}
-              disabled={!premiumUnlocked}
-              title={!premiumUnlocked ? 'プレミアムプランのみ利用できます。' : undefined}
+              aria-disabled={!boardTabEnabled}
+              disabled={!boardTabEnabled}
+              title={
+                !boardTabEnabled
+                  ? 'プレミアムプランのみ利用できます。'
+                  : boardRetentionReadOnly
+                    ? '閲覧のみ（90日間）'
+                    : undefined
+              }
               onClick={() => {
-                if (!premiumUnlocked) return;
+                if (!boardTabEnabled) return;
                 setTab('board');
               }}
             >
@@ -595,7 +622,7 @@ export default function CommunicationPageClient() {
                   role="region"
                   aria-label="コーチとのメッセージ"
                 >
-                  {premiumUnlocked && loggedIn && !boardDisabledReason ? (
+                  {canShowBoardMessages ? (
                     <ul className="communication-msg-list">
                       {messages.map((m) => (
                         <li key={m.id} className={`communication-msg-row ${m.isMine ? 'is-mine' : 'is-theirs'}`}>
@@ -607,7 +634,7 @@ export default function CommunicationPageClient() {
                             <div className="communication-msg-meta-row">
                               <span className="communication-msg-created">作成：{formatJstYmd(m.createdAt)}</span>
                               {m.edited && <span className="communication-msg-edited-badge">編集済み</span>}
-                              {m.isMine && (
+                              {m.isMine && premiumUnlocked && !boardRetentionReadOnly && (
                                 <button
                                   type="button"
                                   className="communication-msg-edit-btn"
@@ -637,6 +664,12 @@ export default function CommunicationPageClient() {
                 <h2 id="input-heading" className="communication-section-heading">
                   メッセージ入力
                 </h2>
+                {boardRetentionReadOnly ? (
+                  <p className="communication-board-gate" role="status">
+                    プレミアムプラン終了のため、新規投稿・編集はできません。履歴は90日間閲覧できます。
+                  </p>
+                ) : (
+                  <>
                 <textarea
                   ref={inputRef}
                   className="communication-input-textarea"
@@ -667,6 +700,8 @@ export default function CommunicationPageClient() {
                     {sending ? '送信中…' : '送る'}
                   </button>
                 </div>
+                  </>
+                )}
               </section>
 
               <p className="communication-spec-note" role="note">

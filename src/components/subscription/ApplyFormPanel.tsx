@@ -5,6 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { DEMO_MERCHANT, DEMO_PLAN_PRICING, type ApplyPlan } from '@/lib/demoMerchantInfo';
+import {
+  APPLY_WELCOME_BACK_LEAD,
+  isReturningPaidSubscriber,
+} from '@/lib/subscription/courseReturn';
 import { shouldSkipDemoApplyForm } from '@/lib/enrollmentCourse';
 import { applyDemoPlanEnrollment } from '@/lib/firestore';
 import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
@@ -28,6 +32,9 @@ export function ApplyFormPanel() {
   const [agreeTokushoho, setAgreeTokushoho] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [billingPrefilled, setBillingPrefilled] = useState(false);
+
+  const isReturning = isReturningPaidSubscriber(userProfile);
 
   useEffect(() => {
     if (loading) return;
@@ -54,9 +61,21 @@ export function ApplyFormPanel() {
   }, [loading, userProfile, plan, router]);
 
   useEffect(() => {
-    if (!user) return;
-    setName(user.displayName ?? '');
-  }, [user]);
+    if (!userProfile || billingPrefilled) return;
+    const billing = userProfile.applyBilling;
+    if (billing?.fullName) {
+      setName(billing.fullName);
+      setPostalCode(billing.postalCode);
+      setAddress(billing.address);
+      setPhone(billing.phone);
+      setBillingPrefilled(true);
+      return;
+    }
+    if (user?.displayName) {
+      setName(user.displayName);
+      setBillingPrefilled(true);
+    }
+  }, [userProfile, user, billingPrefilled]);
 
   if (loading || !plan || !pricing || profilePending || skipApply) {
     return (
@@ -72,9 +91,16 @@ export function ApplyFormPanel() {
     setError(null);
     setSubmitting(true);
     try {
-      await applyDemoPlanEnrollment(user.uid, plan);
+      const billing = {
+        fullName: name.trim(),
+        postalCode: postalCode.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+      };
+      await applyDemoPlanEnrollment(user.uid, plan, billing);
       await refreshUserProfile();
-      router.replace('/trial_4w');
+      const welcomeQs = isReturning ? '?welcomeBack=1' : '';
+      router.replace(`/trial_4w${welcomeQs}`);
     } catch (err) {
       console.error('demo apply enrollment error:', err);
       setError('お申し込みの保存に失敗しました。しばらくしてから再試行してください。');
@@ -89,6 +115,12 @@ export function ApplyFormPanel() {
         以下の内容をご確認のうえ、お申し込みください。
         <span className="sub-flow-demo-badge">デモ</span>
       </p>
+
+      {isReturning ? (
+        <p className="sub-flow-welcome-back" role="status">
+          {APPLY_WELCOME_BACK_LEAD}
+        </p>
+      ) : null}
 
       <section className="sub-flow-merchant" aria-label="事業者情報">
         <h3 className="sub-flow-section-title">販売事業者情報</h3>
@@ -132,7 +164,11 @@ export function ApplyFormPanel() {
             <li>年払い（税込）：{pricing.openPriceYearly.toLocaleString()}円／年</li>
           ) : null}
           <li>{pricing.openPriceNote}</li>
-          <li>{pricing.trialDays}日間無料お試し（初回申込時のみ）</li>
+          {isReturning ? (
+            <li>28日間無料お試し：再付与はありません（初回申込時のみ）</li>
+          ) : (
+            <li>{pricing.trialDays}日間無料お試し（初回申込時のみ）</li>
+          )}
           {'sessionNote' in pricing && pricing.sessionNote ? <li>{pricing.sessionNote}</li> : null}
         </ul>
         <p className="sub-flow-note">
@@ -144,6 +180,11 @@ export function ApplyFormPanel() {
 
       <form className="sub-flow-form" onSubmit={handleSubmit}>
         <h3 className="sub-flow-section-title">お客様情報</h3>
+        {isReturning && userProfile?.applyBilling ? (
+          <p className="sub-flow-note">
+            前回お申し込み時の情報を表示しています。変更がない場合はそのまま送信できます。
+          </p>
+        ) : null}
         <label className="sub-flow-field">
           <span>お名前</span>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -197,7 +238,7 @@ export function ApplyFormPanel() {
           className="trial-landing-cta sub-flow-submit"
           disabled={!agreeTokushoho || submitting}
         >
-          {submitting ? '送信中...' : '申し込む（デモ）'}
+          {submitting ? '送信中...' : isReturning ? '再開する（デモ）' : '申し込む（デモ）'}
         </button>
         <p className="sub-flow-note">
           決済（Stripe）は未接続です。送信後、気づきノート画面へ移動します（課金は発生しません）。

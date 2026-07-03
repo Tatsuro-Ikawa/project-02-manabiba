@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
 import { useLegalDocuments } from '@/hooks/useLegalDocuments';
 import { hasAcceptedCurrentConsents } from '@/lib/consent';
+import { DATA_RETENTION_MSG } from '@/lib/courseSelectionCatalog';
+import { DataRetentionBanner } from '@/components/subscription/DataRetentionBanner';
 import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 import { ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
 
@@ -16,12 +18,16 @@ import { ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
  * 7日間スタートプログラム（現状はダミー本体）。
  * 未ログイン・未同意のときはログイン／同意フローへリダイレクトする。
  */
-export default function StartProgramPage() {
+function StartProgramContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, userProfile, loading, refreshUserProfile } = useAuth();
   const { bundle, loading: legalLoading } = useLegalDocuments();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [accessOk, setAccessOk] = useState(false);
+
+  const showDowngradeNotice = searchParams.get('downgraded') === 'free';
+  const hadTrial = searchParams.get('hadTrial') === '1';
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -95,6 +101,14 @@ export default function StartProgramPage() {
       <div className="home-main-wrapper">
         <main className="legal-page-main">
           <div className="legal-page-content">
+            <DataRetentionBanner userProfile={userProfile} />
+            {showDowngradeNotice ? (
+              <p className="start-program-downgrade-notice" role="status">
+                フリーコースへ変更しました。
+                {hadTrial ? ' 28日お試し期間は終了しました。' : null}
+                気づきノート（有料機能）はご利用いただけません。{DATA_RETENTION_MSG}
+              </p>
+            ) : null}
             <h1 className="legal-page-title">7日間スタートプログラム（ダミー）</h1>
             <p className="legal-page-lead">
               セルフコーチングによる「自分を変える7日間プログラム」の画面です。会員登録時の利用規約・プライバシー同意（1回）のうえで表示しています。
@@ -122,5 +136,19 @@ export default function StartProgramPage() {
 
       <ProtoFooter />
     </div>
+  );
+}
+
+export default function StartProgramPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen" style={{ fontFamily: 'var(--font-family-jp)' }}>
+          読み込み中...
+        </div>
+      }
+    >
+      <StartProgramContent />
+    </Suspense>
   );
 }

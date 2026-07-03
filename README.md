@@ -20,7 +20,7 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 ## プロジェクト固有ドキュメント
 
-- **Vertex AI（トライアル「Aiコーチからのコメント」）のセットアップ・トラブルシュート**: [docs/VERTEX_AI_TRIAL_IMPROVEMENT.md](./docs/VERTEX_AI_TRIAL_IMPROVEMENT.md)
+- **Vertex AI（トライアル「Aiコーチからのコメント」）のセットアップ・トラブルシュート**: [docs/manabiba_01/04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./docs/manabiba_01/04_VERTEX_AI_TRIAL_IMPROVEMENT.md)
 - **設計書（人生学び場 こころ道場）索引**: [docs/manabiba_01/00_README.md](./docs/manabiba_01/00_README.md)
 - **コミュニケーション画面（館長／メッセージボード）実装仕様**: [docs/manabiba_01/04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./docs/manabiba_01/04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)
 

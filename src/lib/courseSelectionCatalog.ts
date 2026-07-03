@@ -68,5 +68,22 @@ export const COURSE_LIST_PRICING = {
 
 export const OPEN_PERIOD_PRICE_NOTE = '(オープン期間(2026年末)限定価格)';
 
+export const DATA_RETENTION_DAYS = 90;
+
 export const DATA_RETENTION_MSG =
   'コースを変更すると、不要になったデータは90日間保存した後、削除されます。';
+
+/** ダウングレード時に 28日お試しを終了する旨（confirm 用） */
+export const TRIAL_ENDS_ON_DOWNGRADE_MSG =
+  '28日お試し期間は終了し、気づきノート（有料機能）はご利用いただけなくなります。';
+
+export function buildFreeDowngradeConfirmMessage(trialActive: boolean): string {
+  const trialNotice = trialActive ? `\n\n${TRIAL_ENDS_ON_DOWNGRADE_MSG}` : '';
+  return `${DATA_RETENTION_MSG}${trialNotice}\n\nフリーコースへ変更しますか？（デモ）`;
+}
+
+export function buildStandardDowngradeConfirmMessage(_trialActive: boolean): string {
+  const mbNotice =
+    '\n\nメッセージボードの新規投稿・編集は終了します。履歴は90日間閲覧できます。';
+  return `${DATA_RETENTION_MSG}${mbNotice}\n\nスタンダードコースへ変更しますか？（デモ）`;
+}

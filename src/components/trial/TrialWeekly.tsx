@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
-import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   formatWeekRangeShortJa,
   getWeekStartDateKeyForToday,
@@ -50,6 +49,9 @@ import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import { buildWeeklyAiReportInputFromDailies } from '@/lib/weeklyAiReportInputFromDailies';
 import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
+import { WeeklySatisfactionChart } from '@/components/trial/WeeklySatisfactionChart';
+
+const DOW_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
 
 function WeeklyTextRow({
   label,
@@ -126,7 +128,6 @@ export default function TrialWeekly() {
     if (!displayWeekStartKey) return [];
     return Array.from({ length: 7 }, (_, i) => addDaysDateKey(displayWeekStartKey, i));
   }, [displayWeekStartKey]);
-  const dowJa = ['日', '月', '火', '水', '木', '金', '土'];
 
   const satisfactionStats = useMemo(() => {
     const points = weekDates
@@ -150,10 +151,10 @@ export default function TrialWeekly() {
         dateKey: dk,
         label: `${mm}/${dd}`,
         satisfaction: typeof v === 'number' ? v : null,
-        dow: dowJa[wd],
+        dow: DOW_JA[wd],
       };
     });
-  }, [weekDates, dailyByDateKey, todayKey, dowJa]);
+  }, [weekDates, dailyByDateKey, todayKey]);
 
   useEffect(() => {
     if (!user) return;
@@ -625,7 +626,7 @@ export default function TrialWeekly() {
                 return (
                   <div key={dk} className="weekly-result-cell" role="row">
                     <div className="weekly-result-date">{mm}/{dd}</div>
-                    <div className="weekly-result-dow">{dowJa[wd]}</div>
+                    <div className="weekly-result-dow">{DOW_JA[wd]}</div>
                     <div className="weekly-result-symbols">
                       <button type="button" className={`weekly-symbol ${m.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 朝`}>
                         {m.sym}
@@ -668,22 +669,7 @@ export default function TrialWeekly() {
 
               <div className="weekly-satisfaction-chart" aria-label="満足度の変化（折れ線）">
                 <div className="text-sm text-gray-600 mb-2">満足度の変化</div>
-                <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={satisfactionChartData} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} interval={0} />
-                    <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} allowDecimals={false} />
-                    <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="satisfaction"
-                      stroke="var(--color-primary)"
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                      connectNulls={false}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <WeeklySatisfactionChart data={satisfactionChartData} />
               </div>
             </div>
 

@@ -1835,6 +1835,17 @@
   text-align: center;
 }
 
+.start-program-downgrade-notice {
+  margin: 0 0 var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid #f0c36d;
+  background: #fff8e6;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-body);
+  line-height: 1.6;
+}
+
 .start-program-upgrade-lead {
   margin: 0 0 var(--spacing-md);
   font-size: var(--font-size-body);
@@ -2727,6 +2738,10 @@
 
 .trial-weekly-container .weekly-satisfaction-chart {
   width: 100%;
+}
+
+.trial-weekly-container .weekly-satisfaction-chart-inner {
+  contain: layout style;
 }
 
 

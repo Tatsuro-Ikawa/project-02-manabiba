@@ -1,6 +1,6 @@
 /**
- * 学び帳（朝・晩／週／月）の入力表示レベル。
- * 区分一覧（簡易・普通・詳細）はプロダクト仕様に準拠。
+ * 気づきノート（朝・晩／週／月）の入力表示レベル。
+ * 仕様の正本: docs/manabiba_01/04_TRIAL_28_IMPLEMENTATION_DECISIONS.md §4.y（週・月・朝）、§4.z（晩）
  */
 
 export type JournalDetailLevel = 'simple' | 'normal' | 'detailed';
@@ -55,49 +55,44 @@ export function journalShowMorningActionContent(level: JournalDetailLevel): bool
   return level !== 'simple';
 }
 
-/** 朝：今日の行動のイメージング */
+/** 朝：今日の行動のイメージング（§4.z — 詳細のみ） */
 export function journalShowMorningImaging(level: JournalDetailLevel): boolean {
-  return level !== 'simple';
-}
-
-/** 晩：実行状況に応じた「具体的な行動内容」 */
-export function journalShowEveningSpecificActions(level: JournalDetailLevel): boolean {
-  return level !== 'simple';
-}
-
-/** 晩：行動の結果の自由記述2項目 */
-export function journalShowEveningResultDetailTexts(level: JournalDetailLevel): boolean {
   return level === 'detailed';
 }
 
-/** 晩：行動時の感情・思考（自由記述） */
+/** 晩：1.a どのように行動できましたか（§4.z — 詳細のみ） */
+export function journalShowEveningSpecificActions(level: JournalDetailLevel): boolean {
+  return level === 'detailed';
+}
+
+/** 晩：4 その時、どんな気持ちになりましたか（§4.z — 普通以上） */
 export function journalShowEveningEmotionThought(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 晩：どんなブレーキが働いたか */
-export function journalShowEveningBrakeWhat(level: JournalDetailLevel): boolean {
-  return level === 'detailed';
-}
-
-/** 晩：反論できたか */
-export function journalShowEveningBrakeRebutted(level: JournalDetailLevel): boolean {
+/** 晩：5 その時、どのような考えが思い浮かびましたか（§4.z — 普通以上） */
+export function journalShowEveningReflectionThought(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 晩：どんな反論の言葉を使ったか */
-export function journalShowEveningBrakeWords(level: JournalDetailLevel): boolean {
-  return level === 'detailed';
-}
-
-/** 晩：明日への改善点・Aiコーチからのコメント（簡易では非表示＝AIも利用不可で詳細入力を促す） */
-export function journalShowEveningImprovement(level: JournalDetailLevel): boolean {
+/** 晩：6 そこから、なにか気づくことはありましたか（§4.z — 普通以上） */
+export function journalShowEveningInsightFollowUp(level: JournalDetailLevel): boolean {
   return level !== 'simple';
 }
 
-/** 晩：明日の行動 — 行動内容 */
+/** 晩：8 今日の学びをどう明日に活かしますか（§4.z — 全レベル） */
+export function journalShowEveningImprovement(_level: JournalDetailLevel): boolean {
+  return true;
+}
+
+/** 晩：9〜10 Aiコーチ（質問・応答）（§4.z — 普通以上） */
+export function journalShowEveningAiCoach(level: JournalDetailLevel): boolean {
+  return level !== 'simple';
+}
+
+/** 晩：13 明日の行動内容（§4.z — 詳細のみ） */
 export function journalShowEveningTomorrowActionContent(level: JournalDetailLevel): boolean {
-  return level !== 'simple';
+  return level === 'detailed';
 }
 
 /** 晩：明日の行動のイメージング */

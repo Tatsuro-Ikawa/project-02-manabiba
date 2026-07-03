@@ -1,9 +1,10 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { SubscriptionPlan, UserProfile } from '@/types/auth';
+import { useAuth } from '@/hooks/useAuth';
 import { DEMO_PLAN_PRICING } from '@/lib/demoMerchantInfo';
 import {
   COURSE_FEATURE_SECTIONS,
@@ -11,9 +12,12 @@ import {
   COURSE_PLAN_LABELS,
   DATA_RETENTION_MSG,
   OPEN_PERIOD_PRICE_NOTE,
+  buildFreeDowngradeConfirmMessage,
+  buildStandardDowngradeConfirmMessage,
   featureMarkToDisplay,
   type CoursePlanKey,
 } from '@/lib/courseSelectionCatalog';
+import { applyDemoDowngradeToFree, applyDemoDowngradeToStandard } from '@/lib/firestore';
 
 function planToCourseKey(plan: SubscriptionPlan): CoursePlanKey {
   if (plan === 'standard' || plan === 'premium') return plan;
@@ -64,11 +68,13 @@ function CoursePlanCta({
   plan,
   current,
   trialActive,
+  busy,
   onSelect,
 }: {
   plan: CoursePlanKey;
   current: CoursePlanKey;
   trialActive: boolean;
+  busy: boolean;
   onSelect: (plan: CoursePlanKey) => void;
 }) {
   if (plan === current) {
@@ -81,8 +87,13 @@ function CoursePlanCta({
   }
 
   return (
-    <button type="button" className="trial-landing-cta sub-flow-cta-btn" onClick={() => onSelect(plan)}>
-      選択する
+    <button
+      type="button"
+      className="trial-landing-cta sub-flow-cta-btn"
+      onClick={() => onSelect(plan)}
+      disabled={busy}
+    >
+      {busy ? '処理中...' : '選択する'}
     </button>
   );
 }
@@ -93,33 +104,62 @@ interface CourseChangePanelProps {
 
 export function CourseChangePanel({ userProfile }: CourseChangePanelProps) {
   const router = useRouter();
+  const { user, refreshUserProfile } = useAuth();
+  const [busy, setBusy] = useState(false);
   const currentPlan = userProfile?.subscription?.plan ?? 'free';
   const current = planToCourseKey(currentPlan);
   const trialActive = isTrialActive(userProfile);
 
-  const handleSelect = (target: CoursePlanKey) => {
-    if (target === current) return;
+  const handleSelect = async (target: CoursePlanKey) => {
+    if (target === current || busy) return;
 
     if (target === 'premium') {
       router.push('/apply?plan=premium');
       return;
     }
 
-    if (target === 'standard' && (current === 'free' || current === 'premium')) {
+    if (target === 'standard' && current === 'free') {
       router.push('/apply?plan=standard');
       return;
     }
 
     if (target === 'free' && current !== 'free') {
-      if (window.confirm(`${DATA_RETENTION_MSG}\n\nフリーコースへ変更しますか？（デモ）`)) {
-        alert('コース変更を受け付けました（Stripe 連携前のデモです）。');
+      if (!window.confirm(buildFreeDowngradeConfirmMessage(trialActive))) return;
+      if (!user?.uid) {
+        alert('ログイン情報を取得できませんでした。');
+        return;
+      }
+      setBusy(true);
+      try {
+        await applyDemoDowngradeToFree(user.uid);
+        await refreshUserProfile();
+        const qs = trialActive ? '?downgraded=free&hadTrial=1' : '?downgraded=free';
+        router.push(`/start-program${qs}`);
+      } catch (e) {
+        console.error('フリーコースへのダウングレードエラー:', e);
+        alert('コース変更に失敗しました。時間をおいて再度お試しください。');
+      } finally {
+        setBusy(false);
       }
       return;
     }
 
     if (target === 'standard' && current === 'premium') {
-      if (window.confirm(`${DATA_RETENTION_MSG}\n\nスタンダードコースへ変更しますか？（デモ）`)) {
-        alert('コース変更を受け付けました（Stripe 連携前のデモです）。');
+      if (!window.confirm(buildStandardDowngradeConfirmMessage(trialActive))) return;
+      if (!user?.uid) {
+        alert('ログイン情報を取得できませんでした。');
+        return;
+      }
+      setBusy(true);
+      try {
+        await applyDemoDowngradeToStandard(user.uid);
+        await refreshUserProfile();
+        router.push('/trial_4w?downgraded=standard');
+      } catch (e) {
+        console.error('スタンダードコースへのダウングレードエラー:', e);
+        alert('コース変更に失敗しました。時間をおいて再度お試しください。');
+      } finally {
+        setBusy(false);
       }
     }
   };
@@ -138,19 +178,19 @@ export function CourseChangePanel({ userProfile }: CourseChangePanelProps) {
           <div className="trial-landing-price-box">
             <div className="trial-landing-price">¥0</div>
           </div>
-          <CoursePlanCta plan="free" current={current} trialActive={trialActive} onSelect={handleSelect} />
+          <CoursePlanCta plan="free" current={current} trialActive={trialActive} busy={busy} onSelect={handleSelect} />
         </section>
 
         <section className="course-change-col" aria-label="スタンダードコース">
           <div className="trial-landing-col-header">{COURSE_PLAN_LABELS.standard}</div>
           <StandardPricingBox />
-          <CoursePlanCta plan="standard" current={current} trialActive={trialActive} onSelect={handleSelect} />
+          <CoursePlanCta plan="standard" current={current} trialActive={trialActive} busy={busy} onSelect={handleSelect} />
         </section>
 
         <section className="course-change-col" aria-label="プレミアムコース">
           <div className="trial-landing-col-header">{COURSE_PLAN_LABELS.premium}</div>
           <PremiumPricingBox />
-          <CoursePlanCta plan="premium" current={current} trialActive={trialActive} onSelect={handleSelect} />
+          <CoursePlanCta plan="premium" current={current} trialActive={trialActive} busy={busy} onSelect={handleSelect} />
         </section>
       </div>
 

@@ -83,40 +83,68 @@
 
 - **パス**: `users/{uid}/journal_daily/{dateKey}`（`dateKey = YYYY-MM-DD`、`tz = Asia/Tokyo`）
 - **目的**: 気づきノート（学び帳）の「朝・晩」記録（SCREEN-005）。28日無料トライアル開始時も同一コレクションを利用し、サブスク継続後もそのまま蓄積する。
+- **入力表示レベル**: 各フィールドの UI 表示可否（簡易・普通・詳細）は [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) **§4.y**（朝・週・月）、**§4.z**（晩・2026-06 改訂）を正とする（本節はフィールド定義のみ）。
 - **暗号化**: 自由記述は **`encrypt(plaintext, uid)`** で暗号化して保存し、読み込み時に復号する。
 
 | フィールド | 型（想定） | 説明 |
 |------------|------------|------|
 | dateKey | string | `YYYY-MM-DD` |
 | tz | string | 固定 `Asia/Tokyo` |
-| morningAffirmationDeclaration | string \| null | `'done' \| 'undone'`（画面は「完了」チェックのみ。未チェックは `undone`） |
+| morningAffirmationDeclaration | string \| null | `'done'` のみ実施 ON。**未チェックは `null`**（§4.z）。既存の `'undone'` は読取時に未実施（`null` 相当）として扱う |
 | morningTodayActionTextEncrypted | string \| null | 朝「今日の行動」の統合欄（下位の目標・内容欄と併存し得る。実装の正本は `src/lib/firestore.ts` の `Trial4wDaily*`） |
-| morningActionGoalTextEncrypted | string \| null | 今日の行動 — 目標 |
+| morningActionGoalTextEncrypted | string \| null | 今日の行動 — 目標（1文） |
 | morningActionContentTextEncrypted | string \| null | 今日の行動 — 行動内容 |
-| morningImagingDone | bool \| null | 「今日の行動のイメージング」完了 |
-| eveningExecution | string \| null | `'done' \| 'partial' \| 'none'`（「今日の行動内容（目標）の実行」） |
-| eveningSpecificActionsTextEncrypted | string \| null | 「具体的な行動内容」（execution が done/partial のとき表示） |
-| eveningResultTextEncrypted | string \| null | 「行動の成果への振り返り」 |
-| eveningResultExecutionTextEncrypted | string \| null | 行動の実行状況の補足 |
-| eveningResultGoalProgressTextEncrypted | string \| null | 目標に対する進捗・結果 |
-| eveningSatisfaction | number \| null | 0〜10 |
-| eveningEmotionThoughtTextEncrypted | string \| null | 「行動時の感情・思考」 |
-| eveningBrake | string \| null | `'yes' \| 'partial' \| 'no'`（「こころのブレーキの作動」） |
-| eveningBrakeRebuttalChoice | string \| null | `'done' \| 'partial' \| 'none'`（ブレーキ作動時の反論可否の選択） |
-| eveningRebuttalTextEncrypted | string \| null | 旧・反論まとめ欄（移行・互換。新 UI では分割欄を優先） |
-| eveningBrakeWorkedTextEncrypted | string \| null | ブレーキがどう働いたか |
-| eveningBrakeRebuttedTextEncrypted | string \| null | 反論の有無・内容 |
-| eveningBrakeWordsTextEncrypted | string \| null | 反論の言葉 |
-| eveningInsightTextEncrypted | string \| null | 「今日の気づき・感動・学びと課題」 |
-| eveningImprovementTextEncrypted | string \| null | 「明日への改善点」 |
-| eveningAiSuggestionTextEncrypted | string \| null | Vertex 生成の「Aiコーチからのコメント」（ユーザーが保存したテキストのみ永続化） |
-| eveningAiSuggestionRunCount | number \| null | 上記コメントの生成実行回数（同日 UI 上限と併用。平文数値で保存） |
-| eveningMessageToSelfTextEncrypted | string \| null | 「今日の自分へのねぎらいの一言」 |
-| eveningTomorrowActionSeedTextEncrypted | string \| null | 「今日の振り返りを踏まえた あすの行動内容（目標）」→ 翌日の朝入力にコピー（未入力時のみ） |
-| eveningTomorrowGoalTextEncrypted | string \| null | 明日の目標 |
-| eveningTomorrowActionContentTextEncrypted | string \| null | 明日の行動内容 |
-| eveningTomorrowImagingDone | bool \| null | 明日の行動のイメージング |
+| morningImagingDone | bool \| null | 「今日の行動のイメージング」完了（**詳細のみ**表示・§4.z） |
+| eveningExecution | string \| null | `'done' \| 'partial' \| 'none'`。UI ラベル（§4.z）: およそできた／まあまあできた／あまりできなかった |
+| eveningSpecificActionsTextEncrypted | string \| null | 「どのように行動できましたか？」（**詳細のみ**。`eveningExecution` が done/partial のとき表示） |
+| eveningResultTextEncrypted | string \| null | **UI 非表示**（§4.z）。読取時フォールバック用に保持 |
+| eveningResultExecutionTextEncrypted | string \| null | 「今日印象に残ったできごとは何でしたか？」（§4.z 項目3） |
+| eveningResultGoalProgressTextEncrypted | string \| null | **UI 非表示**（§4.z）。スキーマ上は削除しない |
+| eveningSatisfaction | number \| null | 0〜10。「行動の満足度を10点のうちどのくらいでしたか？」 |
+| eveningEmotionThoughtTextEncrypted | string \| null | 「その時、どんな気持ちになりましたか？」（§4.z 項目4） |
+| eveningReflectionThoughtTextEncrypted | string \| null | **新規**。「その時、どのような考えが思い浮かびましたか？」（§4.z 項目5） |
+| eveningBrake | string \| null | **UI 非表示**（§4.z）。スキーマ上は削除しない |
+| eveningBrakeRebuttalChoice | string \| null | **UI 非表示**（§4.z） |
+| eveningRebuttalTextEncrypted | string \| null | 旧・反論まとめ欄（移行・互換） |
+| eveningBrakeWorkedTextEncrypted | string \| null | 「そこから、なにか気づくことはありましたか？」（§4.z 項目6。旧ブレーキ欄の流用） |
+| eveningBrakeRebuttedTextEncrypted | string \| null | **UI 非表示**（§4.z） |
+| eveningBrakeWordsTextEncrypted | string \| null | **UI 非表示**（§4.z） |
+| eveningInsightTextEncrypted | string \| null | 「この出来事から何を学びましたか？」（§4.z 項目7） |
+| eveningImprovementTextEncrypted | string \| null | 「今日の学びをどう明日に活かしますか？」（§4.z 項目8。◇気づき内） |
+| eveningAiQuestionTextEncrypted | string \| null | **新規**。「Aiコーチに聞きたい事はありますか？」（§4.z 項目9。API の `userQuestion` 候補） |
+| eveningAiSuggestionTextEncrypted | string \| null | Vertex 生成の「Aiコーチからのコメント」（§4.z 項目10。ユーザーが保存したテキストのみ永続化） |
+| eveningAiSuggestionRunCount | number \| null | 上記コメントの生成実行回数（同日 UI 上限 **3 回**・平文数値） |
+| eveningMessageToSelfTextEncrypted | string \| null | 「他に残しておきたいこと」（§4.z 項目11。**詳細のみ**） |
+| eveningTomorrowActionSeedTextEncrypted | string \| null | 「明日の行動目標（1文）」（§4.z 項目12）→ 翌日の朝入力にコピー（未入力時のみ） |
+| eveningTomorrowGoalTextEncrypted | string \| null | **UI 非表示**（§4.z）。画面の目標は `eveningTomorrowActionSeedText` を正とする |
+| eveningTomorrowActionContentTextEncrypted | string \| null | 「明日の行動内容」（§4.z 項目13。**詳細のみ**） |
+| eveningTomorrowImagingDone | bool \| null | 「明日の行動のイメージング（実施）」（§4.z 項目14。**詳細のみ**） |
 | createdAt, updatedAt | Timestamp | 監査用 |
+
+**晩タブ UI・表示レベルの正本**: [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) **§4.z**。上記のうち **UI 非表示**とあるフィールドはスキーマからは削除せず、読取互換のみ維持する。
+
+#### 2.x-1 日次フィールドと AI 入力の対照（§4.z 改訂・プロンプト検討用）
+
+晩 UI 改訂後の Vertex 入力連結の正本は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) **§11.0**。本表はフィールド ↔ UI 見出し ↔ AI への載せ方の索引。
+
+| §4.z 順 | UI 見出し（晩） | `Trial4wDailyPlain` | `improvement` の `reflectionText` | `weekly-report` 日次ブロック |
+|--------|----------------|---------------------|:---------------------------------:|:----------------------------:|
+| — | （朝）今日の行動目標 | `morningActionGoalText` 等 | 含めない（改訂後） | ● |
+| — | （朝）行動内容 | `morningActionContentText` | 含めない | ● |
+| 1 | 行動目標に対してどのくらい実施できましたか？ | `eveningExecution` | 含めない | ● |
+| 1.a | どのように行動できましたか？ | `eveningSpecificActionsText` | 含めない | ●（値あり時） |
+| 2 | 行動の満足度を10点のうちどのくらいでしたか？ | `eveningSatisfaction` | 含めない | ● |
+| 3 | 今日印象に残ったできごとは何でしたか？ | `eveningResultExecutionText` | **●** | ● |
+| 4 | その時、どんな気持ちになりましたか？ | `eveningEmotionThoughtText` | **●** | ● |
+| 5 | その時、どのような考えが思い浮かびましたか？ | `eveningReflectionThoughtText`（新規） | **●** | ● |
+| 6 | そこから、なにか気づくことはありましたか？ | `eveningBrakeWorkedText` | **●** | ● |
+| 7 | この出来事から何を学びましたか？ | `eveningInsightText` | **●** | ● |
+| 8 | 今日の学びをどう明日に活かしますか？ | `eveningImprovementText` | **●** | ● |
+| 9 | Aiコーチに聞きたい事はありますか？ | `eveningAiQuestionText`（新規） | `userQuestion`（別パラメータ） | 含めない |
+| 12 | 明日の行動目標（1文） | `eveningTomorrowActionSeedText` | 含めない | ●（任意・実装時に判断） |
+| 13 | 明日の行動内容 | `eveningTomorrowActionContentText` | 含めない | ●（詳細のみ・値あり時） |
+
+**廃止（AI 入力から除外）**: `eveningBrake` 系・`eveningResultText`・`eveningResultGoalProgressText`・反論関連。週次インプットの **【こころのブレーキ】** 節も廃止（§4.z）。
 
 ### 2.x-2 users / {uid} / journal_weekly / {weekStartKey}（気づきノート: 週次）
 
@@ -153,11 +181,12 @@
 #### 2.x-2-0 週次 Ai レポート作成の API 入力（`POST /api/ai/weekly-report`）
 
 - **リクエスト本文**: `{ "weeklyInputText": string }`（クライアントは `buildWeeklyAiReportInputFromDailies` と同等の連結を送る想定。実装: `src/lib/weeklyAiReportInputFromDailies.ts`）。
-- **内容**: 当該週の各日（当日 `todayKey` まで）について、`journal_daily`（朝・晩）の項目を `【日付】` 付きブロックで並べる。自由記述が空なら本文上は **`無し`**。列挙型（実行状況・ブレーキ等）も未定義時は **`無し`** 表記。
+- **内容**: 当該週の各日（当日 `todayKey` まで）について、`journal_daily`（朝・晩）の項目を `【日付】` 付きブロックで並べる。自由記述が空なら本文上は **`無し`**。列挙型（実行状況等）も未定義時は **`無し`** 表記。
+- **§4.z 改訂後**: 晩ブロックは **§4.z の UI 見出し（疑問形）** で連結する（正本: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) **§11.0.3**）。ブレーキ・反論節は **出力しない**。【明日の行動】を含む。空欄は **`無し`**。
 - **検証**: 連結テキスト全体が **`AI_REPORT_INPUT_MIN_TOTAL_CHARS`（150）** Unicode 文字以上（`src/lib/journalAiReportWriteMode.ts`）。不足時は API が 400。
 - **反映**: 応答 JSON の 4 キーを `weeklyActionReviewText` / `weeklyOutcomeReviewText` / `weeklyPsychologyText` / `insightAndLearningText` へ書き込む際、`users.{uid}.weeklyAiReportWriteMode`（`append` / `overwrite` / `skip_if_nonempty`）に従う（`applyAiReportWriteMode`）。
 
-Vertex の詳細は [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §9.2。
+Vertex の詳細は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §9.2。
 
 #### 2.x-2-1 週次 Ai 改善提案 API の入力対照（`POST /api/ai/weekly-improvement`）
 
@@ -238,7 +267,7 @@ Vertex の詳細は [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPRO
 | 来月への改善点 | `nextMonthImprovementText` | 10 |
 | 特記事項（その他自由欄） | `monthlySpecialNotesText` | —（任意。短欄検証はスキップ） |
 
-Vertex の詳細は [../VERTEX_AI_TRIAL_IMPROVEMENT.md](../VERTEX_AI_TRIAL_IMPROVEMENT.md) §10。
+Vertex の詳細は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §10。
 
 #### 2.x-3-1 月次配下のサブコレクション（A-11 同型）
 

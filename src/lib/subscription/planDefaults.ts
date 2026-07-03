@@ -67,6 +67,8 @@ export function normalizeUserSubscription(raw: Record<string, unknown> | undefin
     startDate: firestoreValueToDate(raw?.startDate) ?? new Date(),
     endDate: firestoreValueToDate(raw?.endDate),
     trialEndsAt: firestoreValueToDate(raw?.trialEndsAt),
+    dataRetentionEndsAt: firestoreValueToDate(raw?.dataRetentionEndsAt),
+    trialConsumedAt: firestoreValueToDate(raw?.trialConsumedAt),
     currentPeriodEnd: firestoreValueToDate(raw?.currentPeriodEnd),
     stripeCustomerId: typeof raw?.stripeCustomerId === 'string' ? raw.stripeCustomerId : undefined,
     stripeSubscriptionId: typeof raw?.stripeSubscriptionId === 'string' ? raw.stripeSubscriptionId : undefined,

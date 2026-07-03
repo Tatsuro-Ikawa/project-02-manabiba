@@ -19,7 +19,10 @@ import {
   getUserProfile,
 } from '@/lib/firestore';
 import { canAccessKizukiNoteApp, type KizukiNoteApplyIntent } from '@/lib/enrollmentCourse';
+import { NOTE_WELCOME_BACK_LEAD } from '@/lib/subscription/courseReturn';
+import { DataRetentionBanner } from '@/components/subscription/DataRetentionBanner';
 import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
+import '@/styles/subscription-flow.css';
 
 const TAB_KEYS = ['affirmation', 'morning_evening', 'weekly', 'monthly'] as const;
 type TabKey = (typeof TAB_KEYS)[number];
@@ -56,15 +59,33 @@ function Trial4wContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
   const applyParam = searchParams.get('apply');
+  const welcomeBackParam = searchParams.get('welcomeBack') === '1';
+  const downgradedStandard = searchParams.get('downgraded') === 'standard';
   const applyIntent: KizukiNoteApplyIntent = applyParam === 'ai_coach' ? 'ai_coach' : null;
   const initialTab = useMemo(() => parseTab(tabParam), [tabParam]);
   const [currentTab, setCurrentTab] = useState<TabKey>(initialTab);
+  const [showWelcomeBack, setShowWelcomeBack] = useState(welcomeBackParam);
+  const [showDowngradeNotice, setShowDowngradeNotice] = useState(downgradedStandard);
   const coachClientParam = searchParams.get('coachClient');
   const coachClientUid = useMemo(() => (coachClientParam ? coachClientParam : null), [coachClientParam]);
 
   useEffect(() => {
     setCurrentTab(parseTab(searchParams.get('tab')));
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!welcomeBackParam) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('welcomeBack');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, [welcomeBackParam]);
+
+  useEffect(() => {
+    if (!downgradedStandard) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('downgraded');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, [downgradedStandard]);
 
   const setTab = useCallback((tab: TabKey) => {
     setCurrentTab(tab);
@@ -204,6 +225,35 @@ function Trial4wContent() {
 
       <div className="trial-main-wrapper">
         <div className="trial-main">
+          <DataRetentionBanner userProfile={userProfile} className="trial-data-retention" />
+          {showDowngradeNotice ? (
+            <div className="sub-flow-welcome-back trial-welcome-back" role="status">
+              <p>
+                スタンダードコースへ変更しました。メッセージボードの新規投稿・編集はご利用いただけません。履歴は90日間閲覧できます。
+              </p>
+              <button
+                type="button"
+                className="sub-flow-welcome-back-dismiss"
+                onClick={() => setShowDowngradeNotice(false)}
+                aria-label="お知らせを閉じる"
+              >
+                閉じる
+              </button>
+            </div>
+          ) : null}
+          {showWelcomeBack ? (
+            <div className="sub-flow-welcome-back trial-welcome-back" role="status">
+              <p>{NOTE_WELCOME_BACK_LEAD}</p>
+              <button
+                type="button"
+                className="sub-flow-welcome-back-dismiss"
+                onClick={() => setShowWelcomeBack(false)}
+                aria-label="お知らせを閉じる"
+              >
+                閉じる
+              </button>
+            </div>
+          ) : null}
           <nav
             className={`trial-menu-bar${isCoachView && coachClientUid ? ' coach-share-active' : ''}`}
             aria-label="トライアルメニュー"

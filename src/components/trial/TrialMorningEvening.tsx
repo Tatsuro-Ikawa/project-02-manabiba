@@ -9,91 +9,25 @@ import {
   addDaysDateKey,
   getTrial4wDailyPlain,
   saveTrial4wDailyPlain,
-  type Trial4wEveningBrake,
   type Trial4wEveningExecution,
   type Trial4wDailyPlain,
 } from '@/lib/firestore';
 import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
-
-function trialEveningExecutionLabel(v: Trial4wEveningExecution | null): string {
-  if (v === 'done') return 'できた';
-  if (v === 'partial') return '一部できた';
-  if (v === 'none') return 'できなかった';
-  return '';
-}
-
-function trialEveningBrakeLabel(v: Trial4wEveningBrake | null): string {
-  if (v === 'yes') return '働いた';
-  if (v === 'partial') return '一部働いた';
-  if (v === 'no') return '働かなかった';
-  return '';
-}
-
-/** Aiコーチからのコメント API へ送る本文（複数欄をラベル付きで連結） */
-function buildAiReflectionInputText(data: Trial4wDailyPlain): string {
-  const blocks: string[] = [];
-
-  const pushBlock = (title: string, body: string | null | undefined) => {
-    const t = (body ?? '').trim();
-    if (t) blocks.push(`${title}\n${t}`);
-  };
-
-  pushBlock('【朝・今日の行動目標（1文）】', data.morningTodayActionText);
-
-  if (data.eveningExecution) {
-    blocks.push(`【行動の実行状況】\n${trialEveningExecutionLabel(data.eveningExecution)}`);
-  }
-  pushBlock('【具体的な行動内容】', data.eveningSpecificActionsText);
-
-  const resultLines: string[] = [];
-  if (data.eveningSatisfaction != null && !Number.isNaN(data.eveningSatisfaction)) {
-    resultLines.push(`（満足度）${data.eveningSatisfaction}/10点`);
-  }
-  const ext = (data.eveningResultExecutionText ?? '').trim();
-  if (ext) resultLines.push(`（補足・実行の記述）${ext}`);
-  const rt = (data.eveningResultText ?? '').trim();
-  if (rt) resultLines.push(`（どのように行いどの程度できたか）${rt}`);
-  const gp = (data.eveningResultGoalProgressText ?? '').trim();
-  if (gp) resultLines.push(`（目標・指標に対しどの程度近づけたか）${gp}`);
-  if (resultLines.length) {
-    blocks.push(`【行動の結果】\n${resultLines.join('\n')}`);
-  }
-
-  pushBlock('【行動時の感情・思考】', data.eveningEmotionThoughtText);
-
-  const brakeLines: string[] = [];
-  if (data.eveningBrake) {
-    brakeLines.push(`ブレーキが働いたか: ${trialEveningBrakeLabel(data.eveningBrake)}`);
-  }
-  if (data.eveningBrake === 'yes' || data.eveningBrake === 'partial') {
-    const bw = (data.eveningBrakeWorkedText ?? '').trim();
-    if (bw) brakeLines.push(`どんなブレーキだったか: ${bw}`);
-    if (data.eveningBrakeRebuttalChoice) {
-      brakeLines.push(
-        `反論できたか: ${trialEveningExecutionLabel(data.eveningBrakeRebuttalChoice)}`
-      );
-    }
-    const words = (data.eveningBrakeWordsText ?? '').trim();
-    if (words) brakeLines.push(`反論の言葉: ${words}`);
-  }
-  if (brakeLines.length) {
-    blocks.push(`【こころのブレーキ】\n${brakeLines.join('\n')}`);
-  }
-
-  pushBlock('【今日の気づき・感動・学びと課題】', data.eveningInsightText);
-  pushBlock('【自分の書いた明日への改善点】', data.eveningImprovementText);
-
-  return blocks.join('\n\n');
-}
+import {
+  AI_SUGGESTION_DAILY_LIMIT,
+  buildEveningReflectionText,
+  countUnicodeChars,
+  MIN_REFLECTION_TEXT_CHARS,
+  normalizeEveningUserQuestion,
+} from '@/lib/eveningAiImprovementInput';
 import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
 import {
-  journalShowEveningBrakeRebutted,
-  journalShowEveningBrakeWhat,
-  journalShowEveningBrakeWords,
+  journalShowEveningAiCoach,
   journalShowEveningEmotionThought,
   journalShowEveningImprovement,
-  journalShowEveningResultDetailTexts,
+  journalShowEveningInsightFollowUp,
+  journalShowEveningReflectionThought,
   journalShowEveningSelfMessage,
   journalShowEveningSpecificActions,
   journalShowEveningTomorrowActionContent,
@@ -103,12 +37,46 @@ import {
   journalShowSupplementaryDetails,
 } from '@/lib/journalDetailLevel';
 
-const AI_SUGGESTION_DAILY_LIMIT = 10;
+const EVENING_EXECUTION_OPTIONS: readonly { value: Trial4wEveningExecution; label: string }[] = [
+  { value: 'done', label: 'およそできた' },
+  { value: 'partial', label: 'まあまあできた' },
+  { value: 'none', label: 'あまりできなかった' },
+];
 
 function formatDateLabelJa(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map((x) => Number(x));
   if (!y || !m || !d) return dateKey;
-  return `${m}月${d}日 朝・晩のアクション`;
+  return `${m}月${d}日`;
+}
+
+function EveningQuestionField({
+  label,
+  value,
+  onChange,
+  onBlur,
+  saving,
+  placeholder = '入力してください',
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onBlur: () => void;
+  saving: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="form-row">
+      <span className="trial-l3-label">{label}</span>
+      <AutosizeTextarea
+        className="w-full text-sm border border-gray-300 rounded p-2"
+        value={value}
+        disabled={saving}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder}
+      />
+    </div>
+  );
 }
 
 function InfoDetails({ title, body }: { title: string; body: string }) {
@@ -199,6 +167,7 @@ export default function TrialMorningEvening() {
         eveningResultGoalProgressText: null,
         eveningSatisfaction: null,
         eveningEmotionThoughtText: null,
+        eveningReflectionThoughtText: null,
         eveningBrake: null,
         eveningBrakeRebuttalChoice: null,
         eveningRebuttalText: null,
@@ -207,6 +176,7 @@ export default function TrialMorningEvening() {
         eveningBrakeWordsText: null,
         eveningInsightText: null,
         eveningImprovementText: null,
+        eveningAiQuestionText: null,
         eveningAiSuggestionText: null,
         eveningAiSuggestionRunCount: null,
         eveningMessageToSelfText: null,
@@ -256,15 +226,21 @@ export default function TrialMorningEvening() {
     window.history.replaceState({}, '', url.pathname + url.search);
   }, []);
 
-  const aiInputText = useMemo(
-    () => (data ? buildAiReflectionInputText(data) : ''),
+  const aiReflectionText = useMemo(
+    () => (data ? buildEveningReflectionText(data) : ''),
+    [data]
+  );
+  const aiUserQuestion = useMemo(
+    () => (data ? normalizeEveningUserQuestion(data.eveningAiQuestionText) : null),
     [data]
   );
 
   const aiRunCount = Math.max(0, data?.eveningAiSuggestionRunCount ?? 0);
-  const aiRemainingCount = Math.max(0, AI_SUGGESTION_DAILY_LIMIT - aiRunCount);
   const isAiRunLimitReached = aiRunCount >= AI_SUGGESTION_DAILY_LIMIT;
-  const canRunAiSuggestion = aiInputText.length >= 10 && !aiLoading && !isAiRunLimitReached;
+  const canRunAiSuggestion =
+    countUnicodeChars(aiReflectionText) >= MIN_REFLECTION_TEXT_CHARS &&
+    !aiLoading &&
+    !isAiRunLimitReached;
 
   const handleGenerateAiSuggestion = async () => {
     if (isAiRunLimitReached) {
@@ -275,7 +251,7 @@ export default function TrialMorningEvening() {
     }
     if (!canRunAiSuggestion) {
       setAiError(
-        '振り返りの内容（行動の結果・感情・気づき・ブレーキ・明日への改善点など）を合わせて10文字以上入力してから実行してください。'
+        `気づき・学びの入力（項目a〜f）を合わせて${MIN_REFLECTION_TEXT_CHARS}文字以上入力してから実行してください。`
       );
       return;
     }
@@ -284,10 +260,14 @@ export default function TrialMorningEvening() {
     setAiSuggestion(null);
     try {
       const authHeaders = await buildJsonAuthHeaders(user);
+      const body: { reflectionText: string; userQuestion?: string } = {
+        reflectionText: aiReflectionText,
+      };
+      if (aiUserQuestion) body.userQuestion = aiUserQuestion;
       const res = await fetch('/api/ai/improvement', {
         method: 'POST',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ actionResultText: aiInputText }),
+        body: JSON.stringify(body),
       });
       const raw = await res.text();
       let json: { suggestion?: string; error?: string | { message?: string } } = {};
@@ -339,7 +319,7 @@ export default function TrialMorningEvening() {
       <div className="trial-tab-content">
         <div className="morning-evening-container">
           <div className="trial-tab-heading-row">
-            <h2 id="morning-evening-section-title">朝・晩</h2>
+            <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
           </div>
           <p className="text-sm text-gray-600">ログインすると日次記録を保存できます。</p>
         </div>
@@ -352,7 +332,7 @@ export default function TrialMorningEvening() {
       <div className="trial-tab-content">
         <div className="morning-evening-container">
           <div className="trial-tab-heading-row">
-            <h2 id="morning-evening-section-title">朝・晩</h2>
+            <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
           </div>
           <p className="text-sm text-gray-500">読み込み中…</p>
         </div>
@@ -364,7 +344,7 @@ export default function TrialMorningEvening() {
     <div className="trial-tab-content">
       <div className="morning-evening-container">
         <div className="trial-tab-heading-row">
-          <h2 id="morning-evening-section-title">朝・晩</h2>
+          <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
         </div>
         <div className="date-nav">
           <button
@@ -406,7 +386,7 @@ export default function TrialMorningEvening() {
                 onClick={() =>
                   void savePatch({
                     morningAffirmationDeclaration:
-                      data.morningAffirmationDeclaration === 'done' ? 'undone' : 'done',
+                      data.morningAffirmationDeclaration === 'done' ? null : 'done',
                   })
                 }
               >
@@ -491,94 +471,38 @@ export default function TrialMorningEvening() {
           ) : null}
         </div>
 
-        {/* 晩コンテナ */}
+        {/* 晩コンテナ — §4.z */}
         <div className="action-sub-section" data-section="evening">
           <h3>晩のアクション</h3>
 
           <h4 className="trial-form-heading-l2">
             <span className="trial-heading-mark" aria-hidden="true">◇</span>
-            行動の実行状況
+            行動
           </h4>
           <div className="trial-form-block-l3">
             <div className="form-row">
+              <span className="trial-l3-label">行動目標に対してどのくらい実施できましたか？</span>
               <TrialSegmentedToggle<Trial4wEveningExecution>
                 value={data.eveningExecution}
                 disabled={saving}
-                options={[
-                  { value: 'done', label: 'できた' },
-                  { value: 'partial', label: '一部できた' },
-                  { value: 'none', label: 'できなかった' },
-                ]}
+                options={EVENING_EXECUTION_OPTIONS}
                 onPick={(v) => void savePatch({ eveningExecution: v })}
               />
             </div>
             {journalShowEveningSpecificActions(level) &&
-            (data.eveningExecution === 'done' || data.eveningExecution === 'partial') && (
-              <div className="form-row">
-                <span className="trial-l3-label">具体的な行動内容</span>
-                <AutosizeTextarea
-                  className="w-full text-sm border border-gray-300 rounded p-2"
+              (data.eveningExecution === 'done' || data.eveningExecution === 'partial') && (
+                <EveningQuestionField
+                  label="どのように行動できましたか？"
                   value={data.eveningSpecificActionsText ?? ''}
-                  disabled={saving}
-                  onChange={(e) =>
-                    setData((prev) =>
-                      prev ? { ...prev, eveningSpecificActionsText: e.target.value } : prev
-                    )
+                  saving={saving}
+                  onChange={(v) =>
+                    setData((prev) => (prev ? { ...prev, eveningSpecificActionsText: v } : prev))
                   }
                   onBlur={() => void savePatch({ eveningSpecificActionsText: data.eveningSpecificActionsText })}
-                  placeholder="入力してください"
                 />
-              </div>
-            )}
-          </div>
-
-          <h4 className="trial-form-heading-l2">
-            <span className="trial-heading-mark" aria-hidden="true">◇</span>
-            行動の結果
-          </h4>
-          <div className="trial-form-block-l3">
-            {journalShowSupplementaryDetails(level) ? (
-              <InfoDetails
-                title="補足（クリックで表示）"
-                body={`行動の成果とは、実際に行ってみてどの程度達成できたか\nあるいは、最終目標にどの程度近づいたかを振り返ります。\n行動のし方に焦点をあてます。\n具体的に言語化することで、現在の行動のし方がどの程度\n成果につながっていけるかのヒントになります。`}
-              />
-            ) : null}
-            {journalShowEveningResultDetailTexts(level) ? (
-              <>
-                <div className="form-row">
-                  <span className="trial-l3-label">どのように行いどの程度できたか</span>
-                  <AutosizeTextarea
-                    className="w-full text-sm border border-gray-300 rounded p-2"
-                    value={data.eveningResultText ?? ''}
-                    disabled={saving}
-                    onChange={(e) =>
-                      setData((prev) => (prev ? { ...prev, eveningResultText: e.target.value } : prev))
-                    }
-                    onBlur={() => void savePatch({ eveningResultText: data.eveningResultText })}
-                    placeholder="入力してください"
-                  />
-                </div>
-                <div className="form-row">
-                  <span className="trial-l3-label">目標・指標に対しどの程度近づけたか</span>
-                  <AutosizeTextarea
-                    className="w-full text-sm border border-gray-300 rounded p-2"
-                    value={data.eveningResultGoalProgressText ?? ''}
-                    disabled={saving}
-                    onChange={(e) =>
-                      setData((prev) =>
-                        prev ? { ...prev, eveningResultGoalProgressText: e.target.value } : prev
-                      )
-                    }
-                    onBlur={() =>
-                      void savePatch({ eveningResultGoalProgressText: data.eveningResultGoalProgressText })
-                    }
-                    placeholder="入力してください"
-                  />
-                </div>
-              </>
-            ) : null}
+              )}
             <div className="form-row">
-              <span className="trial-l3-label">満足度：10点満点での評価</span>
+                <span className="trial-l3-label">行動の満足度を10点のうちどのくらいでしたか？</span>
               <div className="satisfaction-input">
                 <input
                   type="number"
@@ -602,140 +526,83 @@ export default function TrialMorningEvening() {
             </div>
           </div>
 
-          {journalShowEveningEmotionThought(level) ? (
-            <>
-              <h4 className="trial-form-heading-l2">
-                <span className="trial-heading-mark" aria-hidden="true">◇</span>
-                行動時の感情・思考
-              </h4>
-              <div className="trial-form-block-l3">
-                <div className="form-row">
-                  <AutosizeTextarea
-                    className="w-full text-sm border border-gray-300 rounded p-2"
-                    value={data.eveningEmotionThoughtText ?? ''}
-                    disabled={saving}
-                    onChange={(e) =>
-                      setData((prev) =>
-                        prev ? { ...prev, eveningEmotionThoughtText: e.target.value } : prev
-                      )
-                    }
-                    onBlur={() => void savePatch({ eveningEmotionThoughtText: data.eveningEmotionThoughtText })}
-                    placeholder="入力してください"
-                  />
-                </div>
-              </div>
-            </>
-          ) : null}
-
           <h4 className="trial-form-heading-l2">
             <span className="trial-heading-mark" aria-hidden="true">◇</span>
-            こころのブレーキ
+            気づき
           </h4>
           <div className="trial-form-block-l3">
-            <div className="form-row">
-              <TrialSegmentedToggle<Trial4wEveningBrake>
-                value={data.eveningBrake}
-                disabled={saving}
-                options={[
-                  { value: 'yes', label: '働いた' },
-                  { value: 'partial', label: '一部働いた' },
-                  { value: 'no', label: '働かなかった' },
-                ]}
-                onPick={(v) => void savePatch({ eveningBrake: v })}
+            <EveningQuestionField
+              label="今日印象に残ったできごとは何でしたか？"
+              value={data.eveningResultExecutionText ?? ''}
+              saving={saving}
+              onChange={(v) =>
+                setData((prev) => (prev ? { ...prev, eveningResultExecutionText: v } : prev))
+              }
+              onBlur={() => void savePatch({ eveningResultExecutionText: data.eveningResultExecutionText })}
+            />
+            {journalShowEveningEmotionThought(level) ? (
+              <EveningQuestionField
+                label="その時、どんな気持ちになりましたか？"
+                value={data.eveningEmotionThoughtText ?? ''}
+                saving={saving}
+                onChange={(v) =>
+                  setData((prev) => (prev ? { ...prev, eveningEmotionThoughtText: v } : prev))
+                }
+                onBlur={() => void savePatch({ eveningEmotionThoughtText: data.eveningEmotionThoughtText })}
               />
-            </div>
-            {journalShowEveningBrakeWhat(level) &&
-              (data.eveningBrake === 'yes' || data.eveningBrake === 'partial') && (
-                <div className="form-row">
-                  <span className="trial-l3-label">どんなブレーキだったか</span>
-                  <AutosizeTextarea
-                    className="w-full text-sm border border-gray-300 rounded p-2"
-                    value={data.eveningBrakeWorkedText ?? ''}
-                    disabled={saving}
-                    onChange={(e) =>
-                      setData((prev) =>
-                        prev ? { ...prev, eveningBrakeWorkedText: e.target.value } : prev
-                      )
-                    }
-                    onBlur={() => void savePatch({ eveningBrakeWorkedText: data.eveningBrakeWorkedText })}
-                    placeholder="入力してください"
-                  />
-                </div>
-              )}
-            {journalShowEveningBrakeRebutted(level) &&
-              (data.eveningBrake === 'yes' || data.eveningBrake === 'partial') && (
-                <div className="form-row">
-                  <span className="trial-l3-label">反論できたか</span>
-                  <TrialSegmentedToggle<Trial4wEveningExecution>
-                    value={data.eveningBrakeRebuttalChoice}
-                    disabled={saving}
-                    options={[
-                      { value: 'done', label: 'できた' },
-                      { value: 'partial', label: '一部できた' },
-                      { value: 'none', label: 'できなかった' },
-                    ]}
-                    onPick={(v) => void savePatch({ eveningBrakeRebuttalChoice: v })}
-                  />
-                </div>
-              )}
-            {journalShowEveningBrakeWords(level) &&
-              (data.eveningBrake === 'yes' || data.eveningBrake === 'partial') && (
-                <div className="form-row">
-                  <span className="trial-l3-label">どんな反論の言葉を使ったか</span>
-                  <AutosizeTextarea
-                    className="w-full text-sm border border-gray-300 rounded p-2"
-                    value={data.eveningBrakeWordsText ?? ''}
-                    disabled={saving}
-                    onChange={(e) =>
-                      setData((prev) =>
-                        prev ? { ...prev, eveningBrakeWordsText: e.target.value } : prev
-                      )
-                    }
-                    onBlur={() => void savePatch({ eveningBrakeWordsText: data.eveningBrakeWordsText })}
-                    placeholder="入力してください"
-                  />
-                </div>
-              )}
-          </div>
-
-          <h4 className="trial-form-heading-l2">
-            <span className="trial-heading-mark" aria-hidden="true">◇</span>
-            今日の気づき・感動・学びと課題
-          </h4>
-          <div className="trial-form-block-l3">
-            <div className="form-row">
-              <AutosizeTextarea
-                className="w-full text-sm border border-gray-300 rounded p-2"
-                value={data.eveningInsightText ?? ''}
-                disabled={saving}
-                onChange={(e) => setData((prev) => (prev ? { ...prev, eveningInsightText: e.target.value } : prev))}
-                onBlur={() => void savePatch({ eveningInsightText: data.eveningInsightText })}
-                placeholder="入力してください"
+            ) : null}
+            {journalShowEveningReflectionThought(level) ? (
+              <EveningQuestionField
+                label="その時、どのような考えが思い浮かびましたか？"
+                value={data.eveningReflectionThoughtText ?? ''}
+                saving={saving}
+                onChange={(v) =>
+                  setData((prev) => (prev ? { ...prev, eveningReflectionThoughtText: v } : prev))
+                }
+                onBlur={() => void savePatch({ eveningReflectionThoughtText: data.eveningReflectionThoughtText })}
               />
-            </div>
-          </div>
+            ) : null}
+            {journalShowEveningInsightFollowUp(level) ? (
+              <EveningQuestionField
+                label="そこから、なにか気づくことはありましたか？"
+                value={data.eveningBrakeWorkedText ?? ''}
+                saving={saving}
+                onChange={(v) =>
+                  setData((prev) => (prev ? { ...prev, eveningBrakeWorkedText: v } : prev))
+                }
+                onBlur={() => void savePatch({ eveningBrakeWorkedText: data.eveningBrakeWorkedText })}
+              />
+            ) : null}
+            <EveningQuestionField
+              label="この出来事から何を学びましたか？"
+              value={data.eveningInsightText ?? ''}
+              saving={saving}
+              onChange={(v) => setData((prev) => (prev ? { ...prev, eveningInsightText: v } : prev))}
+              onBlur={() => void savePatch({ eveningInsightText: data.eveningInsightText })}
+            />
+            {journalShowEveningImprovement(level) ? (
+              <EveningQuestionField
+                label="今日の学びをどう明日に活かしますか？"
+                value={data.eveningImprovementText ?? ''}
+                saving={saving}
+                onChange={(v) =>
+                  setData((prev) => (prev ? { ...prev, eveningImprovementText: v } : prev))
+                }
+                onBlur={() => void savePatch({ eveningImprovementText: data.eveningImprovementText })}
+              />
+            ) : null}
 
-          {journalShowEveningImprovement(level) ? (
-            <>
-              <h4 className="trial-form-heading-l2">
-                <span className="trial-heading-mark" aria-hidden="true">◇</span>
-                明日への改善点
-              </h4>
-              <div className="trial-form-block-l3">
-                <div className="form-row">
-                  <AutosizeTextarea
-                    className="w-full text-sm border border-gray-300 rounded p-2"
-                    value={data.eveningImprovementText ?? ''}
-                    disabled={saving}
-                    onChange={(e) =>
-                      setData((prev) =>
-                        prev ? { ...prev, eveningImprovementText: e.target.value } : prev
-                      )
-                    }
-                    onBlur={() => void savePatch({ eveningImprovementText: data.eveningImprovementText })}
-                    placeholder="入力してください"
-                  />
-                </div>
+            {journalShowEveningAiCoach(level) ? (
+              <>
+                <EveningQuestionField
+                  label="Aiコーチに聞きたい事はありますか？"
+                  value={data.eveningAiQuestionText ?? ''}
+                  saving={saving}
+                  onChange={(v) =>
+                    setData((prev) => (prev ? { ...prev, eveningAiQuestionText: v } : prev))
+                  }
+                  onBlur={() => void savePatch({ eveningAiQuestionText: data.eveningAiQuestionText })}
+                />
                 <div className="form-row">
                   <button
                     type="button"
@@ -743,11 +610,8 @@ export default function TrialMorningEvening() {
                     disabled={!canRunAiSuggestion || saving}
                     onClick={() => void handleGenerateAiSuggestion()}
                   >
-                    Aiコーチからのコメント
+                    Aiコーチへ送信
                   </button>
-                  <p className="text-xs text-gray-600">
-                    本日の実行回数: {aiRunCount}/{AI_SUGGESTION_DAILY_LIMIT}（残り {aiRemainingCount} 回）
-                  </p>
                   {isAiRunLimitReached ? (
                     <p className="text-xs text-amber-700">
                       本日のAiコーチからのコメントの上限（{AI_SUGGESTION_DAILY_LIMIT}回）に達したため、明日再度ご利用ください。
@@ -755,13 +619,16 @@ export default function TrialMorningEvening() {
                   ) : null}
                   {!canRunAiSuggestion && !isAiRunLimitReached ? (
                     <p className="text-xs text-gray-600">
-                      行動の結果・感情・気づき・ブレーキ・明日への改善点などを合わせて10文字以上入力すると実行できます。
+                      気づき・学びの入力（項目a〜f）を合わせて{MIN_REFLECTION_TEXT_CHARS}文字以上入力すると実行できます。
                     </p>
                   ) : null}
                   {aiLoading ? (
                     <p className="text-xs text-gray-600">Aiコーチからのコメントを生成中です…</p>
                   ) : null}
                   {aiError ? <p className="text-xs text-red-600">{aiError}</p> : null}
+                </div>
+                <div className="form-row">
+                  <span className="trial-l3-label">Aiコーチからのコメント</span>
                   {aiSuggestion ? (
                     <>
                       <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-2 whitespace-pre-wrap">
@@ -781,11 +648,25 @@ export default function TrialMorningEvening() {
                         ) : null}
                       </div>
                     </>
-                  ) : null}
+                  ) : (
+                    <p className="text-xs text-gray-500">「Aiコーチへ送信」の結果がここに表示されます。</p>
+                  )}
                 </div>
-              </div>
-            </>
-          ) : null}
+              </>
+            ) : null}
+
+            {journalShowEveningSelfMessage(level) ? (
+              <EveningQuestionField
+                label="他に残しておきたいこと"
+                value={data.eveningMessageToSelfText ?? ''}
+                saving={saving}
+                onChange={(v) =>
+                  setData((prev) => (prev ? { ...prev, eveningMessageToSelfText: v } : prev))
+                }
+                onBlur={() => void savePatch({ eveningMessageToSelfText: data.eveningMessageToSelfText })}
+              />
+            ) : null}
+          </div>
 
           <h4 className="trial-form-heading-l2">
             <span className="trial-heading-mark" aria-hidden="true">◇</span>
@@ -793,51 +674,39 @@ export default function TrialMorningEvening() {
           </h4>
           {level === 'simple' ? (
             <p className="text-xs text-gray-600 mb-2 -mt-1">
-              簡易表示では目標を一文で十分です。「詳細」表示にすると「明日への改善点」とAiコーチからのコメントを利用できます。
+              簡易表示では目標を一文で十分です。「普通」表示にするとAiコーチを利用できます。
             </p>
           ) : null}
           <div className="trial-form-block-l3">
-            <div className="form-row">
-              <span className="trial-l3-label">目標（一文で）</span>
-              <AutosizeTextarea
-                minHeightPx={level === 'simple' ? 52 : 100}
-                className="w-full text-sm border border-gray-300 rounded p-2"
-                value={data.eveningTomorrowActionSeedText ?? ''}
-                disabled={saving}
-                onChange={(e) =>
-                  setData((prev) =>
-                    prev ? { ...prev, eveningTomorrowActionSeedText: e.target.value } : prev
-                  )
-                }
-                onBlur={() => void savePatch({ eveningTomorrowActionSeedText: data.eveningTomorrowActionSeedText })}
-                placeholder="入力してください（保存すると翌日の朝「今日の行動内容（目標）」に反映されます）"
-              />
-              <p className="text-xs text-gray-600">
-                保存時、翌日の「今日の行動内容（目標）」が未入力なら自動でコピーします。
-              </p>
-            </div>
+            <EveningQuestionField
+              label="明日の行動目標（1文）"
+              value={data.eveningTomorrowActionSeedText ?? ''}
+              saving={saving}
+              placeholder="入力してください（保存すると翌日の朝「今日の行動内容（目標）」に反映されます）"
+              onChange={(v) =>
+                setData((prev) => (prev ? { ...prev, eveningTomorrowActionSeedText: v } : prev))
+              }
+              onBlur={() => void savePatch({ eveningTomorrowActionSeedText: data.eveningTomorrowActionSeedText })}
+            />
+            <p className="text-xs text-gray-600">
+              保存時、翌日の「今日の行動内容（目標）」が未入力なら自動でコピーします。
+            </p>
             {journalShowEveningTomorrowActionContent(level) ? (
-              <div className="form-row">
-                <span className="trial-l3-label">行動内容（具体的に）</span>
-                <AutosizeTextarea
-                  className="w-full text-sm border border-gray-300 rounded p-2"
-                  value={data.eveningTomorrowActionContentText ?? ''}
-                  disabled={saving}
-                  onChange={(e) =>
-                    setData((prev) =>
-                      prev ? { ...prev, eveningTomorrowActionContentText: e.target.value } : prev
-                    )
-                  }
-                  onBlur={() =>
-                    void savePatch({ eveningTomorrowActionContentText: data.eveningTomorrowActionContentText })
-                  }
-                  placeholder="入力してください"
-                />
-              </div>
+              <EveningQuestionField
+                label="明日の行動内容"
+                value={data.eveningTomorrowActionContentText ?? ''}
+                saving={saving}
+                onChange={(v) =>
+                  setData((prev) => (prev ? { ...prev, eveningTomorrowActionContentText: v } : prev))
+                }
+                onBlur={() =>
+                  void savePatch({ eveningTomorrowActionContentText: data.eveningTomorrowActionContentText })
+                }
+              />
             ) : null}
             {journalShowEveningTomorrowImaging(level) ? (
               <div className="form-row">
-                <span className="trial-l3-label">明日の行動のイメージング</span>
+                <span className="trial-l3-label">明日の行動のイメージング（実施）</span>
                 <button
                   type="button"
                   className={`trial-segmented-toggle__btn${data.eveningTomorrowImagingDone === true ? ' trial-segmented-toggle__btn--active' : ''}`}
@@ -855,31 +724,6 @@ export default function TrialMorningEvening() {
               </div>
             ) : null}
           </div>
-
-          {journalShowEveningSelfMessage(level) ? (
-            <>
-              <h4 className="trial-form-heading-l2">
-                <span className="trial-heading-mark" aria-hidden="true">◇</span>
-                今日の自分へのねぎらいの一言
-              </h4>
-              <div className="trial-form-block-l3">
-                <div className="form-row">
-                  <AutosizeTextarea
-                    className="w-full text-sm border border-gray-300 rounded p-2"
-                    value={data.eveningMessageToSelfText ?? ''}
-                    disabled={saving}
-                    onChange={(e) =>
-                      setData((prev) =>
-                        prev ? { ...prev, eveningMessageToSelfText: e.target.value } : prev
-                      )
-                    }
-                    onBlur={() => void savePatch({ eveningMessageToSelfText: data.eveningMessageToSelfText })}
-                    placeholder="入力してください"
-                  />
-                </div>
-              </div>
-            </>
-          ) : null}
         </div>
       </div>
     </div>

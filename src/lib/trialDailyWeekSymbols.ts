@@ -1,6 +1,6 @@
 import type { Trial4wDailyPlain } from '@/lib/firestore';
 
-/** 週次グリッド「朝」の記号（TrialWeekly / ホームプレビューで共通） */
+/** 週次グリッド「朝」の記号（TrialWeekly / ホームプレビュー / 月次で共通） */
 export function computeMorningCompletionSymbol(
   d: Trial4wDailyPlain | undefined,
   dateKey: string,
@@ -8,11 +8,11 @@ export function computeMorningCompletionSymbol(
 ): { sym: string; cls: string } {
   if (dateKey > todayKey) return { sym: '—', cls: 'symbol-none' };
   const done1 = d?.morningAffirmationDeclaration === 'done';
-  const done2 = !!(d?.morningTodayActionText && d.morningTodayActionText.trim());
-  const done3 = d?.morningImagingDone === true;
-  const score = Number(done1) + Number(done2) + Number(done3);
-  if (score === 3) return { sym: '〇', cls: 'symbol-o' };
-  if (score >= 1) return { sym: '△', cls: 'symbol-delta' };
+  const actionText = (d?.morningTodayActionText ?? d?.morningActionGoalText ?? '').trim();
+  const done2 = actionText.length > 0;
+  const score = Number(done1) + Number(done2);
+  if (score === 2) return { sym: '〇', cls: 'symbol-o' };
+  if (score === 1) return { sym: '△', cls: 'symbol-delta' };
   return { sym: '×', cls: 'symbol-x' };
 }
 

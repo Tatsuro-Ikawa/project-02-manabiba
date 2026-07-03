@@ -24,6 +24,7 @@ import { decrypt, encrypt } from '@/utils/encryption';
 import { User } from 'firebase/auth';
 import { consentNextImpliesKizuki, consentNextImpliesStart7d, normalizePrimaryCourse } from '@/lib/enrollmentCourse';
 import { featuresForPlan, normalizeUserSubscription } from '@/lib/subscription/planDefaults';
+import type { ApplyBillingInput } from '@/lib/subscription/courseReturn';
 import {
   UserProfile,
   type PrimaryCourse,
@@ -214,6 +215,15 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
               primaryCourse: normalizePrimaryCourse(data.enrollment.primaryCourse) ?? null,
             }
           : undefined,
+        applyBilling: data.applyBilling
+          ? {
+              fullName: String(data.applyBilling.fullName ?? ''),
+              postalCode: String(data.applyBilling.postalCode ?? ''),
+              address: String(data.applyBilling.address ?? ''),
+              phone: String(data.applyBilling.phone ?? ''),
+              updatedAt: data.applyBilling.updatedAt?.toDate?.(),
+            }
+          : undefined,
         subscription: normalizeUserSubscription(
           data.subscription as Record<string, unknown> | undefined
         ),
@@ -323,6 +333,8 @@ export async function ensureKizukiTrialEndsAtIfNeeded(uid: string): Promise<void
   if (!snap.exists()) return;
   const sub = snap.data()?.subscription as Record<string, unknown> | undefined;
   if (sub?.plan !== 'free') return;
+  const rawConsumed = sub.trialConsumedAt as { toDate?: () => Date } | undefined;
+  if (rawConsumed?.toDate?.()) return;
   const rawEnd = sub.trialEndsAt as { toDate?: () => Date } | undefined;
   const existing = rawEnd?.toDate?.();
   if (existing && existing.getTime() > Date.now()) return;
@@ -331,16 +343,19 @@ export async function ensureKizukiTrialEndsAtIfNeeded(uid: string): Promise<void
   ends.setDate(ends.getDate() + KIZUKI_TRIAL_DAYS);
   await updateDoc(ref, {
     'subscription.trialEndsAt': Timestamp.fromDate(ends),
+    'subscription.trialConsumedAt': serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 }
 
 /**
  * デモ申込フォーム送信後: 主コース・プラン・28日お試しを反映する（Stripe 連携前）。
+ * 復帰申込（`trialConsumedAt` 済み）ではお試しを再付与しない。
  */
 export async function applyDemoPlanEnrollment(
   uid: string,
-  plan: 'standard' | 'premium'
+  plan: 'standard' | 'premium',
+  billing?: ApplyBillingInput
 ): Promise<void> {
   await ensureUserEnrollmentPrimaryCourse(uid, 'kizuki');
 
@@ -351,21 +366,83 @@ export async function applyDemoPlanEnrollment(
   const sub = snap.data()?.subscription as Record<string, unknown> | undefined;
   const rawEnd = sub?.trialEndsAt as { toDate?: () => Date } | undefined;
   const existingEnd = rawEnd?.toDate?.();
+  const rawConsumed = sub?.trialConsumedAt as { toDate?: () => Date } | undefined;
+  const trialConsumedAt = rawConsumed?.toDate?.();
 
   const updates: Record<string, unknown> = {
     'subscription.plan': plan,
     'subscription.status': 'active',
     'subscription.features': featuresForPlan(plan),
+    'subscription.dataRetentionEndsAt': deleteField(),
     updatedAt: serverTimestamp(),
   };
 
-  if (!existingEnd || existingEnd.getTime() <= Date.now()) {
-    const ends = new Date();
-    ends.setDate(ends.getDate() + KIZUKI_TRIAL_DAYS);
-    updates['subscription.trialEndsAt'] = Timestamp.fromDate(ends);
+  if (!trialConsumedAt) {
+    if (!existingEnd || existingEnd.getTime() <= Date.now()) {
+      const ends = new Date();
+      ends.setDate(ends.getDate() + KIZUKI_TRIAL_DAYS);
+      updates['subscription.trialEndsAt'] = Timestamp.fromDate(ends);
+    }
+    updates['subscription.trialConsumedAt'] = serverTimestamp();
+  }
+
+  if (billing) {
+    updates.applyBilling = {
+      fullName: billing.fullName.trim(),
+      postalCode: billing.postalCode.trim(),
+      address: billing.address.trim(),
+      phone: billing.phone.trim(),
+      updatedAt: serverTimestamp(),
+    };
+    updates.displayName = billing.fullName.trim();
   }
 
   await updateDoc(ref, updates);
+}
+
+/** 解約・ダウングレード後のデータ保持日数（04_SUBSCRIPTION_PRODUCT_SCOPE §3.2） */
+export const SUBSCRIPTION_DATA_RETENTION_DAYS = 90;
+
+/**
+ * デモ: 有料プラン → フリーコースへダウングレード（Stripe 連携前）。
+ * - `plan=free` / `features` 同期 / `trialEndsAt` 削除
+ * - `enrollment.primaryCourse=start7d`
+ * - `dataRetentionEndsAt` = 変更日 +90日
+ */
+export async function applyDemoDowngradeToFree(uid: string): Promise<void> {
+  const ref = doc(db, 'users', uid);
+  const retentionEnds = new Date();
+  retentionEnds.setDate(retentionEnds.getDate() + SUBSCRIPTION_DATA_RETENTION_DAYS);
+
+  await updateDoc(ref, {
+    'subscription.plan': 'free',
+    'subscription.status': 'active',
+    'subscription.features': featuresForPlan('free'),
+    'subscription.trialEndsAt': deleteField(),
+    'subscription.dataRetentionEndsAt': Timestamp.fromDate(retentionEnds),
+    'enrollment.primaryCourse': 'start7d',
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * デモ: プレミアム → スタンダードへダウングレード（Stripe 連携前）。
+ * - `plan=standard` / `features` 同期 / `enrollment.primaryCourse=kizuki` 維持
+ * - `dataRetentionEndsAt` = 変更日 +90日（MB 等の保持用）
+ * - `trialConsumedAt` は維持（お試し再付与なし）
+ */
+export async function applyDemoDowngradeToStandard(uid: string): Promise<void> {
+  const ref = doc(db, 'users', uid);
+  const retentionEnds = new Date();
+  retentionEnds.setDate(retentionEnds.getDate() + SUBSCRIPTION_DATA_RETENTION_DAYS);
+
+  await updateDoc(ref, {
+    'subscription.plan': 'standard',
+    'subscription.status': 'active',
+    'subscription.features': featuresForPlan('standard'),
+    'subscription.dataRetentionEndsAt': Timestamp.fromDate(retentionEnds),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 /**
@@ -472,6 +549,7 @@ export type Trial4wDailyPlain = {
   eveningResultGoalProgressText: string | null;
   eveningSatisfaction: number | null; // 0..10
   eveningEmotionThoughtText: string | null;
+  eveningReflectionThoughtText: string | null;
   eveningBrake: Trial4wEveningBrake | null;
   /** 反論できたか（できた／一部できた／できなかった）。旧 free text は eveningBrakeRebuttedText */
   eveningBrakeRebuttalChoice: Trial4wEveningExecution | null;
@@ -481,6 +559,7 @@ export type Trial4wDailyPlain = {
   eveningBrakeWordsText: string | null;
   eveningInsightText: string | null;
   eveningImprovementText: string | null;
+  eveningAiQuestionText: string | null;
   eveningAiSuggestionText: string | null;
   eveningAiSuggestionRunCount: number | null;
   eveningMessageToSelfText: string | null;
@@ -506,6 +585,7 @@ export type Trial4wDailyEncrypted = {
   eveningResultGoalProgressTextEncrypted: string | null;
   eveningSatisfaction: number | null;
   eveningEmotionThoughtTextEncrypted: string | null;
+  eveningReflectionThoughtTextEncrypted: string | null;
   eveningBrake: Trial4wEveningBrake | null;
   eveningBrakeRebuttalChoice: Trial4wEveningExecution | null;
   eveningRebuttalTextEncrypted: string | null;
@@ -514,6 +594,7 @@ export type Trial4wDailyEncrypted = {
   eveningBrakeWordsTextEncrypted: string | null;
   eveningInsightTextEncrypted: string | null;
   eveningImprovementTextEncrypted: string | null;
+  eveningAiQuestionTextEncrypted: string | null;
   eveningAiSuggestionTextEncrypted: string | null;
   eveningAiSuggestionRunCount: number | null;
   eveningMessageToSelfTextEncrypted: string | null;
@@ -582,6 +663,7 @@ export async function getTrial4wDailyPlain(
       eveningResultGoalProgressText: null,
       eveningSatisfaction: null,
       eveningEmotionThoughtText: null,
+      eveningReflectionThoughtText: null,
       eveningBrake: null,
       eveningBrakeRebuttalChoice: null,
       eveningRebuttalText: null,
@@ -590,6 +672,7 @@ export async function getTrial4wDailyPlain(
       eveningBrakeWordsText: null,
       eveningInsightText: null,
       eveningImprovementText: null,
+      eveningAiQuestionText: null,
       eveningAiSuggestionText: null,
       eveningAiSuggestionRunCount: null,
       eveningMessageToSelfText: null,
@@ -625,9 +708,7 @@ export async function getTrial4wDailyPlain(
     dateKey: dk,
     tz: 'Asia/Tokyo',
     morningAffirmationDeclaration:
-      data.morningAffirmationDeclaration === 'done' || data.morningAffirmationDeclaration === 'undone'
-        ? data.morningAffirmationDeclaration
-        : null,
+      data.morningAffirmationDeclaration === 'done' ? 'done' : null,
     morningTodayActionText,
     morningActionGoalText,
     morningActionContentText: await decryptOrNull(data.morningActionContentTextEncrypted),
@@ -643,6 +724,7 @@ export async function getTrial4wDailyPlain(
     eveningResultGoalProgressText: await decryptOrNull(data.eveningResultGoalProgressTextEncrypted),
     eveningSatisfaction: typeof data.eveningSatisfaction === 'number' ? clampSatisfaction(data.eveningSatisfaction) : null,
     eveningEmotionThoughtText: await decryptOrNull(data.eveningEmotionThoughtTextEncrypted),
+    eveningReflectionThoughtText: await decryptOrNull(data.eveningReflectionThoughtTextEncrypted),
     eveningBrake:
       data.eveningBrake === 'yes' || data.eveningBrake === 'partial' || data.eveningBrake === 'no'
         ? data.eveningBrake
@@ -659,6 +741,7 @@ export async function getTrial4wDailyPlain(
     eveningBrakeWordsText,
     eveningInsightText: await decryptOrNull(data.eveningInsightTextEncrypted),
     eveningImprovementText: await decryptOrNull(data.eveningImprovementTextEncrypted),
+    eveningAiQuestionText: await decryptOrNull(data.eveningAiQuestionTextEncrypted),
     eveningAiSuggestionText: await decryptOrNull(data.eveningAiSuggestionTextEncrypted),
     eveningAiSuggestionRunCount:
       typeof data.eveningAiSuggestionRunCount === 'number'
@@ -721,9 +804,7 @@ export async function listJournalDailyPlainInRange(params: {
       dateKey: dk,
       tz: 'Asia/Tokyo',
       morningAffirmationDeclaration:
-        raw.morningAffirmationDeclaration === 'done' || raw.morningAffirmationDeclaration === 'undone'
-          ? raw.morningAffirmationDeclaration
-          : null,
+        raw.morningAffirmationDeclaration === 'done' ? 'done' : null,
       morningTodayActionText,
       morningActionGoalText,
       morningActionContentText: await decryptOrNull(raw.morningActionContentTextEncrypted),
@@ -738,6 +819,7 @@ export async function listJournalDailyPlainInRange(params: {
       eveningResultGoalProgressText: await decryptOrNull(raw.eveningResultGoalProgressTextEncrypted),
       eveningSatisfaction: typeof raw.eveningSatisfaction === 'number' ? clampSatisfaction(raw.eveningSatisfaction) : null,
       eveningEmotionThoughtText: await decryptOrNull(raw.eveningEmotionThoughtTextEncrypted),
+      eveningReflectionThoughtText: await decryptOrNull(raw.eveningReflectionThoughtTextEncrypted),
       eveningBrake:
         raw.eveningBrake === 'yes' || raw.eveningBrake === 'partial' || raw.eveningBrake === 'no'
           ? raw.eveningBrake
@@ -754,6 +836,7 @@ export async function listJournalDailyPlainInRange(params: {
       eveningBrakeWordsText,
       eveningInsightText: await decryptOrNull(raw.eveningInsightTextEncrypted),
       eveningImprovementText: await decryptOrNull(raw.eveningImprovementTextEncrypted),
+      eveningAiQuestionText: await decryptOrNull(raw.eveningAiQuestionTextEncrypted),
       eveningAiSuggestionText: await decryptOrNull(raw.eveningAiSuggestionTextEncrypted),
       eveningAiSuggestionRunCount:
         typeof raw.eveningAiSuggestionRunCount === 'number'
@@ -842,6 +925,12 @@ export async function saveTrial4wDailyPlain(params: {
   if ('eveningEmotionThoughtText' in params.patch) {
     encFields.push(['eveningEmotionThoughtTextEncrypted', normalizeText(params.patch.eveningEmotionThoughtText)]);
   }
+  if ('eveningReflectionThoughtText' in params.patch) {
+    encFields.push([
+      'eveningReflectionThoughtTextEncrypted',
+      normalizeText(params.patch.eveningReflectionThoughtText),
+    ]);
+  }
   if ('eveningRebuttalText' in params.patch) {
     encFields.push(['eveningRebuttalTextEncrypted', normalizeText(params.patch.eveningRebuttalText)]);
   }
@@ -859,6 +948,9 @@ export async function saveTrial4wDailyPlain(params: {
   }
   if ('eveningImprovementText' in params.patch) {
     encFields.push(['eveningImprovementTextEncrypted', normalizeText(params.patch.eveningImprovementText)]);
+  }
+  if ('eveningAiQuestionText' in params.patch) {
+    encFields.push(['eveningAiQuestionTextEncrypted', normalizeText(params.patch.eveningAiQuestionText)]);
   }
   if ('eveningAiSuggestionText' in params.patch) {
     encFields.push(['eveningAiSuggestionTextEncrypted', normalizeText(params.patch.eveningAiSuggestionText)]);

@@ -52,6 +52,8 @@ export interface UserProfile {
    * Firestore キー名は `weeklyAiReportWriteMode` のまま（月次 UI からも同値を参照）。
    */
   weeklyAiReportWriteMode?: WeeklyAiReportWriteMode;
+  /** デモ申込フォームで登録したお客様情報（コース復帰時に表示・更新） */
+  applyBilling?: ApplyBillingInfo;
   createdAt: Date;
   updatedAt: Date;
   lastLoginAt: Date;
@@ -75,6 +77,15 @@ export interface TrialAffirmationUiMeta {
   lastSubmenu: TrialAffirmationSubmenu | null;
 }
 
+/** デモ申込フォームのお客様情報（`users/{uid}.applyBilling`） */
+export interface ApplyBillingInfo {
+  fullName: string;
+  postalCode: string;
+  address: string;
+  phone: string;
+  updatedAt?: Date;
+}
+
 // サブスクリプション情報
 export interface SubscriptionInfo {
   plan: SubscriptionPlan;
@@ -83,6 +94,10 @@ export interface SubscriptionInfo {
   endDate?: Date;
   /** 28 日お試し等の終了日時（JST 起点は運用で `users` 更新側が揃える）。未設定ならトライアル期限なし。 */
   trialEndsAt?: Date;
+  /** 解約・ダウングレード起点から90日後のデータ削除予定（04_SUBSCRIPTION_PRODUCT_SCOPE §3.2） */
+  dataRetentionEndsAt?: Date;
+  /** 28日お試しを一度消費した日時（再付与なし判定） */
+  trialConsumedAt?: Date;
   /**
    * Stripe Subscription の現在請求期間終了（`current_period_end` のミラー）。
    * 解約予約中でも期間内は有効権限に使う想定（設計: 04_SUBSCRIPTION_PRODUCT_SCOPE 付録 C）。
