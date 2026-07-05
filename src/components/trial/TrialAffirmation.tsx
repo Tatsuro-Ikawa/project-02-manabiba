@@ -29,7 +29,7 @@ import type { TrialAffirmationSubmenu } from '@/types/auth';
 import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
 import { AffirmationMarkdownView } from '@/components/common/AffirmationMarkdownView';
 import { useViewMode } from '@/context/ViewModeContext';
-import { getAffirmationCoachShareState, setAffirmationSharedWithCoach } from '@/lib/coachAffirmationShare';
+import { getAffirmationCoachShareState, getCoachClientAssignment, setAffirmationSharedWithCoach } from '@/lib/coachAffirmationShare';
 
 type SlotValues = Record<string, string>;
 
@@ -78,14 +78,6 @@ function affirmationStatusLabelJa(status: string): string {
   return status || '—';
 }
 
-/**
- * ReactMarkdown（CommonMark）は単独の `\n` を改行にしないため、
- * 行末2スペース＋改行（ハード改行）に変換する。
- */
-function markdownHardLineBreaks(s: string): string {
-  return s.replace(/\n/g, '  \n');
-}
-
 function buildPreview(profile: AffirmationProfile, slots: SlotValues): string {
   const lines: string[] = [];
   for (const section of profile.sections) {
@@ -94,7 +86,7 @@ function buildPreview(profile: AffirmationProfile, slots: SlotValues): string {
       if (block.type === 'text') parts.push(block.text);
       else parts.push(slots[block.slotId] ?? '');
     }
-    const text = markdownHardLineBreaks(parts.join(''));
+    const text = parts.join('');
     lines.push(`【${section.heading}】\n${text}`);
   }
   return lines.join('\n\n');
@@ -134,9 +126,11 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
   /** 最後に「表示」した発行済み本文（プレビュー用） */
   const [selectedPublishedMarkdown, setSelectedPublishedMarkdown] = useState<string | null>(null);
   const [selectedPublishedLoading, setSelectedPublishedLoading] = useState(false);
-  /** 編集モーダルを開いた直前の本文（閉じる・Esc で復元） */
+  /** 編集モーダルを開いた直前の本文（×・Esc で復元） */
   const baselineEditBodyRef = useRef('');
   const [editBodyMarkdown, setEditBodyMarkdown] = useState('');
+  /** 保存前の「履歴に残すか」確認ダイアログ */
+  const [historyConfirmOpen, setHistoryConfirmOpen] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
 
@@ -433,14 +427,22 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
   }, [renamingTargetId, handleBackToPreviewOnly]);
 
   const handleCloseEditModal = useCallback(() => {
+    if (editSaving) return;
+    if (historyConfirmOpen) {
+      setHistoryConfirmOpen(false);
+      return;
+    }
     if (editBodyMarkdown.trim() !== baselineEditBodyRef.current.trim()) {
       if (!window.confirm('未保存の変更は破棄されます。閉じてもよろしいですか？')) return;
     }
+    setHistoryConfirmOpen(false);
     setEditBodyMarkdown(baselineEditBodyRef.current);
     setActiveSubmenu(null);
     void persistSubmenu(null);
     setError(null);
-  }, [editBodyMarkdown, persistSubmenu]);
+  }, [editBodyMarkdown, editSaving, historyConfirmOpen, persistSubmenu]);
+
+  const showEditPreview = userProfile?.trialAffirmationMeta?.showEditPreview !== false;
 
   const handleDisplayPublishedRow = useCallback(
     async (publishedId: string) => {
@@ -599,6 +601,16 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
     setActiveSubmenu(null);
   }, [loggedIn, user, isCoachView, coachClientUid]);
 
+  /** コーチ: クライアント切替時に前クライアントの選択を即クリア（本文取得のレース防止） */
+  useEffect(() => {
+    if (!isCoachView) return;
+    setLastSelectedAffirmationId(null);
+    setSelectedPublishedMarkdown(null);
+    setSelectedPublishedLoading(false);
+    setSelectTableRows([]);
+    setTableSelectedRowKey(null);
+  }, [isCoachView, coachClientUid]);
+
   /** コーチ: 共有クライアントが決まったらクライアントの一覧・最終選択を読み込む */
   useEffect(() => {
     if (!loggedIn || !user) return;
@@ -609,10 +621,43 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
       setMetaReady(false);
       setError(null);
       try {
-        const [clientProf, items] = await Promise.all([
-          getUserProfile(coachClientUid),
-          listUserAffirmations(coachClientUid, { coachScoped: true }),
-        ]);
+        const assignment = await getCoachClientAssignment(user.uid, coachClientUid);
+        if (!assignment) {
+          if (!cancelled) {
+            setError(
+              `担当コーチの割当がありません。Firestore の coach_client_assignments にドキュメント ID「${user.uid}_${coachClientUid}」、status: active の割当があるか確認してください。`
+            );
+            setSelectTableRows([]);
+            setLastSelectedAffirmationId(null);
+            setMetaReady(true);
+          }
+          return;
+        }
+
+        let clientProf;
+        let items;
+        try {
+          clientProf = await getUserProfile(coachClientUid);
+        } catch (e) {
+          console.error('coach client profile load error:', e);
+          if (!cancelled) {
+            setError(
+              'クライアントのプロファイルを読み込めませんでした。割当ドキュメント ID が「{coachUid}_{clientUid}」形式か、ルールがデプロイ済みか確認してください。'
+            );
+            setMetaReady(true);
+          }
+          return;
+        }
+        try {
+          items = await listUserAffirmations(coachClientUid, { coachScoped: true });
+        } catch (e) {
+          console.error('coach client affirmations list error:', e);
+          if (!cancelled) {
+            setError('共有された行動宣言一覧を読み込めませんでした。クライアント側で「コーチと共有」が ON のテーマがあるか確認してください。');
+            setMetaReady(true);
+          }
+          return;
+        }
         if (cancelled) return;
         const published = items.filter((i) => i.status === 'published');
         const rows: AffirmationSelectRow[] = published.map((i) => ({
@@ -667,19 +712,34 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
       setSelectedPublishedLoading(false);
       return;
     }
+    if (isCoachView) {
+      const shared = selectTableRows.some((r) => r.publishedId === lastSelectedAffirmationId);
+      if (!shared) {
+        setSelectedPublishedMarkdown(null);
+        setSelectedPublishedLoading(false);
+        return;
+      }
+    }
     let cancelled = false;
     setSelectedPublishedLoading(true);
     setSelectedPublishedMarkdown(null);
     void (async () => {
-      const md = await getAffirmationPublishedMarkdown(contentUid, lastSelectedAffirmationId);
+      const md = await getAffirmationPublishedMarkdown(contentUid, lastSelectedAffirmationId, {
+        quietPermissionDenied: isCoachView,
+      });
       if (cancelled) return;
+      if (isCoachView && md == null) {
+        setError(
+          '共有された行動宣言の本文を読み込めませんでした。クライアント側で「コーチと共有」が ON か、Firestore ルールがデプロイ済みか確認してください。'
+        );
+      }
       setSelectedPublishedMarkdown(md ?? '');
       setSelectedPublishedLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [contentUid, lastSelectedAffirmationId]);
+  }, [contentUid, lastSelectedAffirmationId, isCoachView, selectTableRows]);
 
   useEffect(() => {
     if (!user || isCoachView) return;
@@ -770,8 +830,9 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
     }
   };
 
-  const handleSaveEditModal = async () => {
+  const requestSaveEditModal = () => {
     if (!user || !lastSelectedAffirmationId || lastSelectedAffirmationId.startsWith('draft:')) return;
+    if (editLoading || editSaving) return;
     setError(null);
     setSuccessMessage(null);
     const v = validateAffirmationMarkdownBody(editBodyMarkdown);
@@ -779,12 +840,14 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
       setError(v.message);
       return;
     }
-    const keepHistory = window.confirm(
-      '保存する前の本文（いま表示されている版）を履歴に残しますか？\n\n' +
-        '「OK」: 履歴に残してから保存\n' +
-        '「キャンセル」: 履歴に残さず、上書きのみ'
-    );
+    setHistoryConfirmOpen(true);
+  };
+
+  const performSaveEditModal = async (keepHistory: boolean) => {
+    if (!user || !lastSelectedAffirmationId || lastSelectedAffirmationId.startsWith('draft:')) return;
+    setHistoryConfirmOpen(false);
     setEditSaving(true);
+    setError(null);
     try {
       await savePublishedAffirmationBody(user.uid, lastSelectedAffirmationId, {
         newMarkdownBody: editBodyMarkdown.trim(),
@@ -800,6 +863,8 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
       setSuccessMessage(
         keepHistory ? '保存しました（履歴に前版を残しました）。' : '保存しました。'
       );
+      setActiveSubmenu(null);
+      void persistSubmenu(null);
     } catch (e) {
       console.error('affirmation edit save error:', e);
       setError(e instanceof Error ? e.message : '保存に失敗しました。');
@@ -1213,7 +1278,7 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
               発行済み本文を編集
             </h3>
             <p className="affirmation-create-modal-lead">
-              Markdown を直接編集します（最大 {AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH} 文字・前後の空白は保存時にトリム）。保存時に履歴へ前版を残すか確認します。
+              本文を直接編集します（最大 {AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH} 文字・前後の空白は保存時にトリム）。[保存] 後に履歴へ前版を残すか確認し、完了するとこの画面を閉じます。
             </p>
           </div>
           <button
@@ -1233,7 +1298,12 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
           {editLoading ? (
             <p className="text-sm text-gray-500">本文を読み込み中…</p>
           ) : (
-            <div className="affirmation-edit-modal-body-row">
+            <div
+              className={
+                'affirmation-edit-modal-body-row' +
+                (showEditPreview ? '' : ' affirmation-edit-modal-body-row--editor-only')
+              }
+            >
               <div className="affirmation-edit-modal-editor-col">
                 <label htmlFor="affirmation-edit-body" className="affirmation-create-modal-label">
                   本文
@@ -1255,37 +1325,73 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
                   {editBodyMarkdown.length} / {AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH} 文字
                 </p>
               </div>
-              <div className="affirmation-preview affirmation-create-modal-preview affirmation-edit-modal-preview-col">
-                <div className="affirmation-preview-title">プレビュー</div>
-                <AffirmationMarkdownView
-                  markdown={markdownHardLineBreaks(editBodyMarkdown)}
-                  className="affirmation-preview-body"
-                />
-              </div>
+              {showEditPreview ? (
+                <div className="affirmation-preview affirmation-create-modal-preview affirmation-edit-modal-preview-col">
+                  <div className="affirmation-preview-title">プレビュー</div>
+                  <AffirmationMarkdownView
+                    markdown={editBodyMarkdown}
+                    className="affirmation-preview-body"
+                  />
+                </div>
+              ) : null}
             </div>
           )}
         </div>
 
         <div className="affirmation-create-modal-footer">
+          {error ? (
+            <p className="text-sm text-red-600 mb-2" role="alert">
+              {error}
+            </p>
+          ) : null}
           <div className="affirmation-create-modal-actions">
             <button
               type="button"
               className="affirmation-save-btn"
-              onClick={() => void handleSaveEditModal()}
+              onClick={requestSaveEditModal}
               disabled={editLoading || editSaving}
             >
               {editSaving ? '保存中…' : '保存'}
             </button>
-            <button
-              type="button"
-              className="affirmation-cancel-btn"
-              onClick={handleCloseEditModal}
-              disabled={editLoading || editSaving}
-            >
-              閉じる
-            </button>
           </div>
         </div>
+
+        {historyConfirmOpen ? (
+          <div
+            className="affirmation-history-confirm-overlay"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="affirmation-history-confirm-title"
+            aria-describedby="affirmation-history-confirm-desc"
+          >
+            <div className="affirmation-history-confirm-dialog">
+              <h4 id="affirmation-history-confirm-title" className="affirmation-history-confirm-title">
+                履歴に残しますか？
+              </h4>
+              <p id="affirmation-history-confirm-desc" className="affirmation-history-confirm-desc">
+                保存する前の本文（いま表示されている版）を履歴に残すかどうかを選んでください。
+              </p>
+              <div className="affirmation-history-confirm-actions">
+                <button
+                  type="button"
+                  className="affirmation-save-btn"
+                  disabled={editSaving}
+                  onClick={() => void performSaveEditModal(true)}
+                >
+                  残す
+                </button>
+                <button
+                  type="button"
+                  className="affirmation-cancel-btn"
+                  disabled={editSaving}
+                  onClick={() => void performSaveEditModal(false)}
+                >
+                  残さない
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   ) : null;
@@ -1348,7 +1454,7 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
                 <AffirmationMarkdownView
                   markdown={
                     historyModalEntry.bodyMarkdown.trim()
-                      ? markdownHardLineBreaks(historyModalEntry.bodyMarkdown)
+                      ? historyModalEntry.bodyMarkdown
                       : '_（本文を表示できません）_'
                   }
                   className="affirmation-preview-body"
@@ -1794,7 +1900,7 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
               <div className="affirmation-placeholder-panel" role="status">
                 <p className="font-semibold mb-2">編集</p>
                 <p className="text-sm text-gray-600">
-                  発行済みの本文は画面中央のモーダルで編集します。[保存] で Firestore に反映し、必要に応じて履歴へ前版を残せます。
+                  発行済みの本文は画面中央のモーダルで編集します。[保存] で履歴に残すかを確認したあと Firestore に反映し、完了するとモーダルを閉じます。
                 </p>
               </div>
             )}

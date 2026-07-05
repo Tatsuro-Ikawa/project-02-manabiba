@@ -813,7 +813,7 @@ flowchart TD
 | A-5c | `/trial_4w` → **行動宣言** タブ | **コーチ共有** チェック | **発行済みテーマを「表示」選択後**にタイトルバーへ表示（プレミアムのみ） | OK |
 | A-5d | `/communication` | メッセージボード | プレミアムでタブ有効（`resolveEntitlements`） | OK |
 | A-6 | Firestore（任意） | 送信直後 | `enrollment.primaryCourse=kizuki`、`subscription.plan=premium`、`subscription.features.coachComments=true`、`trialEndsAt` 未来日 | OK |
-| A-7 | Firestore（任意） | **週**タブで共有 ON 後 | `users/{uid}/journal_weekly/{weekStartKey}.sharedWithCoach=true` | OK |
+| A-7 | Firestore（任意） | **週**タブで共有 ON 後 | `users/{uid}/journal_weekly/{weekStartKey}.sharedWithCoach=true` および `coachDailySummaryByDate`（記号・満足度サマリ） | OK |
 
 #### 実装 URL との対応（プレミアム・パーソナルコーチ）
 
@@ -1944,6 +1944,7 @@ flowchart LR
 | 2026-06-05 | §5.3: 表4（フリー→ゲスト）を **導線フロー_4＋導線チェックリスト_4** に差し替え |
 | 2026-06-05 | 導線チェックリスト_3（ゲスト→プレミアム）導線①〜⑧・申込手順 A-1〜A-7 **すべて OK**。週・月タブのコーチ共有を見出し右上に表示 |
 | 2026-06-16 | 週タブ: `journal_weekly.sharedWithCoach` ＋ UI「コーチ共有」（閲覧のみ。質問は月次） |
+| 2026-07-06 | 週タブ UI: 「今週の自分へのねぎらいの言葉」→「他に残しておきたいこと」に改称し「来週の行動」の前へ配置。`coachDailySummaryByDate` で記号・満足度をコーチ共有（週次共有 ON 連動） |
 | 2026-06-16 | プレミアム導線① NG 修正: デモ申込 `applyDemoPlanEnrollment` が `plan` のみ更新していたため `features.coachComments` が false のまま → `planDefaults` で features も同期 |
 | 2026-06-16 | 気づきノート（`/trial_4w`）ログアウト時: ランディングへ飛ばないよう `shouldRedirectUnauthenticatedToLogin` を適用（ヘッダー logout → `/`） |
 | 2026-06-16 | 導線⑦: 申込済み既会員が申込画面をチラ見せしないよう `resolveOnboardingDestination` を追加（`post-login`／`consent`／`ApplyFormPanel`） |

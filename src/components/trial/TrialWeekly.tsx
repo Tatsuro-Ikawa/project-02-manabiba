@@ -1,9 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   formatWeekRangeShortJa,
   getWeekStartDateKeyForToday,
@@ -50,6 +48,7 @@ import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import { buildWeeklyAiReportInputFromDailies } from '@/lib/weeklyAiReportInputFromDailies';
 import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
 import { WeeklySatisfactionChart } from '@/components/trial/WeeklySatisfactionChart';
+import { useTrialJournalCoachContext } from '@/hooks/useTrialJournalCoachContext';
 
 const DOW_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
 
@@ -99,8 +98,22 @@ type WeeklyReportsResponse = {
 /** 週次の各 Ai 機能（レポート作成・改善提案）あたりの 1 日上限（JST）。成功時のみカウント */
 const WEEKLY_AI_DAILY_LIMIT = 3;
 
-export default function TrialWeekly() {
-  const { user, userProfile, loading } = useAuth();
+type TrialWeeklyProps = {
+  coachClientUid?: string | null;
+};
+
+export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps) {
+  const {
+    user,
+    loading,
+    isCoachView,
+    contentUid,
+    canEdit,
+    journalProfile,
+    coachCommentsEnabled,
+    coachContextError,
+    coachContextReady,
+  } = useTrialJournalCoachContext(coachClientUid);
   const { level } = useJournalDetailLevel();
   const searchParams = useSearchParams();
   const [weekStartKey, setWeekStartKey] = useState('');
@@ -117,36 +130,42 @@ export default function TrialWeekly() {
   const [weeklyImprovementLoading, setWeeklyImprovementLoading] = useState(false);
   const [weeklyImprovementError, setWeeklyImprovementError] = useState<string | null>(null);
 
-  const fallbackWeekStart = user ? getWeekStartDateKeyForToday(userProfile ?? null) : '';
+  const fallbackWeekStart = contentUid ? getWeekStartDateKeyForToday(journalProfile ?? null) : '';
   const weekParam = searchParams.get('week'); // YYYY-MM-DD（週の開始日）
   const displayWeekStartKey = weekStartKey || fallbackWeekStart;
   const weekEndKey = useMemo(() => (displayWeekStartKey ? addDaysDateKey(displayWeekStartKey, 6) : ''), [displayWeekStartKey]);
   const todayKey = useMemo(() => getTodayDateKeyTokyo(), []);
-  const canEdit = !!user && !loading;
-  const coachCommentsEnabled = hasCoachCommentsFeature(userProfile);
   const weekDates = useMemo(() => {
     if (!displayWeekStartKey) return [];
     return Array.from({ length: 7 }, (_, i) => addDaysDateKey(displayWeekStartKey, i));
   }, [displayWeekStartKey]);
 
+  const coachSummaryByDate = data?.coachDailySummaryByDate ?? {};
+
   const satisfactionStats = useMemo(() => {
     const points = weekDates
       .map((dk) => {
         if (dk > todayKey) return null;
-        const v = dailyByDateKey[dk]?.eveningSatisfaction;
+        const v = isCoachView
+          ? coachSummaryByDate[dk]?.eveningSatisfaction
+          : dailyByDateKey[dk]?.eveningSatisfaction;
         return typeof v === 'number' ? v : null;
       })
       .filter((v): v is number => typeof v === 'number' && !Number.isNaN(v));
     const avg = points.length ? points.reduce((a, b) => a + b, 0) / points.length : null;
     return { avg, count: points.length };
-  }, [weekDates, dailyByDateKey, todayKey]);
+  }, [weekDates, dailyByDateKey, coachSummaryByDate, todayKey, isCoachView]);
 
   const satisfactionChartData = useMemo(() => {
     return weekDates.map((dk) => {
-      const [yy, mm, dd] = dk.split('-').map((x) => Number(x));
+      const [, mm, dd] = dk.split('-').map((x) => Number(x));
       const wd = getJsWeekdayInTokyo(dk);
       const isFuture = dk > todayKey;
-      const v = !isFuture ? dailyByDateKey[dk]?.eveningSatisfaction : null;
+      const v = !isFuture
+        ? isCoachView
+          ? coachSummaryByDate[dk]?.eveningSatisfaction
+          : dailyByDateKey[dk]?.eveningSatisfaction
+        : null;
       return {
         dateKey: dk,
         label: `${mm}/${dd}`,
@@ -154,25 +173,25 @@ export default function TrialWeekly() {
         dow: DOW_JA[wd],
       };
     });
-  }, [weekDates, dailyByDateKey, todayKey]);
+  }, [weekDates, dailyByDateKey, coachSummaryByDate, todayKey, isCoachView]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!contentUid || !coachContextReady) return;
     // 初期値: URL の week があればそれを採用。なければ「今日を含む週」。
-    setWeekStartKey(weekParam || getWeekStartDateKeyForToday(userProfile ?? null));
-  }, [user, userProfile, weekParam]);
+    setWeekStartKey(weekParam || getWeekStartDateKeyForToday(journalProfile ?? null));
+  }, [contentUid, journalProfile, weekParam, coachContextReady]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!contentUid) return;
     // 週が変わったら URL を同期（tab は親が持つが、週キーは本コンポーネントが正）
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'weekly');
     if (displayWeekStartKey) url.searchParams.set('week', displayWeekStartKey);
     window.history.replaceState({}, '', url.pathname + url.search);
-  }, [user, displayWeekStartKey]);
+  }, [contentUid, displayWeekStartKey]);
 
   useEffect(() => {
-    if (!user?.uid || !displayWeekStartKey) return;
+    if (!contentUid || !displayWeekStartKey || !coachContextReady) return;
     let cancelled = false;
     setData(journalWeeklyPlainEmpty(displayWeekStartKey));
     setMsg(null);
@@ -182,14 +201,23 @@ export default function TrialWeekly() {
     setWeeklyImprovementError(null);
     void (async () => {
       try {
-        const doc = await getJournalWeeklyPlain(user.uid, displayWeekStartKey);
+        const doc = await getJournalWeeklyPlain(contentUid, displayWeekStartKey);
         if (!cancelled) setData(doc);
       } catch (e) {
         console.error(e);
         if (!cancelled) {
-          setMsg(
-            '読み込みに失敗しました。Firestore ルールのデプロイ（journal_weekly）とログイン状態を確認してください。'
-          );
+          const code = typeof e === 'object' && e !== null && 'code' in e ? (e as { code?: string }).code : null;
+          if (isCoachView && code === 'permission-denied') {
+            setMsg(
+              coachCommentsEnabled
+                ? 'この週はクライアントが「コーチと共有」を ON にしていないか、閲覧権限がありません。'
+                : 'クライアントのプランにパーソナルコーチ機能（coachComments）がありません。'
+            );
+          } else {
+            setMsg(
+              '読み込みに失敗しました。Firestore ルールのデプロイ（journal_weekly）とログイン状態を確認してください。'
+            );
+          }
           setData(journalWeeklyPlainEmpty(displayWeekStartKey));
         }
       }
@@ -197,10 +225,10 @@ export default function TrialWeekly() {
     return () => {
       cancelled = true;
     };
-  }, [user?.uid, displayWeekStartKey]);
+  }, [contentUid, displayWeekStartKey, coachContextReady, isCoachView, coachCommentsEnabled]);
 
   useEffect(() => {
-    if (!user?.uid || !displayWeekStartKey || !weekEndKey) return;
+    if (isCoachView || !user?.uid || !displayWeekStartKey || !weekEndKey) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -222,16 +250,16 @@ export default function TrialWeekly() {
 
   const savePatch = useCallback(
     async (patch: Partial<JournalWeeklyPlain>) => {
-      if (!user || !data) return;
+      if (!user || !data || !canEdit || !contentUid) return;
       setSaving(true);
       setMsg(null);
       try {
         await saveJournalWeeklyPlain({
-          uid: user.uid,
+          uid: contentUid,
           weekStartKey: data.weekStartKey,
           patch,
         });
-        const fresh = await getJournalWeeklyPlain(user.uid, data.weekStartKey);
+        const fresh = await getJournalWeeklyPlain(contentUid, data.weekStartKey);
         setData(fresh);
         setMsg('保存しました。');
         setTimeout(() => setMsg(null), 2500);
@@ -242,7 +270,7 @@ export default function TrialWeekly() {
         setSaving(false);
       }
     },
-    [user, data]
+    [user, data, canEdit, contentUid]
   );
 
   const generateAiWeeklyReport = useCallback(async () => {
@@ -277,7 +305,7 @@ export default function TrialWeekly() {
         throw new Error(messageFromApiErrorPayload(payload) || '週次AIレポートの作成に失敗しました。');
       }
 
-      const writeMode = userProfile?.weeklyAiReportWriteMode ?? 'append';
+      const writeMode = journalProfile?.weeklyAiReportWriteMode ?? 'append';
       const patch: Partial<JournalWeeklyPlain> = {
         weeklyActionReviewText: applyAiReportWriteMode(
           data.weeklyActionReviewText,
@@ -317,7 +345,7 @@ export default function TrialWeekly() {
     } finally {
       setSaving(false);
     }
-  }, [user, data, todayKey, weekDates, dailyByDateKey, userProfile?.weeklyAiReportWriteMode, savePatch]);
+  }, [user, data, todayKey, weekDates, dailyByDateKey, journalProfile?.weeklyAiReportWriteMode, savePatch]);
 
   useEffect(() => {
     if (!journalShowWeeklyAiImprovementSuggestion(level)) {
@@ -427,9 +455,9 @@ export default function TrialWeekly() {
   const getBaseWeekStartKey = useCallback(() => {
     return (
       weekStartKey ||
-      getWeekStartDateKeyForDateKey(getTodayDateKeyTokyo(), resolveJournalWeekStartsOn(userProfile ?? null))
+      getWeekStartDateKeyForDateKey(getTodayDateKeyTokyo(), resolveJournalWeekStartsOn(journalProfile ?? null))
     );
-  }, [weekStartKey, userProfile]);
+  }, [weekStartKey, journalProfile]);
 
   const gotoPrevWeek = useCallback(() => {
     const base = getBaseWeekStartKey();
@@ -437,9 +465,14 @@ export default function TrialWeekly() {
   }, [getBaseWeekStartKey]);
 
   const gotoNextWeek = useCallback(async () => {
-    if (!user || !data) return;
+    if (!data) return;
     const base = getBaseWeekStartKey();
     const nextKey = shiftWeekStartDateKey(base, 1);
+    if (isCoachView) {
+      setWeekStartKey(nextKey);
+      return;
+    }
+    if (!user) return;
 
     // 来週目標があれば、翌週の「今週目標」に上書きなしでコピー
     setSaving(true);
@@ -458,14 +491,56 @@ export default function TrialWeekly() {
       return;
     }
     setSaving(false);
-  }, [user, data, getBaseWeekStartKey]);
+  }, [user, data, getBaseWeekStartKey, isCoachView]);
 
   const gotoDaily = useCallback((dateKey: string) => {
+    if (isCoachView) return;
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'morning_evening');
     url.searchParams.set('date', dateKey);
     window.history.replaceState({}, '', url.pathname + url.search);
-  }, []);
+  }, [isCoachView]);
+
+  if (isCoachView && !coachClientUid) {
+    return (
+      <div className="trial-tab-content">
+        <div className="trial-weekly-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="weekly-section-title">週</h2>
+          </div>
+          <p className="text-sm text-gray-600">メニューバーの「共有」からクライアントを選択してください。</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (coachContextError) {
+    return (
+      <div className="trial-tab-content">
+        <div className="trial-weekly-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="weekly-section-title">週</h2>
+          </div>
+          <p className="text-sm text-red-600" role="alert">
+            {coachContextError}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!coachContextReady) {
+    return (
+      <div className="trial-tab-content">
+        <div className="trial-weekly-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="weekly-section-title">週</h2>
+          </div>
+          <p className="text-sm text-gray-500">読み込み中…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user && !loading) {
     return (
@@ -480,7 +555,7 @@ export default function TrialWeekly() {
     );
   }
 
-  if (user && loading && !userProfile) {
+  if (user && loading && !journalProfile && !isCoachView) {
     return (
       <div className="trial-tab-content">
         <div className="trial-weekly-container">
@@ -506,7 +581,7 @@ export default function TrialWeekly() {
     );
   }
 
-  const effectiveStart = resolveJournalWeekStartsOn(userProfile ?? null);
+  const effectiveStart = resolveJournalWeekStartsOn(journalProfile ?? null);
   const aiRunCountToday =
     data.weeklyAiReportRunDateKey === todayKey ? data.weeklyAiReportRunCount ?? 0 : 0;
   const hasRunAiToday = aiRunCountToday > 0;
@@ -526,6 +601,7 @@ export default function TrialWeekly() {
             enabled={coachCommentsEnabled}
             checked={!!data.sharedWithCoach}
             disabled={!canEdit || saving}
+            readOnly={isCoachView}
             ariaLabel="今週の学び帳をコーチに共有する"
             onChange={(v) => {
               setData((prev) => (prev ? { ...prev, sharedWithCoach: v } : prev));
@@ -533,6 +609,11 @@ export default function TrialWeekly() {
             }}
           />
         </div>
+        {isCoachView ? (
+          <p className="text-sm text-gray-600 mb-2">
+            クライアントの週次を閲覧中です（行動記号・満足度グラフは週次共有に連動。日次の本文は非共有です）。
+          </p>
+        ) : null}
         <p className="text-sm text-gray-600 mb-2">週の開始：{effectiveStart === 'monday' ? '月曜' : '日曜'}（JST）</p>
 
         <div className="week-nav">
@@ -615,12 +696,21 @@ export default function TrialWeekly() {
 
           <div className="action-sub-section" data-section="weekly-action-aspect">
             <h4>◇行動面</h4>
-            <p className="text-sm text-gray-600 mb-3">各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。</p>
+            <p className="text-sm text-gray-600 mb-3">
+              {isCoachView
+                ? '各日の朝・晩の実行結果（記号のみ）。日次の詳細本文は共有されません。'
+                : '各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。'}
+            </p>
             <div className="weekly-result-grid" role="grid" aria-label="行動の結果（7日）">
               {weekDates.map((dk) => {
-                const d = dailyByDateKey[dk];
-                const m = computeMorningCompletionSymbol(d, dk, todayKey);
-                const e = computeEveningExecutionSymbol(d, dk, todayKey);
+                const summary = isCoachView ? coachSummaryByDate[dk] : undefined;
+                const d = isCoachView ? undefined : dailyByDateKey[dk];
+                const m = summary
+                  ? { sym: summary.morningSym, cls: summary.morningCls }
+                  : computeMorningCompletionSymbol(d, dk, todayKey);
+                const e = summary
+                  ? { sym: summary.eveningSym, cls: summary.eveningCls }
+                  : computeEveningExecutionSymbol(d, dk, todayKey);
                 const [, mm, dd] = dk.split('-').map((x) => Number(x));
                 const wd = getJsWeekdayInTokyo(dk);
                 return (
@@ -628,12 +718,25 @@ export default function TrialWeekly() {
                     <div className="weekly-result-date">{mm}/{dd}</div>
                     <div className="weekly-result-dow">{DOW_JA[wd]}</div>
                     <div className="weekly-result-symbols">
-                      <button type="button" className={`weekly-symbol ${m.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 朝`}>
-                        {m.sym}
-                      </button>
-                      <button type="button" className={`weekly-symbol ${e.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 晩`}>
-                        {e.sym}
-                      </button>
+                      {isCoachView ? (
+                        <>
+                          <span className={`weekly-symbol ${m.cls}`} aria-label={`${dk} 朝`}>
+                            {m.sym}
+                          </span>
+                          <span className={`weekly-symbol ${e.cls}`} aria-label={`${dk} 晩`}>
+                            {e.sym}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" className={`weekly-symbol ${m.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 朝`}>
+                            {m.sym}
+                          </button>
+                          <button type="button" className={`weekly-symbol ${e.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 晩`}>
+                            {e.sym}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -816,6 +919,20 @@ export default function TrialWeekly() {
             </div>
           ) : null}
 
+          {journalShowWeeklySelfPraiseSection(level) ? (
+            <div className="action-sub-section" data-section="weekly-self-praise">
+              <h4>◇他に残しておきたいこと</h4>
+              <WeeklyTextRow
+                label="内容"
+                value={data.weeklySelfPraiseText ?? ''}
+                disabled={saving}
+                onChange={(v) => setData((prev) => (prev ? { ...prev, weeklySelfPraiseText: v } : prev))}
+                onBlur={() => void savePatch({ weeklySelfPraiseText: data.weeklySelfPraiseText })}
+                placeholder="入力してください"
+              />
+            </div>
+          ) : null}
+
           <div className="action-sub-section" data-section="weekly-next-week-action">
             <h4>◇来週の行動</h4>
             <WeeklyTextRow
@@ -837,20 +954,6 @@ export default function TrialWeekly() {
               />
             ) : null}
           </div>
-
-          {journalShowWeeklySelfPraiseSection(level) ? (
-            <div className="action-sub-section" data-section="weekly-self-praise">
-              <h4>◇今週の自分へのねぎらいの言葉</h4>
-              <WeeklyTextRow
-                label="内容"
-                value={data.weeklySelfPraiseText ?? ''}
-                disabled={saving}
-                onChange={(v) => setData((prev) => (prev ? { ...prev, weeklySelfPraiseText: v } : prev))}
-                onBlur={() => void savePatch({ weeklySelfPraiseText: data.weeklySelfPraiseText })}
-                placeholder="入力してください"
-              />
-            </div>
-          ) : null}
 
           {!coachCommentsEnabled && user ? (
             <div className="action-sub-section" data-section="weekly-coach-share">

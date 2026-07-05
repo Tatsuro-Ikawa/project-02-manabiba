@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import { useAuth } from '@/hooks/useAuth';
-import { updateWeeklyAiReportWriteMode } from '@/lib/firestore';
+import { updateTrialAffirmationUiMetaFields, updateWeeklyAiReportWriteMode } from '@/lib/firestore';
 import {
   JOURNAL_DETAIL_LEVEL_LABELS,
   type JournalDetailLevel,
@@ -25,7 +25,10 @@ export default function TrialJournalSettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draft, setDraft] = useState<JournalDetailLevel>(level);
   const [aiWriteMode, setAiWriteMode] = useState<WeeklyAiReportWriteMode>('append');
+  /** 未設定時は表示する（true） */
+  const [showAffirmationEditPreview, setShowAffirmationEditPreview] = useState(true);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (hydrated) setDraft(level);
@@ -34,6 +37,10 @@ export default function TrialJournalSettingsPage() {
   useEffect(() => {
     setAiWriteMode(userProfile?.weeklyAiReportWriteMode ?? 'append');
   }, [userProfile?.weeklyAiReportWriteMode]);
+
+  useEffect(() => {
+    setShowAffirmationEditPreview(userProfile?.trialAffirmationMeta?.showEditPreview !== false);
+  }, [userProfile?.trialAffirmationMeta?.showEditPreview]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -56,6 +63,64 @@ export default function TrialJournalSettingsPage() {
     }
   }, [loading, user, userProfile, router]);
 
+  const handleSaveAll = useCallback(async () => {
+    setSaving(true);
+    try {
+      setDefaultLevel(draft);
+      if (user) {
+        await updateWeeklyAiReportWriteMode(user.uid, aiWriteMode);
+        await updateTrialAffirmationUiMetaFields(user.uid, {
+          showEditPreview: showAffirmationEditPreview,
+        });
+        await refreshUserProfile();
+      }
+      setSavedMsg('設定を保存しました。');
+    } catch (e) {
+      setSavedMsg(e instanceof Error ? e.message : '設定保存に失敗しました。');
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSavedMsg(null), 2500);
+    }
+  }, [
+    aiWriteMode,
+    draft,
+    refreshUserProfile,
+    setDefaultLevel,
+    showAffirmationEditPreview,
+    user,
+  ]);
+
+  const actionsBar = (
+    <div className="action-sub-section" data-section="journal-settings-actions">
+      <h3>設定の保存</h3>
+      <p className="text-sm text-gray-600 mb-2">
+        このページのすべての項目（入力表示・アファメーション編集プレビュー・Aiレポート反映方式）をまとめて保存します。
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+        <button
+          type="button"
+          className="trial-action-btn"
+          disabled={!hydrated || saving}
+          onClick={() => void handleSaveAll()}
+        >
+          {saving ? '保存中…' : '保存'}
+        </button>
+        <Link
+          href="/trial_4w"
+          className="trial-action-btn"
+          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+        >
+          気づきノートへ戻る
+        </Link>
+      </div>
+      {savedMsg ? (
+        <p className="text-sm text-gray-700 mt-2" role="status">
+          {savedMsg}
+        </p>
+      ) : null}
+    </div>
+  );
+
   return (
     <div style={{ fontFamily: 'var(--font-family-jp)' }}>
       <ProtoHeader sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((o) => !o)} />
@@ -76,8 +141,10 @@ export default function TrialJournalSettingsPage() {
                 </h1>
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                朝・晩・週・月の入力項目の表示を「簡易」「普通」「詳細」から選びます。ここで選んだ値はデフォルトとして保存され、トライアル画面上部のラジオボタンと同期されます。
+                各項目を変更したあと、ページ最下部の「保存」でまとめて反映します。入力表示のデフォルトはトライアル画面上部のラジオボタンとも同期されます。
               </p>
+
+              {actionsBar}
 
               <div className="action-sub-section" data-section="journal-settings">
                 <h3>入力表示のデフォルト</h3>
@@ -96,32 +163,40 @@ export default function TrialJournalSettingsPage() {
                     </label>
                   ))}
                 </div>
-                <div style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    className="trial-action-btn"
-                    disabled={!hydrated}
-                    onClick={async () => {
-                      try {
-                        setDefaultLevel(draft);
-                        if (user) {
-                          await updateWeeklyAiReportWriteMode(user.uid, aiWriteMode);
-                          await refreshUserProfile();
-                        }
-                        setSavedMsg('設定を保存しました。');
-                      } catch (e) {
-                        setSavedMsg(e instanceof Error ? e.message : '設定保存に失敗しました。');
-                      }
-                      setTimeout(() => setSavedMsg(null), 2500);
-                    }}
-                  >
-                    保存
-                  </button>
-                  <Link href="/trial_4w" className="trial-action-btn" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-                    気づきノートへ戻る
-                  </Link>
+              </div>
+
+              <div className="action-sub-section" data-section="affirmation-edit-preview">
+                <h3>アファメーション編集時のプレビュー</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  行動宣言タブの「編集」モーダルで、本文の右側に表示するプレビューの有無です。Markdown
+                  に慣れていない場合は非表示にできます（本文の編集はそのまま行えます）。
+                </p>
+                <div
+                  className="radio-group"
+                  role="radiogroup"
+                  aria-label="アファメーション編集時のプレビュー表示"
+                >
+                  <label>
+                    <input
+                      type="radio"
+                      name="affirmation-edit-preview"
+                      value="show"
+                      checked={showAffirmationEditPreview}
+                      onChange={() => setShowAffirmationEditPreview(true)}
+                    />{' '}
+                    表示する（既定）
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="affirmation-edit-preview"
+                      value="hide"
+                      checked={!showAffirmationEditPreview}
+                      onChange={() => setShowAffirmationEditPreview(false)}
+                    />{' '}
+                    表示しない
+                  </label>
                 </div>
-                {savedMsg ? <p className="text-sm text-gray-700 mt-2">{savedMsg}</p> : null}
               </div>
 
               <div className="action-sub-section" data-section="journal-ai-report-write-mode">
@@ -165,6 +240,8 @@ export default function TrialJournalSettingsPage() {
                   未ログイン時はブラウザ内のみで表示され、Firestore には保存されません。
                 </p>
               </div>
+
+              {actionsBar}
             </div>
           </div>
         </div>

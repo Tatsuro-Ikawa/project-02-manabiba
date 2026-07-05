@@ -7,8 +7,13 @@ export function computeMorningCompletionSymbol(
   todayKey: string
 ): { sym: string; cls: string } {
   if (dateKey > todayKey) return { sym: '—', cls: 'symbol-none' };
-  const done1 = d?.morningAffirmationDeclaration === 'done';
+  const affirmation = d?.morningAffirmationDeclaration ?? null;
   const actionText = (d?.morningTodayActionText ?? d?.morningActionGoalText ?? '').trim();
+  // 両要素とも未入力（null / 文字無し）は晩の未選択と同様に「—」
+  if (affirmation == null && actionText.length === 0) {
+    return { sym: '—', cls: 'symbol-none' };
+  }
+  const done1 = affirmation === 'done';
   const done2 = actionText.length > 0;
   const score = Number(done1) + Number(done2);
   if (score === 2) return { sym: '〇', cls: 'symbol-o' };

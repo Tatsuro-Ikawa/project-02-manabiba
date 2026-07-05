@@ -112,10 +112,24 @@
 ### 5.2 気づきノート — 人コーチ・AI・コース（2026-04-04 確定、2026-05-02 Vertex 週月レポート・改善の仕様追記）
 
 - **正本**: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)
-- **共有範囲（人コーチ）**: `journal_daily` は共有しない。`journal_weekly` / `journal_monthly` のみ（ルールで read を制御）。
+- **共有範囲（人コーチ）**: `journal_daily` は**本文を直接 read しない**。週次・月次ドキュメント（`journal_weekly` / `journal_monthly`）は **`sharedWithCoach` ON** かつ割当・プラン条件で read。**行動面記号・満足度グラフ**は `journal_weekly.coachDailySummaryByDate` に同期したサマリのみコーチに見せる（§5.2.1）。
 - **能力マトリックス**: 日次・週次・月次 ×（人コーチ: 質問／回答／共有）×（AI: 質問／回答／共有）を表で固定。**将来は各セルを boolean で拡張**し、**コース（プラン）**で切替。ルール内の動的計算（例: 担当クライアント数）は行わず、**コース ID または能力フラグ**で運用。
 - **コース案**: `ai_only`（AI のみ）、`ai_plus_personal`（AI ＋ パーソナルコーチ）。詳細は上記ドキュメント §3・§4。
 - **AI へのデータ提供**: **クライアントがボタン等で明示操作したとき**に限り文脈を送る前提。**詳細は AI 実装フェーズ**で決定（同書 §6）。
+
+### 5.2.1 コーチ向け日次サマリ（`coachDailySummaryByDate`・2026-07-06 確定）
+
+週次「コーチと共有」ON に連動し、**日次本文を渡さず**行動記号・満足度だけコーチに見せる。
+
+| 項目 | 内容 |
+|------|------|
+| **保存先** | `users/{uid}/journal_weekly/{weekStartKey}.coachDailySummaryByDate`（平文・暗号化しない） |
+| **1 日分の形** | `{ morningSym, morningCls, eveningSym, eveningCls, eveningSatisfaction }`（`dateKey` をキー） |
+| **同期タイミング** | (1) 日次保存時（`saveTrial4wDailyPlain` 後に当該日を更新）(2) 週次「コーチと共有」ON 時に当該週 7 日分をバックフィル |
+| **記号の正本** | `src/lib/trialDailyWeekSymbols.ts`（クライアント UI と同一ロジックを `buildCoachDailySummaryEntry` で適用） |
+| **コーチ UI（週）** | 行動面 7 日グリッド・成果面満足度グラフをサマリから表示。記号クリックで朝・晩へ遷移しない |
+| **コーチ UI（月）** | 月間カレンダー記号は **週次 `sharedWithCoach` ON** の各週サマリを `dateKey` でマージして表示 |
+| **実装** | `src/lib/journalCoachDailySummary.ts`、`syncCoachDailySummaryForDate` / `backfillCoachDailySummaryForWeek`（`firestore.ts`） |
 
 ---
 
@@ -151,7 +165,7 @@
 - **今日の気づき・感動・学びと課題**: `eveningInsightTextEncrypted: string|null`
 - **明日への改善点**: `eveningImprovementTextEncrypted: string|null`
 - **Aiコーチからのコメント**（Vertex 生成・任意保存）: `eveningAiSuggestionTextEncrypted: string|null`、**同日の生成回数**: `eveningAiSuggestionRunCount: number|null`（UI は同日 3 回まで等。API 仕様は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md)）
-- **今日の自分へのねぎらいの一言**: `eveningMessageToSelfTextEncrypted: string|null`
+- **他に残しておきたいこと**（旧ラベル: 今日の自分へのねぎらいの一言）: `eveningMessageToSelfTextEncrypted: string|null`
 - **今日の振り返りを踏まえた あすの行動内容（目標）**: `eveningTomorrowActionSeedTextEncrypted: string|null`
 - **明日の目標・行動内容・イメージング**: `eveningTomorrowGoalTextEncrypted` / `eveningTomorrowActionContentTextEncrypted` / `eveningTomorrowImagingDone`
   - 保存時、翌日の朝の行動欄が未入力なら `eveningTomorrowActionSeedTextEncrypted` から自動コピー（上書きはしない）
@@ -245,7 +259,7 @@
 | 明日の行動 — 目標（1文） | `eveningTomorrowActionSeedText` 等 | ● | ● | ● |
 | 明日の行動 — 行動内容（具体的に） | `eveningTomorrowActionContentText` | — | ● | ● |
 | 明日の行動のイメージング（実施） | `eveningTomorrowImagingDone` | — | — | ● |
-| 今日の自分へのねぎらいの一言 | `eveningMessageToSelfText` | — | — | ● |
+| 他に残しておきたいこと | `eveningMessageToSelfText` | — | — | ● |
 
 **簡易時の案内文**（「明日の行動」見出し下）: 「簡易表示では目標を一文で十分です。『詳細』表示にすると『明日への改善点』と Aiコーチからのコメントを利用できます。」
 
@@ -260,9 +274,9 @@
 | 今週の行動 — 行動目標（1文） | `thisWeekActionGoalText` | ● | ● | ● |
 | 今週の行動 — 行動内容（どのように） | `thisWeekActionContentText` | — | ● | ● |
 | Aiレポート作成（ボタン・説明） | `weeklyAiReportRunCount` 等 | — | ● | ● |
-| 行動面 — 7日グリッド（朝・晩記号） | （日次 `journal_daily` 参照） | ● | ● | ● |
+| 行動面 — 7日グリッド（朝・晩記号） | クライアント: 日次 `journal_daily` から算出。コーチ: `coachDailySummaryByDate`（§5.2.1） | ● | ● | ● |
 | 行動面 — 行動の振り返り | `weeklyActionReviewText` | — | ● | ● |
-| 成果面 — 満足度平均・折れ線チャート | （日次から集計） | ● | ● | ● |
+| 成果面 — 満足度平均・折れ線チャート | クライアント: 日次から集計。コーチ: `coachDailySummaryByDate.eveningSatisfaction` | ● | ● | ● |
 | 成果面 — 成果への振り返り | `weeklyOutcomeReviewText` | — | ● | ● |
 | 成果面 — 指標の達成度 | `weeklyMetricAchievementText` | — | — | ● |
 | 心理面 — 行動時の思考・感情の変化 | `weeklyPsychologyText` | ● | ● | ● |
@@ -270,9 +284,13 @@
 | 課題と原因の深掘り | `weeklyIssueRootCauseText` | — | — | ● |
 | 来週への改善点 | `nextWeekImprovementText` | — | ● | ● |
 | 来週への改善点 — Ai改善提案 | `aiImprovementSuggestionText` 等 | — | — | ● |
+| 他に残しておきたいこと | `weeklySelfPraiseText` | — | — | ● |
 | 来週の行動 — 目標（1文） | `nextWeekGoalText` | ● | ● | ● |
 | 来週の行動 — 行動内容（具体的に） | `nextWeekActionContentText` | — | ● | ● |
-| 今週の自分へのねぎらいの言葉 | `weeklySelfPraiseText` | — | — | ● |
+
+**UI 並び（週タブ・下段）**: …来週への改善点（＋詳細時 Ai改善提案）→ **他に残しておきたいこと** → **来週の行動**。フィールド名 `weeklySelfPraiseText` は互換のため変更しない。
+
+**コーチ閲覧（`/trial_4w?coachClient=…`）**: 週次 `sharedWithCoach` ON の週について、行動面グリッド・満足度グラフは `coachDailySummaryByDate` から表示（§5.2.1）。週次本文・日次本文は編集不可。
 
 **AI 連携**: **Ai改善提案**は **詳細のみ** UI 表示。API: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §9。
 
@@ -285,7 +303,7 @@
 | 今月の行動 — 行動目標（1文） | `thisMonthActionGoalText` | ● | ● | ● |
 | 今月の行動 — 行動内容（どのように） | `thisMonthActionContentText` | — | ● | ● |
 | Aiレポート作成 | `monthlyAiReportRunCount` 等 | — | ● | ● |
-| 行動面 — 月間カレンダーグリッド | （日次参照） | ● | ● | ● |
+| 行動面 — 月間カレンダーグリッド | クライアント: 日次参照。コーチ: 当月各週の `coachDailySummaryByDate`（**週次共有 ON の週のみ**） | ● | ● | ● |
 | 行動面 — 行動の振り返り | `monthlyActionReviewText` | — | ● | ● |
 | 成果面 — 満足度・チャート | （日次から集計） | ● | ● | ● |
 | 成果面 — 成果への振り返り | `monthlyOutcomeReviewText` | — | ● | ● |
@@ -402,7 +420,7 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | 対象 | 対応 |
 |------|------|
 | `buildWeeklyAiReportInputFromDailies` | **反映済み**（§11.0.3・【明日の行動】含む・空欄は `無し`） |
-| `computeMorningCompletionSymbol` | アファメーション `done` と行動目標テキストの **2 要素**で判定（イメージングは **対象外**）。`null` と `undone` は **どちらも未実施**（下記「FAQ」） |
+| `computeMorningCompletionSymbol` | アファメーション `done` と行動目標テキストの **2 要素**で判定（イメージングは **対象外**）。**両要素とも未入力**（アファメーション `null` かつ行動目標が空）は **—**。`undone` は加点しない（下記「FAQ」） |
 | `computeEveningExecutionSymbol` | `eveningExecution` の enum 維持のため **変更不要**（ラベルのみ変更） |
 
 ### 実装ファイル（晩改訂）
@@ -424,11 +442,12 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 1. アファメーション **`done`** のみ 1 点（`null` も `undone` も **0 点**）
 2. 今日の行動目標テキストあり 1 点（`morningTodayActionText` または `morningActionGoalText`）
 
-- 合計 **0** → **×**
+- **両要素とも未入力**（アファメーション `null` かつ行動目標が空）→ **—**（晩の未選択と同じ）
+- 合計 **0**（例: アファメーションが `undone` のみ）→ **×**
 - 合計 **1** → **△**
 - 合計 **2** → **〇**
 
-`undone` から `null` に変えても、「`done` ではない」点は同じなので **週表示のロジックは変わらない**。未入力の日は従来どおり、2 項目すべて未達なら **×** になる。
+加点（〇／△）の観点では `undone` も `null` も「`done` ではない」点は同じ。一方、記号表示では **両要素とも未入力（`null`＋空文字）は —**、アファメーションが **`undone` のみ**（行動目標なし）は **×** となる。
 
 **正本**: 朝・晩記号の判定仕様は本書 **§4.z「週次・月次・ホーム連携」** および上記 FAQ。実装は `src/lib/trialDailyWeekSymbols.ts`。
 
@@ -547,7 +566,9 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | 2026-03-02 | **§9.7 #2・#2b**：本文保存時のみ履歴／上書き確認。履歴には **暗号化した当時の title も保存**。§9.7.1 にエディター・MD・WYSIWYG 将来案を記載                                                                 |
 | 2026-03-02 | **§9.7 #3a〜3e**：`history` は自動 ID・フィールド名確定・上書きは current のみ。親 **`updatedAt` は本文保存時も更新**。`encryptedLastPreviewText` は A-8 では後回し。§9.7.2 に用語説明                                                                 |
 | 2026-03-02 | **§9.7 #4a〜4c**：編集モーダルの閉じる挙動・未保存確認・編集タブは発行済み ID のみ活性。**§9.7 #5a〜5b・§9.7.3**：A-9 は履歴 UI 後追い可。表示は **日時**＋**履歴件数（＝ history ドキュメント数）**                                                                 |
-| 2026-03-02 | **§9.7 #6a〜6c**：本文 **1000 文字上限**、**空本文は保存不可**（編集で全削除保存も不可）。**§9.7.4** に「共有スナップショット」将来案を説明                                                                 |
+| 2026-03-02 | **§9.7 #6a〜6c**：本文上限（当初 1000 文字）、**空本文は保存不可**（編集で全削除保存も不可）。**§9.7.4** に「共有スナップショット」将来案を説明                                                                 |
+| 2026-07-04 | **§9.7 #6a**：穴上限を **150**／本文上限を穴満杯時の完成文長（穴合計＋見出し・固定文言）に更新（`affirmationProfile.ts`） |
+| 2026-07-06 | **§5.2.1**：`coachDailySummaryByDate` で記号・満足度のコーチ共有（週次 `sharedWithCoach` 連動）。**週タブ**：「ねぎらいの言葉」→「**他に残しておきたいこと**」に改称・「来週の行動」の前へ配置（`weeklySelfPraiseText` はフィールド名維持） |
 | 2026-03-02 | **A-8 本実装**：発行済み本文編集モーダル、保存時履歴／上書き `confirm`、`history` 追記、親 `updatedAt` 更新、`publishAffirmation` に本文バリデーション |
 | 2026-03    | **A-6 更新**：作成をモーダル化し発行（`publishAffirmation`）を接続。A-7 以降は選択一覧・名称重複など                        |
 | 2026-03-20 | **A-10 ✅**：共通 `AffirmationMarkdownView` + `react-markdown`                                |
@@ -602,7 +623,7 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | 4c | **編集タブの活性条件** | **`lastSelectedAffirmationId` が発行済みの Firestore ID のときのみ**編集タブを活性。**`draft:` 下書き選択中は編集不可**のまま。 | 2026-03 |
 | 5a | **A-8 と A-9 の分担** | A-8 で **`history` への書き込み**まで先に実装し、**履歴タブの一覧 UI は A-9**。 | 2026-03 |
 | 5b | **A-9 履歴一覧の表示項目（先行固定）** | **日時**（各版の `savedAt`、一覧の並びは **新しい順**を推奨）。**「改定回数」相当**＝当該 `affirmations/{id}` 直下の **`history` サブコレクションのドキュメント件数**（＝自動生成 `historyId` の個数＝「履歴を残す」で積んだスナップショット数）。**ランダムな `historyId` 文字列自体はユーザー向けラベルには使わない**。詳細 **§9.7.3**。 | 2026-03 |
-| 6a | **本文の最大長** | **1000 文字**（**1 アファメーションの発行済み本文**＝`published/current` に保存する Markdown **平文**の上限。暗号化前でカウント。**名称 `title` は別**で、本上限の対象外）。Firestore 1 フィールドの物理上限は別問題として十分余裕。 | 2026-03 |
+| 6a | **本文の最大長** | **穴上限の合計＋見出し・固定文言**（穴をすべて上限まで埋めた完成文の長さ。正本: `src/lib/affirmationProfile.ts` の `AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH`／各穴は `AFFIRMATION_SLOT_MAX_LENGTH`＝**150**）。**1 アファメーションの発行済み本文**＝`published/current` に保存する Markdown **平文**の上限。暗号化前でカウント。**名称 `title` は別**で、本上限の対象外）。 | 2026-07 |
 | 6b | **空本文** | **保存しない**。**発行**および **編集の [保存]** とも、本文が **空または空白のみ**なら **エラー**（保存不可）。新規はテンプレート由来の固定文が入るため実質空にならない想定。**編集で全文を消して保存することは不可**。 | 2026-03 |
 | 6c | **コーチ共有（A-11）との整合** | **現設計**ではコーチ閲覧は **最新の `published/current`** を読む想定のため、A-8 で本文を更新しても **論点は小さい**。「共有スナップショット」の意味は **§9.7.4**（**未採用の将来案**の説明）。 | 2026-03 |
 

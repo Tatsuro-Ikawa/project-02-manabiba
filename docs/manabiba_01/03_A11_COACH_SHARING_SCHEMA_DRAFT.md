@@ -431,7 +431,7 @@ function hasActiveCoachAssignmentForClient(clientUid) {
 
 - **正本（コース・能力マトリックス・人コーチ / AI の切り分け）**: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)
 - **方針**: `journal_weekly` / `journal_monthly` にも、必要に応じて **本書と同型の** `coach_share_rounds` / `coach_comment_versions`（および親ドキュメントの共有メタ）をぶら下げる。
-  - **週次（人コーチ）**: 現行仕様は **共有のみ・コメントなし**。週次パスではコーチの **write 用サブコレクションをルールで閉じる**、またはサブコレクション自体を設けない、などで表現する。
+  - **週次（人コーチ）**: 現行仕様は **共有のみ・コメントなし**。`sharedWithCoach` と **`coachDailySummaryByDate`**（記号・満足度サマリ。日次本文は含めない）で閲覧共有。週次パスではコーチの **write 用サブコレクションをルールで閉じる**、またはサブコレクション自体を設けない、などで表現する。
   - **月次（人コーチ）**: **質問・回答あり**。ユーザ決定により **A-11 同型として月次ドキュメント配下に配置する**（= 月次 1 スレッド固定ではなく、ラウンド＋コメント版を採用）。
 
 #### 12.4.1 月次（`journal_monthly`）のパス（確定）

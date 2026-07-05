@@ -35,7 +35,7 @@ export function buildMonthlyAiReportInputFromWeeklies(weeks: JournalWeeklyPlain[
       `　　${nz(w.weeklyIssueRootCauseText)}`,
       '　◇来週への改善点',
       `　　${nz(w.nextWeekImprovementText)}`,
-      '　◇今週の自分へのねぎらいの言葉',
+      '　◇他に残しておきたいこと',
       `　　${nz(w.weeklySelfPraiseText)}`,
     ];
     blocks.push(lines.join('\n'));

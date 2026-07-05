@@ -19,7 +19,15 @@ import {
   type FieldValue
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { normalizeJournalWeekStartsOnField } from '@/lib/journalWeek';
+import {
+  AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH as AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH_FROM_PROFILE,
+} from '@/lib/affirmationProfile';
+import { normalizeJournalWeekStartsOnField, getWeekStartDateKeyForDateKey, getTodayDateKeyTokyo, resolveJournalWeekStartsOn } from '@/lib/journalWeek';
+import {
+  buildCoachDailySummaryEntry,
+  parseCoachDailySummaryByDate,
+  type JournalCoachDailySummaryEntry,
+} from '@/lib/journalCoachDailySummary';
 import { decrypt, encrypt } from '@/utils/encryption';
 import { User } from 'firebase/auth';
 import { consentNextImpliesKizuki, consentNextImpliesStart7d, normalizePrimaryCourse } from '@/lib/enrollmentCourse';
@@ -1028,10 +1036,22 @@ export async function saveTrial4wDailyPlain(params: {
       }
       tx.set(ref, { ...payload, createdAt: now as FieldValue } as any, { merge: true });
     });
+    try {
+      await syncCoachDailySummaryForDate(params.uid, params.dateKey);
+      const nextKey = addDaysDateKey(params.dateKey, 1);
+      await syncCoachDailySummaryForDate(params.uid, nextKey);
+    } catch (e) {
+      console.warn('coachDailySummary sync after daily save (tx) failed:', e);
+    }
     return;
   }
 
   await setDoc(ref, { ...payload, createdAt: now as FieldValue } as any, { merge: true });
+  try {
+    await syncCoachDailySummaryForDate(params.uid, params.dateKey);
+  } catch (e) {
+    console.warn('coachDailySummary sync after daily save failed:', e);
+  }
 }
 
 // マネジメント日誌（学び帳）— 週次（SCREEN-006）
@@ -1065,7 +1085,7 @@ export type JournalWeeklyPlain = {
   nextWeekGoalText: string | null;
   /** 来週の行動：行動内容（具体的に） */
   nextWeekActionContentText: string | null;
-  /** 今週の自分へのねぎらいの言葉 */
+  /** 他に残しておきたいこと（旧: 今週の自分へのねぎらいの言葉） */
   weeklySelfPraiseText: string | null;
   /** 週次 AI レポート作成の当日実行回数 */
   weeklyAiReportRunCount: number | null;
@@ -1077,6 +1097,8 @@ export type JournalWeeklyPlain = {
   weeklyAiImprovementRunDateKey: string | null;
   /** 人コーチへの共有（閲覧）を許可するか。週次は共有のみ（質問・回答は月次） */
   sharedWithCoach?: boolean;
+  /** コーチ向け日次サマリ（記号・満足度のみ。日次本文は含めない） */
+  coachDailySummaryByDate?: Record<string, JournalCoachDailySummaryEntry>;
 
   /**
    * 互換（旧）: 以前の週次UIで使っていた統合欄。
@@ -1112,6 +1134,7 @@ export type JournalWeeklyEncrypted = {
   weeklyAiImprovementRunCount: number | null;
   weeklyAiImprovementRunDateKey: string | null;
   sharedWithCoach?: boolean;
+  coachDailySummaryByDate?: Record<string, JournalCoachDailySummaryEntry>;
 
   // 互換（旧）: 過去フィールド（残して読み出し可能にする）
   actionContentAndOutcomeTextEncrypted?: string | null;
@@ -1199,6 +1222,7 @@ export async function getJournalWeeklyPlain(
         ? data.weeklyAiImprovementRunDateKey
         : null,
     sharedWithCoach: data.sharedWithCoach ?? false,
+    coachDailySummaryByDate: parseCoachDailySummaryByDate(data.coachDailySummaryByDate),
 
     // 互換（旧）
     actionContentAndOutcomeText: await decryptOrNull(data.actionContentAndOutcomeTextEncrypted),
@@ -1292,6 +1316,64 @@ export async function saveJournalWeeklyPlain(params: {
   await setDoc(ref, { ...payload, createdAt: now as FieldValue } as Record<string, unknown>, {
     merge: true,
   });
+
+  if (params.patch.sharedWithCoach === true) {
+    try {
+      await backfillCoachDailySummaryForWeek(params.uid, params.weekStartKey);
+    } catch (e) {
+      console.warn('coachDailySummary backfill on sharedWithCoach failed:', e);
+    }
+  }
+}
+
+/** 日次保存後: 当該日の記号・満足度を週次 doc に同期（コーチ共有用） */
+export async function syncCoachDailySummaryForDate(uid: string, dateKey: string): Promise<void> {
+  if (!dateKey) return;
+  const prof = await getUserProfile(uid);
+  const weekStartsOn = resolveJournalWeekStartsOn(prof);
+  const weekStartKey = getWeekStartDateKeyForDateKey(dateKey, weekStartsOn);
+  const todayKey = getTodayDateKeyTokyo();
+  const daily = await getTrial4wDailyPlain(uid, dateKey);
+  const entry = buildCoachDailySummaryEntry(daily, dateKey, todayKey);
+  const ref = doc(db, 'users', uid, JOURNAL_WEEKLY_SUBCOLLECTION, weekStartKey);
+  await setDoc(
+    ref,
+    {
+      weekStartKey,
+      tz: 'Asia/Tokyo',
+      [`coachDailySummaryByDate.${dateKey}`]: entry,
+      updatedAt: serverTimestamp(),
+    } as Record<string, unknown>,
+    { merge: true }
+  );
+}
+
+/** 週次「コーチと共有」ON 時: 当該週 7 日分を一括同期 */
+export async function backfillCoachDailySummaryForWeek(uid: string, weekStartKey: string): Promise<void> {
+  if (!weekStartKey) return;
+  const weekEndKey = addDaysDateKey(weekStartKey, 6);
+  const todayKey = getTodayDateKeyTokyo();
+  const dailies = await listJournalDailyPlainInRange({
+    uid,
+    startDateKey: weekStartKey,
+    endDateKey: weekEndKey,
+  });
+  const coachDailySummaryByDate: Record<string, JournalCoachDailySummaryEntry> = {};
+  for (let i = 0; i < 7; i++) {
+    const dk = addDaysDateKey(weekStartKey, i);
+    coachDailySummaryByDate[dk] = buildCoachDailySummaryEntry(dailies[dk], dk, todayKey);
+  }
+  const ref = doc(db, 'users', uid, JOURNAL_WEEKLY_SUBCOLLECTION, weekStartKey);
+  await setDoc(
+    ref,
+    {
+      weekStartKey,
+      tz: 'Asia/Tokyo',
+      coachDailySummaryByDate,
+      updatedAt: serverTimestamp(),
+    } as Record<string, unknown>,
+    { merge: true }
+  );
 }
 
 /**
@@ -1632,8 +1714,8 @@ const AFFIRMATIONS_SUBCOLLECTION = 'affirmations';
  * - 親: `users/{uid}/affirmations/{affirmationId}`（メタ）
  * - 本文: `users/{uid}/affirmations/{affirmationId}/published/current`（暗号化）
  */
-/** 発行済み本文（Markdown 平文）の上限（§9.7 #6a） */
-export const AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH = 1000;
+/** 発行済み本文（Markdown 平文）の上限（§9.7 #6a）。穴上限合計＋固定文言。正本は affirmationProfile.ts */
+export const AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH = AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH_FROM_PROFILE;
 
 export function validateAffirmationMarkdownBody(
   body: string
@@ -1735,7 +1817,8 @@ export const listUserAffirmations = async (
 /** `published/current` の本文を復号して返す（無い・失敗時は null） */
 export const getAffirmationPublishedMarkdown = async (
   uid: string,
-  affirmationId: string
+  affirmationId: string,
+  options?: { quietPermissionDenied?: boolean }
 ): Promise<string | null> => {
   try {
     const ref = doc(db, 'users', uid, AFFIRMATIONS_SUBCOLLECTION, affirmationId, 'published', 'current');
@@ -1746,6 +1829,10 @@ export const getAffirmationPublishedMarkdown = async (
     if (typeof enc !== 'string') return null;
     return await decrypt(enc, uid);
   } catch (error) {
+    const code = (error as { code?: string })?.code;
+    if (code === 'permission-denied' && options?.quietPermissionDenied) {
+      return null;
+    }
     console.error('アファメーション本文取得エラー:', error);
     return null;
   }
@@ -1990,6 +2077,7 @@ export const updateTrialAffirmationUiMetaFields = async (
   fields: Partial<{
     lastSubmenu: TrialAffirmationSubmenu | null;
     lastSelectedAffirmationId: string | null;
+    showEditPreview: boolean;
   }>
 ): Promise<void> => {
   try {
@@ -2001,6 +2089,9 @@ export const updateTrialAffirmationUiMetaFields = async (
     }
     if ('lastSelectedAffirmationId' in fields) {
       payload['trialAffirmationMeta.lastSelectedAffirmationId'] = fields.lastSelectedAffirmationId;
+    }
+    if ('showEditPreview' in fields) {
+      payload['trialAffirmationMeta.showEditPreview'] = fields.showEditPreview === true;
     }
     await updateDoc(doc(db, 'users', uid), payload);
   } catch (error) {

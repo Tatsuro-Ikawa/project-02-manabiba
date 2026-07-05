@@ -3210,6 +3210,7 @@
 
 /* 発行済み本文編集モーダル（A-8）：本文＋プレビュー横並び */
 .affirmation-edit-modal {
+  position: relative;
   max-width: min(960px, 100vw - 2rem);
 }
 
@@ -3220,10 +3221,56 @@
   align-items: start;
 }
 
+.affirmation-edit-modal-body-row--editor-only {
+  grid-template-columns: 1fr;
+}
+
 @media (max-width: 720px) {
   .affirmation-edit-modal-body-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* 編集保存時: 履歴に残すか確認 */
+.affirmation-history-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  background: rgba(15, 23, 42, 0.35);
+  border-radius: inherit;
+}
+
+.affirmation-history-confirm-dialog {
+  width: min(100%, 22rem);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+
+.affirmation-history-confirm-title {
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.affirmation-history-confirm-desc {
+  margin: 0 0 var(--spacing-md);
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.affirmation-history-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
 }
 
 /* A-9：履歴閲覧モーダル（参照のみ） */
@@ -3492,7 +3539,7 @@
   margin: 0;
   padding: 12px;
   word-break: break-word;
-  font-size: var(--font-size-body-small);
+  font-size: var(--font-size-body);
   color: var(--color-text-primary);
 }
 

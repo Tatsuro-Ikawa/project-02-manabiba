@@ -155,7 +155,7 @@ export function journalShowWeeklyNextWeekActionContent(level: JournalDetailLevel
   return level !== 'simple';
 }
 
-/** 週：今週の自分へのねぎらいの言葉（詳細のみ） */
+/** 週：他に残しておきたいこと（詳細のみ） */
 export function journalShowWeeklySelfPraiseSection(level: JournalDetailLevel): boolean {
   return level === 'detailed';
 }

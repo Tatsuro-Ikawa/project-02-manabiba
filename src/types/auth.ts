@@ -75,6 +75,11 @@ export interface TrialAffirmationUiMeta {
    * 前回開いていたサブメニュー。null = プレビューのみ表示（骨格初期状態）
    */
   lastSubmenu: TrialAffirmationSubmenu | null;
+  /**
+   * 発行済み本文の編集モーダルで右側プレビューを出すか。
+   * 未設定時は `true`（表示する）。
+   */
+  showEditPreview?: boolean;
 }
 
 /** デモ申込フォームのお客様情報（`users/{uid}.applyBilling`） */

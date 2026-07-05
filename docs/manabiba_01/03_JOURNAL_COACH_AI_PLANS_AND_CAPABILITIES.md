@@ -15,7 +15,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| **人コーチへの共有データ** | **週次・月次ドキュメントに限定**。`journal_daily` は人コーチに**送らない**・**Firestore ルールで read 不可**（クライアント本人のみ）。 |
+| **人コーチへの共有データ** | **週次・月次ドキュメント**を主とする。`journal_daily` は**本文を直接 read しない**（本人のみ）。**行動面記号・満足度**は `journal_weekly.coachDailySummaryByDate` に同期したサマリのみ、週次 `sharedWithCoach` ON 時にコーチへ表示（[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §5.2.1）。 |
 | **AI** | 日次・週次・月次それぞれで質問・回答・（文脈としての）共有を**プロダクト上は許容**。実装詳細は **AI 実装フェーズ**で決定。 |
 | **AI への情報提供** | **クライアントが UI 上で明示的に操作（例: ボタン）したとき**に、当該期間の情報を API に載せる。**利用者の選択と責任**を前提とする（同意文面・表示は AI 実装時に詳細化）。 |
 | **動的ルール** | Firestore ルール内で「担当人数」などを**都度計算しない**。**コース ID または能力フラグ**を `users/{uid}`（等）に持ち、**運用でコースを切り替える**。 |
@@ -127,8 +127,8 @@ coachCapabilities.ai.journal.monthly    = { share, question, reply }
 
 | やりたいこと | 方針 |
 |--------------|------|
-| 人コーチが `journal_daily` を read しない | **パス単位で禁止**（現状どおり本人のみ）。コースに依存しない。 |
-| 人コーチが `journal_weekly` を read する | **共有フラグ ON** かつ **active 割当** かつ **`human.journal.weekly.share == true` 相当**（`courseId` 解決でも可）。 |
+| 人コーチが `journal_daily` を read しない | **パス単位で禁止**（本人のみ）。記号・満足度は **`journal_weekly.coachDailySummaryByDate`** 経由のみ（日次本文は含めない）。 |
+| 人コーチが `journal_weekly` を read する | **共有フラグ ON** かつ **active 割当** かつ **`subscription.features.coachComments`**（プレミアム相当）。週次本文＋サマリ map を read 可。 |
 | 人コーチが週次にコメントを書く | マトリックス上 **reply なし**のため、**`coach_comment_versions` 等の write 用パスを週次には置かない**／ルールで **create 禁止**が簡潔。 |
 | 人コーチが月次にコメントを書く | **月次ドキュメント配下**に A-11 と同型の `coach_share_rounds` / `coach_comment_versions` を用意し、`human.journal.monthly.reply` が true のコースだけ write 可。 |
 
@@ -151,7 +151,7 @@ coachCapabilities.ai.journal.monthly    = { share, question, reply }
 ## 7. データ構造（週次・月次）と A-11 の関係
 
 - アファメーション: 既存どおり `users/{uid}/affirmations/{id}/coach_share_rounds/...`
-- **週次**: `users/{uid}/journal_weekly/{weekStartKey}` に共有メタ（例: `sharedWithCoach`）＋必要なら **同型のラウンド／コメント版**（人コーチ reply が false ならコメント用サブコレクションは未使用またはルール閉鎖）
+- **週次**: `users/{uid}/journal_weekly/{weekStartKey}` に共有メタ（`sharedWithCoach`）＋ **`coachDailySummaryByDate`**（記号・満足度サマリ）＋必要なら **同型のラウンド／コメント版**（人コーチ reply が false ならコメント用サブコレクションは未使用またはルール閉鎖）
 - **月次**: `users/{uid}/journal_monthly/{monthKey}` を同様に定義（実装タイミングで [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) に追記）
 
 詳細パス・フィールド名は週次・月次 UI 実装とあわせ [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md) に**別節で追記**する想定。
@@ -181,3 +181,4 @@ coachCapabilities.ai.journal.monthly    = { share, question, reply }
 | 2026-04-04 | §2.1 新設: 検討の案 A/B と §2 マトリックスの対応。**現行は案 A 採用**。案 B は週次「人コーチ・共有」を false にする別パターン。旧 §2.1 → §2.2（将来拡張）。 |
 | 2026-04-04 | §7.1 追加: クォータは**暦月キー型**（ローリング 30 日ではない）。スキーマは A-11 同型、アファメ用クォータとは**別カウンタ**。AI は別枠と明記。 |
 | 2026-04-08 | **「月1回」の定義を確定**: 「クライアントがパーソナルコーチへ質問を送信できる回数」を暦月 1 回までと明記（§2 / §7.1）。 |
+| 2026-07-06 | §1・§5・§7: `coachDailySummaryByDate` により日次本文を渡さず記号・満足度のみコーチ共有（週次 `sharedWithCoach` 連動）。ルール表記を `coachComments` フラグに合わせて更新。 |

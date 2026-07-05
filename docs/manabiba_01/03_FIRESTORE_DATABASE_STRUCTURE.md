@@ -6,7 +6,7 @@
 
 - **コレクション一覧**: [02_SYSTEM_ARCHITECTURE.md](./02_SYSTEM_ARCHITECTURE.md) の「6.1 Firestoreコレクション構造」と、[FIRESTORE_SECURITY_RULES_SETUP.md](../FIRESTORE_SECURITY_RULES_SETUP.md) のルールで定義されているパスをベースに整理。
 - **セキュリティルールの詳細**: [FIRESTORE_SECURITY_RULES_SETUP.md](../FIRESTORE_SECURITY_RULES_SETUP.md) を参照。
-- **A-11（2026-03-28）**: コーチ共有の **データ構造・フィールド名** を本書に反映（`coach_client_assignments`、`coach_share_rounds`、`coach_comment_versions`、`activeCoachingAffirmationId`、親 `affirmations` の共有メタ）。**ルール実装は未着手**。正本の説明は [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)。
+- **A-11（2026-03-28）**: コーチ共有の **データ構造・フィールド名** を本書に反映（`coach_client_assignments`、`coach_share_rounds`、`coach_comment_versions`、`activeCoachingAffirmationId`、親 `affirmations` の共有メタ）。**気づきノート**は `journal_weekly` / `journal_monthly` の `sharedWithCoach` と **`coachDailySummaryByDate`**（§2.x-2-2）まで反映。ルールは `firestore.rules` を正本。説明は [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)・[03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。
 
 ---
 
@@ -151,7 +151,7 @@
 - **パス**: `users/{uid}/journal_weekly/{weekStartKey}`（`weekStartKey` = 当該週の開始日 `YYYY-MM-DD`、`tz = Asia/Tokyo`、ユーザの週開始曜日設定に従う）
 - **目的**: 週報（SCREEN-006）の長文。CRUD: `getJournalWeeklyPlain` / `saveJournalWeeklyPlain`（`src/lib/firestore.ts`）。
 - **暗号化**: 下記の自由記述は **`encrypt(plaintext, uid)`** で保存（日次と同様）。
-- **人コーチ・AI**: 共有メタ・コメントは後続。正本は [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。現行ルールは本人 read/write のみ。
+- **人コーチ・AI**: `sharedWithCoach` と **`coachDailySummaryByDate`**（コーチ向け日次サマリ・平文）を週次 doc に保持。コーチ read は `firestore.rules` で **割当 active ＋ `sharedWithCoach` ON ＋ `subscription.features.coachComments`**。月次コメント用サブコレクションは後続。正本は [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)、実装決定は [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §5.2.1。
 
 | フィールド（Firestore・暗号化キー） | 型（想定） | `JournalWeeklyPlain`（復号後・コード上の名前） | 週タブ UI（参考） |
 |--------------------------------------|------------|---------------------------------------------------|-------------------|
@@ -169,7 +169,9 @@
 | aiImprovementSuggestionTextEncrypted | string \| null | `aiImprovementSuggestionText` | 来週への改善点ブロック内 → Ai改善提案 |
 | nextWeekGoalTextEncrypted | string \| null | `nextWeekGoalText` | 来週の行動 → 目標（一文） |
 | nextWeekActionContentTextEncrypted | string \| null | `nextWeekActionContentText` | 来週の行動 → 行動内容 |
-| weeklySelfPraiseTextEncrypted | string \| null | `weeklySelfPraiseText` | 今週の自分へのねぎらいの言葉 |
+| weeklySelfPraiseTextEncrypted | string \| null | `weeklySelfPraiseText` | **他に残しておきたいこと**（詳細のみ。UI 上は「来週の行動」の直前） |
+| sharedWithCoach | bool \| null | `sharedWithCoach` | 見出し右上「コーチと共有」。ON で担当コーチが週次本文＋サマリを read 可 |
+| coachDailySummaryByDate | map \| null | `coachDailySummaryByDate` | コーチ向け日次サマリ（記号・満足度のみ。`dateKey` → 各記号フィールド）。§2.x-2-2 |
 | weeklyAiReportRunCount | number \| null | `weeklyAiReportRunCount` | 週次 Ai レポート作成の当日**成功**実行回数（平文・失敗は含めない） |
 | weeklyAiReportRunDateKey | string \| null | `weeklyAiReportRunDateKey` | 上記回数の集計日 JST `YYYY-MM-DD`（平文） |
 | weeklyAiImprovementRunCount | number \| null | `weeklyAiImprovementRunCount` | 週次 Ai 改善提案の当日**成功**実行回数（平文・失敗は含めない） |
@@ -205,12 +207,24 @@ Vertex の詳細は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMP
 | 課題と原因の深掘り | `weeklyIssueRootCauseText` |
 | 来週への改善点 | `nextWeekImprovementText` |
 
+#### 2.x-2-2 コーチ向け日次サマリ（`coachDailySummaryByDate`）
+
+週次「コーチと共有」ON に連動。`journal_daily` をコーチが read せず、行動記号・満足度だけ共有する（案 B）。
+
+| 項目 | 内容 |
+|------|------|
+| **フィールド** | `coachDailySummaryByDate.{dateKey}` … 各キーに `morningSym` / `morningCls` / `eveningSym` / `eveningCls` / `eveningSatisfaction`（平文） |
+| **同期** | `saveTrial4wDailyPlain` 成功後に `syncCoachDailySummaryForDate`。**共有 ON** 時に `backfillCoachDailySummaryForWeek` で当該週 7 日分を再構築 |
+| **記号算出** | `src/lib/journalCoachDailySummary.ts` の `buildCoachDailySummaryEntry`（`trialDailyWeekSymbols.ts` と同一） |
+| **コーチ UI** | `TrialWeekly` / `TrialMonthly`（`coachClient` URL）。週: グリッド＋満足度チャート。月: 共有 ON 週のサマリをカレンダーにマージ |
+| **ルール** | 週次 doc 全体の read に含まれる（`sharedWithCoach` 等は §2.x-2 冒頭）。`journal_daily` は引き続き本人のみ |
+
 ### 2.x-3 users / {uid} / journal_monthly / {monthKey}（気づきノート: 月次）
 
 - **パス**: `users/{uid}/journal_monthly/{monthKey}`（`monthKey = YYYY-MM`、`tz = Asia/Tokyo`）
 - **目的**: 月報（SCREEN-007 相当）の長文。28日トライアル後も**気づきノート**として継続利用する前提。
 - **暗号化**: 下記の自由記述は **`encrypt(plaintext, uid)`** で保存（日次・週次と同様）。
-- **人コーチ（パーソナル）共有・コメント**: **A-11 同型**で **月次ドキュメント配下**に `coach_share_rounds` / `coach_comment_versions` を配置する（正本: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)）。現段階のルールは本人 read/write のみ（コーチ read/write は後続フェーズで解放）。
+- **人コーチ（パーソナル）共有・コメント**: **A-11 同型**で **月次ドキュメント配下**に `coach_share_rounds` / `coach_comment_versions` を配置する（正本: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)）。コーチ read は `sharedWithCoach` ON 等で `firestore.rules` に反映済み。月次カレンダー記号は週次 `coachDailySummaryByDate` 経由（§2.x-2-2）。
 
 | フィールド（Firestore） | 型（想定） | 画面ラベル（参考） |
 |-------------------------|------------|---------------------|
@@ -244,7 +258,7 @@ Vertex の詳細は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMP
 **Ai レポート**（`POST /api/ai/monthly-report`）
 
 - **リクエスト本文**: `{ "monthlyInputText": string }`（`buildMonthlyAiReportInputFromWeeklies` と同等。実装: `src/lib/monthlyAiReportInputFromWeeklies.ts`）。
-- **対象週**: 暦月（JST `monthKey = YYYY-MM`）の 1 日〜末日のうち、**`weekStartKey` がその暦月に含まれる週**のみ（`listWeekStartKeysInCalendarMonth`。ユーザの `weekStartsOn` に従う）。各週の `journal_weekly` から、行動目標・行動内容・行動／成果／心理・気づき・課題・来週改善・ねぎらい等を見出し付きで連結。空欄は **`無し`**。
+- **対象週**: 暦月（JST `monthKey = YYYY-MM`）の 1 日〜末日のうち、**`weekStartKey` がその暦月に含まれる週**のみ（`listWeekStartKeysInCalendarMonth`。ユーザの `weekStartsOn` に従う）。各週の `journal_weekly` から、行動目標・行動内容・行動／成果／心理・気づき・課題・来週改善・**他に残しておきたいこと**等を見出し付きで連結。空欄は **`無し`**。
 - **検証**: 連結全体 **150 文字以上**（週次レポートと同じ `AI_REPORT_INPUT_MIN_TOTAL_CHARS`）。
 - **反映**: `monthlyActionReviewText` / `monthlyOutcomeReviewText` / `monthlyPsychologyText` / `insightAndLearningText` へ。モードは **`weeklyAiReportWriteMode`**（週次と同一フィールド名）。
 
@@ -526,7 +540,7 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 
 | フィールド | 説明 |
 |------------|------|
-| encryptedBody | 発行済み本文（Markdown）暗号化。**平文の文字数上限**は [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §9.7 **#6a**（現決定: 1000 文字）。 |
+| encryptedBody | 発行済み本文（Markdown）暗号化。**平文の文字数上限**は [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §9.7 **#6a**（穴上限合計＋固定文言。正本: `AFFIRMATION_MARKDOWN_BODY_MAX_LENGTH`）。 |
 | publishedAt, updatedAt | 日時 |
 
 - **ドキュメント ID**: 現行の正は **`current`** など固定 1 枚とする想定。
@@ -659,7 +673,10 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | users/{userId}/affirmations/{affirmationId}  | 本人のみ | 本人のみ |
 | users/{userId}/affirmations/{affirmationId}/published/{docId} | 本人のみ | 本人のみ |
 | users/{userId}/affirmations/{affirmationId}/history/{historyId} | **本人のみ**（履歴もコーチ不可。共有時ルールは A-11 以降） | 本人のみ |
-| coach_client_assignments/{assignmentId} | **A-11 未実装**（想定: 関係者のみ read、write は管理者 or CF） | **A-11 未実装** |
+| users/{userId}/journal_daily/{dateKey} | **本人のみ**（コーチは `coachDailySummaryByDate` 経由のみ） | 本人のみ（サブスク条件あり） |
+| users/{userId}/journal_weekly/{weekStartKey} | 本人／担当コーチ（`sharedWithCoach` ON 等） | 本人のみ |
+| users/{userId}/journal_monthly/{monthKey} | 本人／担当コーチ（`sharedWithCoach` ON 等） | 本人のみ |
+| coach_client_assignments/{assignmentId} | 関係者（コーチ・クライアント・管理者） | 管理者 |
 | users/.../affirmations/.../coach_share_rounds/... | **A-11 未実装**（想定: 本人＋担当コーチ） | **A-11 未実装** |
 | users/.../coach_share_rounds/.../coach_comment_versions/... | **A-11 未実装**（想定: 本人 read、コーチが version 追記） | **A-11 未実装** |
 | affirmation_profiles/{profileId}    | 認証ユーザ（想定）   | 管理者のみ（ルール未デプロイ時は要追加） |

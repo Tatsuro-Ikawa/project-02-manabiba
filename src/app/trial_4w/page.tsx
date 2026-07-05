@@ -310,8 +310,8 @@ function Trial4wContent() {
 
           {currentTab === 'affirmation' && <TrialAffirmation coachClientUid={coachClientUid} />}
           {currentTab === 'morning_evening' && <TrialMorningEvening />}
-          {currentTab === 'weekly' && <TrialWeekly />}
-          {currentTab === 'monthly' && <TrialMonthly />}
+          {currentTab === 'weekly' && <TrialWeekly coachClientUid={coachClientUid} />}
+          {currentTab === 'monthly' && <TrialMonthly coachClientUid={coachClientUid} />}
         </div>
       </div>
 

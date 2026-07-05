@@ -258,7 +258,7 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 | P-1 | `/trial_4w/landing` | プレミアム列「申し込む」→ `login?next=/apply?plan=premium`（ゲスト） | OK |
 | P-2 | 導線①（未会員） | 同意 → `/apply?plan=premium`（デモ事業者情報）→ 送信後 **`/trial_4w`** | OK |
 | P-2a | 導線①・プレミアム到達後 | **月**タブ「コーチと共有」（見出し右上）が有効 | OK |
-| P-2b | 同上・**週**タブ | 「コーチと共有」（見出し右上）が有効（閲覧のみ。質問は月タブ） | OK |
+| P-2b | 同上・**週**タブ | 「コーチと共有」（見出し右上）が有効（閲覧のみ。質問は月タブ）。共有 ON 週は行動記号・満足度グラフもコーチに表示（`coachDailySummaryByDate`） | OK |
 | P-2c | 同上・**行動宣言** | 発行済みテーマ「表示」後、タイトルバーに「コーチと共有」 | OK |
 | P-3 | 導線⑦⑧（既会員・`plan=premium`） | 気づきノート `/trial_4w` へ | OK |
 

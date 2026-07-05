@@ -79,6 +79,12 @@ service cloud.firestore {
       return exists(p) && get(p).data.get('sharedWithCoach', false) == true;
     }
 
+    // 親の sharedWithCoach（journal_weekly の子 read 判定用）
+    function journalWeeklySharedWithCoach(userId, weekStartKey) {
+      let p = /databases/$(database)/documents/users/$(userId)/journal_weekly/$(weekStartKey);
+      return exists(p) && get(p).data.get('sharedWithCoach', false) == true;
+    }
+
     match /coach_client_assignments/{assignmentId} {
       allow read: if isAuthenticated() && (
         resource.data.coachUid == request.auth.uid ||
@@ -142,7 +148,14 @@ service cloud.firestore {
       // マネジメント日誌（学び帳）— 週次（SCREEN-006 実装時に利用）
       // パス: users/{uid}/journal_weekly/{weekStartKey}（JST・ユーザの週開始日基準の YYYY-MM-DD）
       match /journal_weekly/{weekStartKey} {
-        allow read: if isOwner(userId);
+        allow read: if isOwner(userId) || (
+          hasActiveCoachAssignmentForClient(userId) &&
+          clientAllowsHumanCoachComments(userId) &&
+          (
+            resource == null ||
+            resource.data.get('sharedWithCoach', false) == true
+          )
+        );
         allow create, update, delete: if isOwner(userId) && journalWriteAllowedForOwner(userId);
       }
 
@@ -153,8 +166,11 @@ service cloud.firestore {
         // 本体: 本人 read/write。担当コーチは「active 割当」＋「共有 ON」＋「コーチコメント機能 ON」で read のみ。
         allow read: if isOwner(userId) || (
           hasActiveCoachAssignmentForClient(userId) &&
-          resource.data.get('sharedWithCoach', false) == true &&
-          clientAllowsHumanCoachComments(userId)
+          clientAllowsHumanCoachComments(userId) &&
+          (
+            resource == null ||
+            resource.data.get('sharedWithCoach', false) == true
+          )
         );
         allow create, update, delete: if isOwner(userId) && journalWriteAllowedForOwner(userId);
 

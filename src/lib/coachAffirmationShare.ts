@@ -234,7 +234,22 @@ export async function listActiveCoachAssignmentsForCoach(
   }));
 }
 
-/** クライアントの「現在アクティブな」割当 1 件（0 件なら null） */
+/** ルールと同じ ID（`{coachUid}_{clientUid}`）で割当 1 件を get（コーチ UI 向け・クエリ不要） */
+export async function getCoachClientAssignment(
+  coachUid: string,
+  clientUid: string
+): Promise<{ id: string; data: CoachClientAssignment } | null> {
+  const id = coachClientAssignmentDocId(coachUid, clientUid);
+  const ref = doc(db, COACH_CLIENT_ASSIGNMENTS, id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const data = snap.data() as CoachClientAssignment;
+  if (data.status !== 'active') return null;
+  if (data.coachUid !== coachUid || data.clientUid !== clientUid) return null;
+  return { id: snap.id, data };
+}
+
+/** クライアントの「現在アクティブな」割当 1 件（0 件なら null）— クライアント本人向けクエリ */
 export async function getActiveCoachAssignmentForClient(
   clientUid: string
 ): Promise<{ id: string; data: CoachClientAssignment } | null> {

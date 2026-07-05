@@ -1,9 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getJournalMonthlyPlain,
   getJournalWeeklyPlain,
@@ -49,6 +47,8 @@ import {
   MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
   validateMonthlyImprovementInput,
 } from '@/lib/monthlyImprovementAi';
+import { useTrialJournalCoachContext } from '@/hooks/useTrialJournalCoachContext';
+import { mergeCoachDailySummariesFromWeeklies } from '@/lib/journalCoachDailySummary';
 
 function shiftMonthKey(monthKey: string, deltaMonths: number): string {
   const [yy, mm] = monthKey.split('-').map((x) => Number(x));
@@ -97,6 +97,10 @@ type MonthlyReportsResponse = {
 
 const MONTHLY_AI_DAILY_LIMIT = 3;
 
+type TrialMonthlyProps = {
+  coachClientUid?: string | null;
+};
+
 function MonthlyTextRow({
   label,
   value,
@@ -129,8 +133,18 @@ function MonthlyTextRow({
   );
 }
 
-export default function TrialMonthly() {
-  const { user, userProfile, loading } = useAuth();
+export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProps) {
+  const {
+    user,
+    loading,
+    isCoachView,
+    contentUid,
+    canEdit,
+    journalProfile,
+    coachCommentsEnabled,
+    coachContextError,
+    coachContextReady,
+  } = useTrialJournalCoachContext(coachClientUid);
   const { level } = useJournalDetailLevel();
   const searchParams = useSearchParams();
   const [monthKey, setMonthKey] = useState('');
@@ -149,48 +163,56 @@ export default function TrialMonthly() {
   const [monthlyImprovementError, setMonthlyImprovementError] = useState<string | null>(null);
 
   const monthParam = searchParams.get('month');
-  const fallbackMonthKey = user ? getTodayDateKeyTokyo().slice(0, 7) : '';
+  const fallbackMonthKey = contentUid ? getTodayDateKeyTokyo().slice(0, 7) : '';
   const displayMonthKey = monthKey || fallbackMonthKey;
   const todayKey = useMemo(() => getTodayDateKeyTokyo(), []);
-  const canEdit = !!user && !loading;
-  const coachCommentsEnabled = hasCoachCommentsFeature(userProfile);
   const monthBounds = useMemo(() => getMonthStartEndDateKey(displayMonthKey), [displayMonthKey]);
 
-  useEffect(() => {
-    if (!user) return;
-    setMonthKey(monthParam || getTodayDateKeyTokyo().slice(0, 7));
-  }, [user, monthParam]);
+  const coachSummaryByDate = useMemo(
+    () => (isCoachView ? mergeCoachDailySummariesFromWeeklies(weeklyDocsForMonth) : {}),
+    [isCoachView, weeklyDocsForMonth]
+  );
 
   useEffect(() => {
-    if (!user) return;
+    if (!contentUid || !coachContextReady) return;
+    setMonthKey(monthParam || getTodayDateKeyTokyo().slice(0, 7));
+  }, [contentUid, monthParam, coachContextReady]);
+
+  useEffect(() => {
+    if (!contentUid) return;
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'monthly');
     if (displayMonthKey) url.searchParams.set('month', displayMonthKey);
     window.history.replaceState({}, '', url.pathname + url.search);
-  }, [user, displayMonthKey]);
+  }, [contentUid, displayMonthKey]);
 
   const load = useCallback(async () => {
-    if (!user) return;
+    if (!contentUid || !coachContextReady) return;
     if (!displayMonthKey) return;
     try {
-      const d = await getJournalMonthlyPlain(user.uid, displayMonthKey);
+      const d = await getJournalMonthlyPlain(contentUid, displayMonthKey);
       setData(d);
+      setMsg(null);
     } catch (e) {
       const code = typeof e === 'object' && e !== null && 'code' in e ? (e as { code?: string }).code : null;
-      if (code === 'permission-denied') {
-        console.warn('getJournalMonthlyPlain permission-denied (rules not deployed yet?)', e);
+      if (isCoachView && code === 'permission-denied') {
+        console.warn('getJournalMonthlyPlain permission-denied', e);
         setData(journalMonthlyPlainEmpty(displayMonthKey));
-        setMsg('月次（journal_monthly）の権限が未反映です。Firestore ルールをデプロイ後に再読み込みしてください。');
+        setMsg(
+          coachCommentsEnabled
+            ? 'この月はクライアントが「コーチと共有」を ON にしていないか、閲覧権限がありません。'
+            : 'クライアントのプランにパーソナルコーチ機能（coachComments）がありません。'
+        );
         return;
       }
       console.error('getJournalMonthlyPlain error:', e);
       setData(journalMonthlyPlainEmpty(displayMonthKey));
       setMsg('読み込みに失敗しました。時間をおいて再度お試しください。');
     }
-  }, [user, displayMonthKey]);
+  }, [contentUid, displayMonthKey, coachContextReady, isCoachView, coachCommentsEnabled]);
 
   const loadDaily = useCallback(async () => {
-    if (!user) return;
+    if (isCoachView || !user) return;
     if (!displayMonthKey) return;
     const r = getMonthStartEndDateKey(displayMonthKey);
     if (!r) return;
@@ -218,21 +240,21 @@ export default function TrialMonthly() {
   }, [loadDaily]);
 
   useEffect(() => {
-    if (!user?.uid || !displayMonthKey) {
+    if (!contentUid || !displayMonthKey) {
       setWeeklyDocsForMonth([]);
       return;
     }
     let cancelled = false;
     const weekStarts = listWeekStartKeysInCalendarMonth(
       displayMonthKey,
-      resolveJournalWeekStartsOn(userProfile ?? null)
+      resolveJournalWeekStartsOn(journalProfile ?? null)
     );
     void (async () => {
       try {
         const docs = await Promise.all(
           weekStarts.map(async (ws) => {
             try {
-              return await getJournalWeeklyPlain(user.uid, ws);
+              return await getJournalWeeklyPlain(contentUid, ws);
             } catch {
               return journalWeeklyPlainEmpty(ws);
             }
@@ -247,7 +269,7 @@ export default function TrialMonthly() {
     return () => {
       cancelled = true;
     };
-  }, [user?.uid, displayMonthKey, userProfile]);
+  }, [contentUid, displayMonthKey, journalProfile]);
 
   useEffect(() => {
     if (!journalShowMonthlyAiImprovementSuggestion(level)) {
@@ -266,12 +288,12 @@ export default function TrialMonthly() {
 
   const savePatch = useCallback(
     async (patch: Partial<JournalMonthlyPlain>) => {
-      if (!user || !data) return;
+      if (!user || !data || !canEdit || !contentUid) return;
       setSaving(true);
       setMsg(null);
       try {
-        await saveJournalMonthlyPlain({ uid: user.uid, monthKey: data.monthKey, patch });
-        const fresh = await getJournalMonthlyPlain(user.uid, data.monthKey);
+        await saveJournalMonthlyPlain({ uid: contentUid, monthKey: data.monthKey, patch });
+        const fresh = await getJournalMonthlyPlain(contentUid, data.monthKey);
         setData(fresh);
         setMsg('保存しました。');
         setTimeout(() => setMsg(null), 2500);
@@ -282,15 +304,16 @@ export default function TrialMonthly() {
         setSaving(false);
       }
     },
-    [user, data]
+    [user, data, canEdit, contentUid]
   );
 
   const gotoDaily = useCallback((dateKey: string) => {
+    if (isCoachView) return;
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'morning_evening');
     url.searchParams.set('date', dateKey);
     window.history.replaceState({}, '', url.pathname + url.search);
-  }, []);
+  }, [isCoachView]);
 
   const monthCalendarCells = useMemo(() => {
     const r = getMonthStartEndDateKey(displayMonthKey);
@@ -338,7 +361,7 @@ export default function TrialMonthly() {
         throw new Error(messageFromApiErrorPayload(payload) || '月次AIレポートの作成に失敗しました。');
       }
 
-      const writeMode = userProfile?.weeklyAiReportWriteMode ?? 'append';
+      const writeMode = journalProfile?.weeklyAiReportWriteMode ?? 'append';
       const patch: Partial<JournalMonthlyPlain> = {
         monthlyActionReviewText: applyAiReportWriteMode(
           data.monthlyActionReviewText,
@@ -380,7 +403,7 @@ export default function TrialMonthly() {
     } finally {
       setSaving(false);
     }
-  }, [user, data, todayKey, weeklyDocsForMonth, userProfile?.weeklyAiReportWriteMode]);
+  }, [user, data, todayKey, weeklyDocsForMonth, journalProfile?.weeklyAiReportWriteMode]);
 
   const runMonthlyImprovementAi = useCallback(async () => {
     if (!user || !data) return;
@@ -480,6 +503,48 @@ export default function TrialMonthly() {
   }, [monthlyImprovementPreview, user, data]);
 
   const monthNavShort = useMemo(() => formatMonthNavShort(displayMonthKey), [displayMonthKey]);
+  const navDisabled = saving || (!isCoachView && !canEdit);
+
+  if (isCoachView && !coachClientUid) {
+    return (
+      <div className="trial-tab-content">
+        <div className="trial-monthly-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="monthly-section-title">月</h2>
+          </div>
+          <p className="text-sm text-gray-600">メニューバーの「共有」からクライアントを選択してください。</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (coachContextError) {
+    return (
+      <div className="trial-tab-content">
+        <div className="trial-monthly-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="monthly-section-title">月</h2>
+          </div>
+          <p className="text-sm text-red-600" role="alert">
+            {coachContextError}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!coachContextReady) {
+    return (
+      <div className="trial-tab-content">
+        <div className="trial-monthly-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="monthly-section-title">月</h2>
+          </div>
+          <p className="text-sm text-gray-500">読み込み中…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user && !loading) {
     return (
@@ -494,7 +559,7 @@ export default function TrialMonthly() {
     );
   }
 
-  if (user && loading && !userProfile) {
+  if (user && loading && !journalProfile && !isCoachView) {
     return (
       <div className="trial-tab-content">
         <div className="trial-monthly-container">
@@ -539,6 +604,7 @@ export default function TrialMonthly() {
             enabled={coachCommentsEnabled}
             checked={!!data.sharedWithCoach}
             disabled={!canEdit || saving}
+            readOnly={isCoachView}
             ariaLabel="今月の学び帳をコーチに共有する"
             onChange={(v) => {
               setData((prev) => (prev ? { ...prev, sharedWithCoach: v } : prev));
@@ -546,12 +612,17 @@ export default function TrialMonthly() {
             }}
           />
         </div>
+        {isCoachView ? (
+          <p className="text-sm text-gray-600 mb-2">
+            クライアントの月次を閲覧中です（行動記号は各週の「コーチと共有 ON」週から表示。日次本文は非共有です）。
+          </p>
+        ) : null}
         <div className="week-nav" aria-label="月ナビ">
           <button
             type="button"
             className="week-nav-btn"
             onClick={() => setMonthKey((k) => shiftMonthKey(k || fallbackMonthKey, -1))}
-            disabled={!canEdit}
+            disabled={navDisabled}
             aria-label="前月"
           >
             ◁
@@ -561,7 +632,7 @@ export default function TrialMonthly() {
             type="button"
             className="week-nav-btn"
             onClick={() => setMonthKey((k) => shiftMonthKey(k || fallbackMonthKey, 1))}
-            disabled={!canEdit}
+            disabled={navDisabled}
             aria-label="翌月"
           >
             ▷
@@ -626,7 +697,11 @@ export default function TrialMonthly() {
 
           <div className="action-sub-section" data-section="monthly-action-aspect">
             <h4>◇行動面</h4>
-            <p className="text-sm text-gray-600 mb-3">各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。</p>
+            <p className="text-sm text-gray-600 mb-3">
+              {isCoachView
+                ? '各日の朝・晩の実行結果（記号のみ）。週次で共有 ON の日だけ表示されます。'
+                : '各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。'}
+            </p>
             <div className="month-calendar-grid" role="grid" aria-label="行動の結果（月間カレンダー）">
               {monthCalendarCells.headers.map((h) => (
                 <div key={h} className="month-cal-header" role="columnheader">
@@ -637,31 +712,49 @@ export default function TrialMonthly() {
                 if (c.kind === 'empty') {
                   return <div key={`e-${idx}`} className="month-cal-cell empty" role="gridcell" aria-hidden />;
                 }
-                const d = dailyByDateKey[c.dateKey];
-                const m = computeMorningCompletionSymbol(d, c.dateKey, todayKey);
-                const e = computeEveningExecutionSymbol(d, c.dateKey, todayKey);
+                const summary = isCoachView ? coachSummaryByDate[c.dateKey] : undefined;
+                const d = isCoachView ? undefined : dailyByDateKey[c.dateKey];
+                const m = summary
+                  ? { sym: summary.morningSym, cls: summary.morningCls }
+                  : computeMorningCompletionSymbol(d, c.dateKey, todayKey);
+                const e = summary
+                  ? { sym: summary.eveningSym, cls: summary.eveningCls }
+                  : computeEveningExecutionSymbol(d, c.dateKey, todayKey);
                 return (
                   <div key={c.dateKey} className="month-cal-cell" role="gridcell">
                     <span className="cell-date">{c.day}</span>
                     <div className="cell-symbols">
-                      <button
-                        type="button"
-                        className={`monthly-symbol ${m.cls}`}
-                        onClick={() => gotoDaily(c.dateKey)}
-                        aria-label={`${c.dateKey} 朝`}
-                        disabled={!user}
-                      >
-                        {m.sym}
-                      </button>
-                      <button
-                        type="button"
-                        className={`monthly-symbol ${e.cls}`}
-                        onClick={() => gotoDaily(c.dateKey)}
-                        aria-label={`${c.dateKey} 晩`}
-                        disabled={!user}
-                      >
-                        {e.sym}
-                      </button>
+                      {isCoachView ? (
+                        <>
+                          <span className={`monthly-symbol ${m.cls}`} aria-label={`${c.dateKey} 朝`}>
+                            {m.sym}
+                          </span>
+                          <span className={`monthly-symbol ${e.cls}`} aria-label={`${c.dateKey} 晩`}>
+                            {e.sym}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className={`monthly-symbol ${m.cls}`}
+                            onClick={() => gotoDaily(c.dateKey)}
+                            aria-label={`${c.dateKey} 朝`}
+                            disabled={!user}
+                          >
+                            {m.sym}
+                          </button>
+                          <button
+                            type="button"
+                            className={`monthly-symbol ${e.cls}`}
+                            onClick={() => gotoDaily(c.dateKey)}
+                            aria-label={`${c.dateKey} 晩`}
+                            disabled={!user}
+                          >
+                            {e.sym}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );

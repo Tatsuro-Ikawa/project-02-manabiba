@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  getCoachClientAssignment,
   listActiveCoachAssignmentsForCoach,
   resolveClientUidFromAssignmentDoc,
 } from '@/lib/coachAffirmationShare';
@@ -41,12 +42,24 @@ export default function CoachClientPickerModal({
       const enriched: ClientRow[] = [];
       for (const a of assignments) {
         const clientUid = resolveClientUidFromAssignmentDoc(coachUid, a.id, a.data.clientUid);
+        const canonical = await getCoachClientAssignment(coachUid, clientUid);
+        if (!canonical) {
+          console.warn(
+            `coach_client_assignments: canonical doc missing for coach=${coachUid} client=${clientUid} (listed id=${a.id})`
+          );
+          continue;
+        }
         const prof = await getUserProfile(clientUid);
         const label = prof?.displayName || prof?.email || clientUid;
         enriched.push({ clientUid, label });
       }
       setRows(enriched);
       setSelectedUid((prev) => prev ?? currentClientUid ?? (enriched[0]?.clientUid ?? null));
+      if (assignments.length > 0 && enriched.length === 0) {
+        setError(
+          '割当はありますが、ドキュメント ID が「{coachUid}_{clientUid}」形式ではないため共有できません。管理者に割当の再登録を依頼してください。'
+        );
+      }
     } catch (e) {
       console.error(e);
       setError('クライアント一覧の取得に失敗しました。割当（coach_client_assignments）を確認してください。');
