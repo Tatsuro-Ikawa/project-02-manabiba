@@ -14,35 +14,58 @@
 
 - **セクションラッパー**: `HomePage.tsx` で `home-sections-stack` と `home-section-divider` を用い、バナー・道場新着・マネジメント・動画/記事/リンクの間の余白と区切りを統一した。
 - **幅狭時の2カラム崩れ**: `home-trial.css` の `@media (max-width: 1024px)` にあった **`home-content-right { order: 1; }` を削除**し、DOM 順（動画 → 記事 → リンク）で縦積みになるよう修正した。
-- **マネジメント**: `HomeDashboard.tsx`（セクション `home-section-dashboard-management`）に今日/今週目標・今週の実施状況・コーチ新着を配置。コーチ新着の「詳細」は `/communication`（メッセージボードはプレミアム連携後に本格利用）。
+- **マネジメント**: `HomeDashboard.tsx`（`home-section-dashboard-management`）。**Aiコース・プレミアムのみマウント**（`homeSectionVisibility.ts`）。コーチ新着の「詳細」は `/communication`。
 
 ### 今週の実施状況（ホーム内プレビュー）
 
 - 幅狭時も **4列優先**（極小幅で 3 列・2 列へ段階的に変更）。日付と曜日を **`5/4 月` 形式の1行**（`weekly-result-date-row`）にし、セル高さを抑えた。
 
+### コーチからの新着情報（`home-coach-news`・2026-07 確定）
+
+| 項目 | 内容 |
+|------|------|
+| **表示コース** | **プレミアムのみ**（28日お試しの Aiコース・フリー・ゲストは非表示） |
+| **データ** | メッセージボードのコーチ発信**直近1件** |
+| **本文** | 最大100文字。全文は「詳細」→ `/communication?tab=board` |
+
 ---
 
-## 1. ホーム画面 ロール別区分一覧
+## 1. ホーム画面 コース別区分一覧（2026-07 確定）
 
-ロール別のモードを切り替えたときの、各セクションの表示・編集可否。
+ホームの各セクションは **サブスクコース列**で出し分ける。**編集（◎）は `role === 'admin'` かつ管理者モード**で別軸（コース列とは無関係）。**コーチ（ホスト）**のホームは本人の `subscription.plan` に従う（ロールモードはノート・コミュニケーションのみ影響。コーチは原則 `premium`）。
 
-- **凡例**: `-` = 非表示 / `〇` = 表示 / `◎` = 編集可能
-- **ログイン前**はすべてゲストとして扱う。
+- **凡例**: `-` = 非表示 / `〇` = 表示 / `◎` = 管理者のみ編集可
+- **ログイン前**は **ゲスト**列
+- **フリー**: `plan === 'free'` かつ 28日お試し外（7日間スタートのみ等）
+- **Aiコース**: `plan === 'standard'`、または `free` かつ `trialEndsAt` が未来（28日お試し中）
+- **プレミアム**: `plan === 'premium'`
+- 判定の正本: `src/lib/homeSectionVisibility.ts`（`resolveHomeCourseTier`）
 
+| 部位 ID | ゲスト | フリー | Aiコース | プレミアム | 項目表記 |
+| ------------------------------ | --- | --- | --- | --- | --- |
+| `home-banner` | 〇 | 〇 | 〇 | 〇 | バナー（CTA 文言は §1.1 でコース別） |
+| `home-section-whats-new-dojo` | 〇 | 〇 | 〇 | 〇 | 道場からの新着 |
+| `home-section-dashboard-management` | - | - | 〇 | 〇 | マネジメント情報（右欄: コーチ新着は**プレミアム列のみ**・§0） |
+| `home-section-latest-videos` | 〇 | 〇 | 〇 | 〇 | おすすめ動画 |
+| `home-section-latest-articles` | 〇 | 〇 | 〇 | 〇 | 注目記事 |
+| `home-section-reference-links` | 〇 | 〇 | 〇 | 〇 | いちおしサイト |
+| `home-section-sns` | - | - | - | - | SNS（運用方針決定まで非表示） |
+| `home-section-ad` | - | - | - | - | 広告（運用方針決定まで非表示） |
 
-| 部位 ID                          | ゲスト | クライアント | ホスト | 管理者 | 備考                           |
-| ------------------------------ | --- | ------ | --- | --- | ---------------------------- |
-| `home-banner`                  | 〇   | 〇      | 〇   | 〇   | バナー。文言はログイン前/後で切替            |
-| `home-section-latest-videos`   | 〇   | 〇      | 〇   | ◎   | おすすめ動画。管理者のみ編集                 |
-| `home-section-today-best`      | -   | 〇      | 〇   | 〇   | 本日の一番。ゲストは非表示                |
-| `home-section-continuation`    | -   | 〇      | 〇   | 〇   | 昨日までの積重ね。ゲストは非表示             |
-| `home-section-latest-articles` | 〇   | 〇      | 〇   | ◎   | 注目記事。管理者のみ編集                 |
-| `home-section-sns`             | -   | -      | -   | -   | SNS。運用方針決定まで非表示（CSS）             |
-| `home-section-reference-links` | 〇   | 〇      | 〇   | ◎   | いちおしサイト。管理者のみ編集                |
-| `home-section-ad`              | 〇   | -      | -   | ◎   | 広告エリア。クライアント・ホストは非表示。管理者のみ編集。編集UIは未実装 |
+**管理者（別軸）**
 
+| 部位 ID | 管理者（admin モード） |
+| ------------------------------ | --- |
+| `home-section-latest-videos` | ◎ |
+| `home-section-latest-articles` | ◎ |
+| `home-section-reference-links` | ◎ |
+| `home-section-ad` | ◎（表示は運用方針までオフ） |
 
-- **フッター**: 利用規約・プライバシーポリシー・コピーライトを実装済み。`ProtoFooter` で `/terms`・`/privacy` へのリンクとコピーライト表示。セクション ID は付与していない。
+- **フッター**: 利用規約・プライバシーポリシー・コピーライトを実装済み。`ProtoFooter`（全コース共通）。
+
+### 旧ロール別表（廃止）
+
+ゲスト／クライアント／ホスト／管理者の4列表は本表に置き換えた。`home-section-today-best`・`home-section-continuation` は未実装のためドキュメントから削除。
 
 ---
 
@@ -258,6 +281,7 @@ sequenceDiagram
 | 種別 | パス |
 |------|------|
 | ホーム | `src/components/HomePage.tsx` |
+| コース別表示 | `src/lib/homeSectionVisibility.ts` |
 | 道場新着 | `src/components/home/HomeWhatsNewDojo.tsx` |
 | マネジメント（ダッシュボード） | `src/components/home/HomeDashboard.tsx` |
 | おすすめ動画編集モーダル | `src/components/home/LatestVideosEditModal.tsx` |

@@ -59,11 +59,13 @@ Phase B（Next.js Route Handlers を中心とした API 層）に着手する際
 
 | 項目 | 決定内容 |
 |------|----------|
-| **ミューテーションの経路** | **Next.js Route Handlers** を正とする（例: `POST /api/communication/...` を新設し、**クライアントは Firestore に直接書かない**）。**読み取り**は当面デモ同様クライアントでもよいが、本番永続化後は **一覧・取得も API 経由に寄せる**ことを推奨（ルールを単純化できる）。 |
+| **ミューテーションの経路** | **Next.js Route Handlers** を正とする（`POST/PATCH /api/communication/board/message`）。**クライアントは Firestore に直接書かない**。 |
+| **読み取り** | **クライアント SDK の `onSnapshot`**（`communication_board_threads/…/messages`）。**`tab=board` 表示中のみ** subscribe し、離脱時に unsubscribe（[04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)）。 |
+| **永続化** | `communication_board_threads/{coachUid}_{clientUid}/messages/{id}`（2026-07 実装済み） |
 | **割当の正本** | ルートコレクション **`coach_client_assignments`**。ドキュメント ID **`{coachUid}_{clientUid}`**、`status == 'active'` を **担当あり**とみなす（[03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)）。 |
-| **ガード条件** | ① Bearer 検証 → ② `resolveEntitlements` に **`communication.message_board`** が true（＝実質 **premium** ＋有効期間）→ ③ **リクエストの相手 UID** が、**クライアントなら** `getActiveAssignmentForClient` 相当（`clientUid == uid` かつ `coachUid == 相手`）、**コーチなら**逆の **active 割当が存在**すること。満たさない場合は **403**。 |
-| **エラーコード** | `PREMIUM_REQUIRED`（message_board false）、`NOT_ASSIGNED_COACH`（割当がない／相手が担当外）、`FORBIDDEN_PEER`（スレッドの当事者以外）。 |
-| **送信上限・既読** | **クライアント／コーチで別定数**は [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md) に従い、**API 内で同じ定数を参照**する。 |
+| **ガード条件** | ① Bearer 検証 → ② **クライアント**は `resolveEntitlements` の **`communication.message_board`** が true。**コーチ**（`role` が coach / senior_coach）はプレミアム不要 → ③ **active 割当**が存在すること。満たさない場合は **403**。 |
+| **エラーコード** | `PREMIUM_REQUIRED`（message_board false）、`NOT_ASSIGNED_COACH`（割当がない／相手が担当外）、`FORBIDDEN_PEER`（スレッドの当事者以外）、`SEND_LIMIT`（クライアント上限）。 |
+| **送信上限・既読** | クライアント上限は `COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT`（API 内で検証済み）。**既読のサーバー更新は未実装**。 |
 
 ---
 
@@ -152,3 +154,4 @@ Phase B（Next.js Route Handlers を中心とした API 層）に着手する際
 |------|------|
 | 2026-05-12 | 初版: Phase B 内部仕様（B1〜B5・横断）を確定。 |
 | 2026-05-12 | §7: Phase B 検証チェックリスト。§8 を参照索引に変更。 |
+| 2026-07-06 | §5 B4: メッセージボード Firestore 永続化・onSnapshot 読取・コーチ権限を実装反映。 |

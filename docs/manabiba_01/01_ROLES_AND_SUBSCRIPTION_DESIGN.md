@@ -337,9 +337,9 @@
 | [04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md](./04_IMPLEMENTATION_STEPS_DB_AND_AUTH.md)（**【4】**） | サブスクの器の拡張手順（決済なし）。 |
 | [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md)（**§2** 等） | トライアル期間とサブスクの連動メモ。 |
 | [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) | **ゲスト／フリー／スタンダード／プレミアム／個別**、28日JST、失効後の閲覧のみ・90日破棄・ホームオーバーレイ、付録A〜C、**§7 Phase C 分担**、**§8 運用前外部仕様**、**§9 Stripe 組込みタイミング**、Stripe シーケンス図 C.4、スコープ外（外部入出力・個別実装・Zoom）。 |
-| [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md) | メッセージボード実装・プレミアム連携メモ。Zoom は別アプリ（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §5）。 |
+| [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md) | メッセージボード実装（Firestore 永続化・表示中のみ onSnapshot）。Zoom は別アプリ（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §5）。 |
 | **型（実装）** `src/types/auth.ts` | `SubscriptionPlan`、`SubscriptionInfo`、`UserProfile.subscription`。 |
 
 **画面実装とサブスクの接続（例）**
 
-- メッセージボードのプレミアム判定: [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)（現状は `src/lib/communicationConstants.ts` の暫定フラグ → **本番は `UserProfile.subscription` に差し替え**）。
+- メッセージボードのプレミアム判定: [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)（`resolveEntitlements` → `communication.message_board`。コーチ role はプレミアム不要）。

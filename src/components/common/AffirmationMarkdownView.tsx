@@ -1,6 +1,7 @@
 'use client';
 
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export type AffirmationMarkdownViewProps = {
   /** 発行済み本文・プレビュー用の Markdown 文字列（アファメーション共通） */
@@ -25,7 +26,7 @@ function markdownHardLineBreaks(s: string): string {
 export function AffirmationMarkdownView({ markdown, className }: AffirmationMarkdownViewProps) {
   return (
     <div className={`affirmation-markdown-view ${className ?? ''}`.trim()}>
-      <ReactMarkdown>{markdownHardLineBreaks(markdown)}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownHardLineBreaks(markdown)}</ReactMarkdown>
     </div>
   );
 }

@@ -266,7 +266,8 @@ Firebase Console → Firestore → `users` → 対象 `{uid}` で **`consents` �
 
 | # | 手順 | 期待結果 | OK |
 |---|------|----------|-----|
-| P-M1 | 会員同意済み（`consents`）アカウントで `subscription.plan` = `premium` | `/communication` のメッセージボード等（実装範囲） | |
+| P-M1 | 会員同意済み（`consents`）アカウントで `subscription.plan` = `premium`、active 割当あり | `/communication?tab=board` で送信→コーチ（`coachClient` 選択）画面にリアルタイム表示 | |
+| P-M1b | 同上・コーチ返信 | コーチ送信→クライアント画面に表示 | |
 | P-M2 | `/trial_4w` | 気づきノート本体はスタンダードと同様に入れる | |
 
 ---

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
@@ -12,6 +12,12 @@ import ReferenceLinksEditModal from '@/components/home/ReferenceLinksEditModal';
 import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
 import { hasAiCoachOrPremiumSignup, shouldShowStart7dHomeHint } from '@/lib/enrollmentCourse';
+import {
+  resolveHomeCourseTier,
+  shouldShowHomeAd,
+  shouldShowHomeManagement,
+  shouldShowHomeSns,
+} from '@/lib/homeSectionVisibility';
 
 /** 再ログイン（ログアウト後）: login が post-login にラップするため next は最終行先 `/` のみ */
 const RETURNING_LOGIN_HREF = `/login?next=${encodeURIComponent('/')}`;
@@ -40,6 +46,14 @@ export default function HomePage() {
   const [referenceLinks, setReferenceLinks] = useState<HomeReferenceLinkEntry[]>([]);
   const [homeContentLoading, setHomeContentLoading] = useState(true);
   const showEditUi = loggedIn && userProfile?.role === 'admin' && mode === 'admin';
+
+  const homeCourseTier = useMemo(
+    () => resolveHomeCourseTier(loggedIn, userProfile),
+    [loggedIn, userProfile]
+  );
+  const showManagement = shouldShowHomeManagement(homeCourseTier);
+  const showSns = shouldShowHomeSns();
+  const showAd = shouldShowHomeAd();
 
   const loadHomeContent = useCallback(async () => {
     setHomeContentLoading(true);
@@ -137,9 +151,12 @@ export default function HomePage() {
 
             <HomeWhatsNewDojo />
 
-            <div className="home-section-divider" aria-hidden />
-
-            <HomeDashboard />
+            {showManagement && (
+              <>
+                <div className="home-section-divider" aria-hidden />
+                <HomeDashboard />
+              </>
+            )}
 
             <div className="home-section-divider" aria-hidden />
 
@@ -262,6 +279,7 @@ export default function HomePage() {
                   </div>
                 </section>
 
+                {showSns && (
                 <section id="home-section-sns" className="content-section">
                   <h2 className="section-title">SNS</h2>
                   <div className="sns-links">
@@ -279,6 +297,7 @@ export default function HomePage() {
                     </a>
                   </div>
                 </section>
+                )}
               </div>
 
               <aside className="home-content-right">
@@ -331,9 +350,11 @@ export default function HomePage() {
                     )}
                   </div>
                 </section>
-                <section id="home-section-ad" className="content-section home-section-ad-reserved" aria-hidden="true">
+                {showAd && (
+                <section id="home-section-ad" className="content-section home-section-ad-reserved">
                   <div className="ad-area home-section-ad-placeholder">広告エリア（仕様確定後）</div>
                 </section>
+                )}
               </aside>
             </div>
           </div>

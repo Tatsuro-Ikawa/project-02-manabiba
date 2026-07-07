@@ -5,7 +5,7 @@
 Firebase Firestoreがテストモードで作成され、30日後に自動的にアクセスが拒否されるようになりました。
 適切なセキュリティルールを設定して、アプリケーションを復旧させましょう。
 
-**※ 最新のルール**: プロジェクトルートの **`firestore.rules`** が実装の正本です。`site_content/home`（ホーム用・おすすめ動画・注目記事・いちおしサイト等）の read 全員・write 管理者（isAdminUser）、**`users/{userId}/affirmation_drafts/{profileId}`**、**`users/{userId}/affirmations/{affirmationId}`** および **`published` / `history` サブコレクション**、**A-11** の **`coach_client_assignments`** および **`coach_share_rounds` / `coach_comment_versions`** 等を含みます（設計は [docs/manabiba_01/03_A11_COACH_SHARING_SCHEMA_DRAFT.md](../manabiba_01/03_A11_COACH_SHARING_SCHEMA_DRAFT.md)、構造は [docs/manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md](../manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md)）。ルート **`affirmation_profiles`** は未ルールのままなら後続で追加。
+**※ 最新のルール**: プロジェクトルートの **`firestore.rules`** が実装の正本です。`site_content/home`、**`users/{userId}`**（コーチ↔クライアント相互 read 含む）、**`coach_client_assignments`**、**`communication_board_threads`**（メッセージボード・write は API のみ）、**A-11** の **`coach_share_rounds` / `coach_comment_versions`**、`journal_*` コーチ read 等を含みます。構造は [docs/manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md](../manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md)、メッセージボード仕様は [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](../manabiba_01/04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)。
 
 **デプロイ**: リポジトリのルールを本番 Firestore に反映するには **`firebase deploy --only firestore:rules`**（インデックスも変えた場合は `firestore:indexes` も）。手動 CLI が基本で、Vercel の自動デプロイとは別作業。手順の整理は [DEPLOY_GITHUB_VERCEL.md](./DEPLOY_GITHUB_VERCEL.md) の **§2.6** を参照。コンソールに直接貼る場合は **`firestore.rules` の内容全体**をコピーして使用してください（要 `firebase login`）。
 
@@ -226,7 +226,8 @@ firebase deploy --only firestore:rules
 - `users/{userId}/affirmations/{affirmationId}` - アファメーション親メタ（本人のみ）
 - `users/{userId}/affirmations/{affirmationId}/published/{docId}` - 発行済み本文（本人のみ）
 - `users/{userId}/affirmations/{affirmationId}/history/{historyId}` - 編集履歴（**本人のみ**。コーチ read は共有仕様 A-11 以降で別途）
-- `coach_client_assignments/{assignmentId}` - **A-11 設計済み・ルール未実装**（コーチ↔クライアント割当）
+- `coach_client_assignments/{assignmentId}` - コーチ↔クライアント割当（A-11）
+- `communication_board_threads/{threadId}` および `…/messages/{messageId}` - **メッセージボード**（read: 割当当事者、write: ルールで拒否＝API 経由のみ）
 - `users/{userId}/affirmations/{affirmationId}/coach_share_rounds/{roundId}` および `.../coach_comment_versions/{versionId}` - **A-11 設計済み・ルール未実装**
 - `pdca_entries/{entryId}` - PDCAエントリ
 - `pdca_aggregations/{aggregationId}` - PDCA集約データ

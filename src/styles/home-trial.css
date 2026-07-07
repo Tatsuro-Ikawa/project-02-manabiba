@@ -814,6 +814,88 @@
   font-size: var(--font-size-body-small);
   color: var(--color-text-secondary);
   line-height: 1.55;
+  min-height: 8rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.communication-director-markdown {
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-secondary);
+}
+
+.communication-director-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.communication-director-page-btn {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  font-size: var(--font-size-body-small);
+  cursor: pointer;
+}
+
+.communication-director-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.communication-director-page-indicator {
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-secondary);
+}
+
+.director-announcements-edit-modal--wide {
+  max-width: min(96vw, 1100px);
+}
+
+.director-announcement-edit-title-row {
+  margin-bottom: var(--spacing-md);
+}
+
+.director-announcement-title-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.director-announcement-edit-body-row {
+  margin-top: var(--spacing-sm);
+}
+
+.director-announcement-schedule-row {
+  margin-top: var(--spacing-md);
+}
+
+.home-dojo-news-item-title {
+  margin: 0 0 var(--spacing-xs);
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.affirmation-markdown-view table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 0.75em;
+  font-size: 0.95em;
+}
+
+.affirmation-markdown-view th,
+.affirmation-markdown-view td {
+  border: 1px solid var(--color-border);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.affirmation-markdown-view th {
+  background: rgba(0, 0, 0, 0.04);
+  font-weight: 700;
 }
 
 .communication-board-head {

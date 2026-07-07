@@ -1,11 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-
-const DUMMY_DOJO_NEWS =
-  '道場からのお知らせ（ダミー）です。今後は館長メッセージ等をここに表示し、コミュニケーションへ誘導します。';
+import { useEffect, useState } from 'react';
+import { fetchLatestPublicDirectorAnnouncement } from '@/lib/directorAnnouncements';
+import { truncateDirectorAnnouncementPreview } from '@/lib/directorAnnouncementPreview';
 
 export default function HomeWhatsNewDojo() {
+  const [title, setTitle] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const latest = await fetchLatestPublicDirectorAnnouncement();
+        if (cancelled) return;
+        if (!latest) {
+          setTitle(null);
+          setPreview(null);
+          return;
+        }
+        setTitle(latest.title);
+        setPreview(truncateDirectorAnnouncementPreview(latest.bodyMarkdown));
+      } catch (e) {
+        console.error('fetchLatestPublicDirectorAnnouncement error:', e);
+        if (!cancelled) {
+          setTitle(null);
+          setPreview(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section id="home-section-whats-new-dojo" className="content-section home-dojo-news">
       <div className="home-dojo-news-head">
@@ -21,8 +53,16 @@ export default function HomeWhatsNewDojo() {
           </span>
         </Link>
       </div>
-      <p className="home-dojo-news-body">{DUMMY_DOJO_NEWS}</p>
+      {loading ? (
+        <p className="home-dojo-news-body text-sm text-gray-500">読み込み中…</p>
+      ) : !title || !preview ? (
+        <p className="home-dojo-news-body text-sm text-gray-500">お知らせはまだありません。</p>
+      ) : (
+        <>
+          <h3 className="home-dojo-news-item-title">{title}</h3>
+          <p className="home-dojo-news-body">{preview}</p>
+        </>
+      )}
     </section>
   );
 }
-

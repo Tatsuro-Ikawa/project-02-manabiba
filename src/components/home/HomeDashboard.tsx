@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/context/ViewModeContext';
 import {
@@ -18,10 +18,108 @@ import {
   getWeekStartDateKeyForToday,
 } from '@/lib/journalWeek';
 import { computeEveningExecutionSymbol, computeMorningCompletionSymbol } from '@/lib/trialDailyWeekSymbols';
-import { hasAiCoachOrPremiumSignup, shouldShowStart7dHomeHint } from '@/lib/enrollmentCourse';
+import { getActiveCoachAssignmentForClient } from '@/lib/coachAffirmationShare';
+import { fetchLatestCoachBoardMessage } from '@/lib/communicationBoard';
+import { truncateCoachNewsPreview } from '@/lib/coachNewsPreview';
+import {
+  resolveHomeCourseTier,
+  shouldShowHomeCoachNews,
+} from '@/lib/homeSectionVisibility';
 
-/** コーチ新着（ダミー・プレミアム仕様確定後に接続） */
-const DUMMY_COACH_NEWS = 'コーチからの新着情報（ダミー）は、プレミアム対象の仕様確定後に表示します。';
+function CoachNewsBlock() {
+  const { user, userProfile, loading } = useAuth();
+  const { mode } = useViewMode();
+  const profileReady = !loading && (!user || !!userProfile);
+  const tier = resolveHomeCourseTier(!!user && profileReady, userProfile);
+  const visible =
+    profileReady && !!user && mode === 'client' && shouldShowHomeCoachNews(tier);
+
+  const [preview, setPreview] = useState<string | null>(null);
+  const [loadingMsg, setLoadingMsg] = useState(false);
+  const [noAssignment, setNoAssignment] = useState(false);
+
+  useEffect(() => {
+    if (!visible || !user?.uid) {
+      setPreview(null);
+      setNoAssignment(false);
+      setLoadingMsg(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingMsg(true);
+    void (async () => {
+      try {
+        const asg = await getActiveCoachAssignmentForClient(user.uid);
+        const coachUid = asg?.data.coachUid;
+        if (!coachUid) {
+          if (!cancelled) {
+            setNoAssignment(true);
+            setPreview(null);
+          }
+          return;
+        }
+        if (!cancelled) setNoAssignment(false);
+        const msg = await fetchLatestCoachBoardMessage(coachUid, user.uid);
+        if (cancelled) return;
+        if (!msg?.body.trim()) {
+          setPreview('');
+          return;
+        }
+        setPreview(truncateCoachNewsPreview(msg.body));
+      } catch (e) {
+        console.error('コーチ新着プレビュー取得エラー:', e);
+        if (!cancelled) setPreview(null);
+      } finally {
+        if (!cancelled) setLoadingMsg(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, user?.uid]);
+
+  if (!visible) return null;
+
+  let bodyContent: ReactNode;
+  if (loadingMsg) {
+    bodyContent = <p className="home-coach-news-body home-dashboard-muted mb-0">読み込み中…</p>;
+  } else if (noAssignment) {
+    bodyContent = (
+      <p className="home-coach-news-body home-dashboard-muted mb-0">担当コーチの割当がありません。</p>
+    );
+  } else if (preview === null) {
+    bodyContent = (
+      <p className="home-coach-news-body home-dashboard-muted mb-0">新着を読み込めませんでした。</p>
+    );
+  } else if (!preview) {
+    bodyContent = (
+      <p className="home-coach-news-body home-dashboard-muted mb-0">まだコーチからのメッセージはありません。</p>
+    );
+  } else {
+    bodyContent = <p className="home-coach-news-body mb-0">{preview}</p>;
+  }
+
+  return (
+    <aside className="home-dashboard-right" aria-label="コーチからの新着情報">
+      <div className="home-coach-news">
+        <div className="home-coach-news-head">
+          <h3 className="home-coach-news-title">コーチからの新着情報</h3>
+          <Link
+            href="/communication?tab=board"
+            className="home-message-detail-link"
+            aria-label="メッセージボードの詳細へ"
+          >
+            詳細
+            <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18 }}>
+              chevron_right
+            </span>
+          </Link>
+        </div>
+        {bodyContent}
+      </div>
+    </aside>
+  );
+}
 
 function TodayActionGoalBlock() {
   const { user, loading } = useAuth();
@@ -329,36 +427,6 @@ function ClientWeeklyPreview() {
 }
 
 export default function HomeDashboard() {
-  const { user, userProfile, loading } = useAuth();
-  const profileReady = !loading && (!user || !!userProfile);
-  const showStart7dHint =
-    profileReady && !!user && shouldShowStart7dHomeHint(userProfile);
-  const showKizukiMgmt =
-    profileReady && !!user && hasAiCoachOrPremiumSignup(userProfile);
-
-  if (showStart7dHint) {
-    return (
-      <section id="home-section-dashboard-management" className="content-section">
-        <h2 className="section-title">マネジメント情報</h2>
-        <p className="home-dashboard-muted mb-0">
-          7日間スタートプログラム利用中です。気づきノートのマネジメント情報は、ノートを開始したあとに表示されます。
-        </p>
-      </section>
-    );
-  }
-
-  // フリー（7日間のみ／未申込）ではマネジメント情報は出さない（Firestore も読まない）
-  if (!!user && profileReady && !showKizukiMgmt) {
-    return (
-      <section id="home-section-dashboard-management" className="content-section">
-        <h2 className="section-title">マネジメント情報</h2>
-        <p className="home-dashboard-muted mb-0">
-          気づきノートを開始すると、マネジメント情報が表示されます。
-        </p>
-      </section>
-    );
-  }
-
   return (
     <section id="home-section-dashboard-management" className="content-section">
       <h2 className="section-title">マネジメント情報</h2>
@@ -381,28 +449,7 @@ export default function HomeDashboard() {
           </div>
         </div>
 
-        <aside className="home-dashboard-right" aria-label="コーチからの新着情報">
-          <div className="home-coach-news">
-            <div className="home-coach-news-head">
-              <h3 className="home-coach-news-title">コーチからの新着情報</h3>
-              <Link
-                href="/communication"
-                className="home-message-detail-link"
-                aria-label="コーチからの新着情報の詳細・一覧へ"
-              >
-                詳細
-                <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18 }}>
-                  chevron_right
-                </span>
-              </Link>
-            </div>
-
-            <p className="home-coach-news-body">{DUMMY_COACH_NEWS}</p>
-            <div className="home-coach-news-premium-note" role="note">
-              プレミアム仕様の確定後に表示されます。
-            </div>
-          </div>
-        </aside>
+        <CoachNewsBlock />
       </div>
     </section>
   );

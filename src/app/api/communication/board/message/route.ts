@@ -1,10 +1,14 @@
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse, type NextRequest } from 'next/server';
 import { apiJsonError } from '@/lib/api/apiJsonError';
+import { COMMUNICATION_BOARD_MESSAGES, COMMUNICATION_BOARD_THREADS } from '@/lib/communicationBoard';
 import { getAdminUserProfile } from '@/lib/server/adminUserProfile';
 import { requireBearerUid } from '@/lib/server/bearerAuth';
+import {
+  assertBoardWriteAccess,
+  assertClientSendLimit,
+} from '@/lib/server/communicationBoardAccess';
 import { getFirebaseAdminApp } from '@/lib/firebaseAdmin';
-import { coachClientAssignmentDocId } from '@/lib/coachAffirmationShare';
-import { resolveEntitlements } from '@/lib/subscription/resolveEntitlements';
 
 export const runtime = 'nodejs';
 
@@ -13,9 +17,6 @@ type PostBody = {
   body?: unknown;
 };
 
-/**
- * メッセージボード送信（検証のみ・永続化は未接続。Phase B4）。
- */
 export async function POST(request: NextRequest) {
   const auth = await requireBearerUid(request);
   if (!auth.ok) return auth.response;
@@ -38,39 +39,52 @@ export async function POST(request: NextRequest) {
     return apiJsonError(403, 'PREMIUM_REQUIRED', 'ユーザープロフィールがありません');
   }
 
-  if (profile.role === 'admin') {
-    return apiJsonError(403, 'FORBIDDEN_PEER', '管理者はメッセージ送信できません');
+  const access = await assertBoardWriteAccess(auth.uid, profile, peerUid);
+  if ('code' in access) {
+    return apiJsonError(access.status, access.code, access.message);
   }
 
-  const ent = resolveEntitlements(profile);
-  if (!ent['communication.message_board']) {
-    return apiJsonError(403, 'PREMIUM_REQUIRED', 'メッセージボードはプレミアムプランのみ利用できます');
+  if (!access.isCoach) {
+    const limitErr = await assertClientSendLimit(access);
+    if (limitErr) {
+      return apiJsonError(limitErr.status, limitErr.code, limitErr.message);
+    }
   }
 
-  const isCoach = profile.role === 'coach' || profile.role === 'senior_coach';
-  const coachUid = isCoach ? auth.uid : peerUid;
-  const clientUid = isCoach ? peerUid : auth.uid;
-  if (!coachUid || !clientUid || coachUid === clientUid) {
-    return apiJsonError(403, 'FORBIDDEN_PEER', '相手 UID が不正です');
-  }
+  const db = getFirebaseAdminApp().firestore();
+  const threadRef = db.collection(COMMUNICATION_BOARD_THREADS).doc(access.threadId);
+  const messageRef = threadRef.collection(COMMUNICATION_BOARD_MESSAGES).doc();
+  const now = FieldValue.serverTimestamp();
 
-  const assignmentId = coachClientAssignmentDocId(coachUid, clientUid);
-  const asgSnap = await getFirebaseAdminApp().firestore().doc(`coach_client_assignments/${assignmentId}`).get();
-  if (!asgSnap.exists || asgSnap.data()?.status !== 'active') {
-    return apiJsonError(403, 'NOT_ASSIGNED_COACH', '担当コーチ／クライアントの割当が確認できません');
-  }
-  const d = asgSnap.data()!;
-  if (d.coachUid !== coachUid || d.clientUid !== clientUid) {
-    return apiJsonError(403, 'FORBIDDEN_PEER', '割当内容と一致しません');
-  }
+  await db.runTransaction(async (tx) => {
+    const threadSnap = await tx.get(threadRef);
+    if (!threadSnap.exists) {
+      tx.set(threadRef, {
+        coachUid: access.coachUid,
+        clientUid: access.clientUid,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      tx.update(threadRef, { updatedAt: now });
+    }
+    tx.set(messageRef, {
+      authorUid: auth.uid,
+      body: text,
+      createdAt: now,
+      edited: false,
+    });
+  });
 
-  const id = `srv-${Date.now()}`;
+  const saved = await messageRef.get();
+  const createdAt = saved.data()?.createdAt?.toDate?.() ?? new Date();
+
   return NextResponse.json(
     {
       message: {
-        id,
+        id: messageRef.id,
         body: text,
-        createdAt: new Date().toISOString(),
+        createdAt: createdAt.toISOString(),
         edited: false,
       },
     },

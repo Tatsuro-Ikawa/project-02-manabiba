@@ -1,10 +1,11 @@
+import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse, type NextRequest } from 'next/server';
 import { apiJsonError } from '@/lib/api/apiJsonError';
+import { COMMUNICATION_BOARD_MESSAGES, COMMUNICATION_BOARD_THREADS } from '@/lib/communicationBoard';
 import { getAdminUserProfile } from '@/lib/server/adminUserProfile';
 import { requireBearerUid } from '@/lib/server/bearerAuth';
+import { assertBoardWriteAccess } from '@/lib/server/communicationBoardAccess';
 import { getFirebaseAdminApp } from '@/lib/firebaseAdmin';
-import { coachClientAssignmentDocId } from '@/lib/coachAffirmationShare';
-import { resolveEntitlements } from '@/lib/subscription/resolveEntitlements';
 
 export const runtime = 'nodejs';
 
@@ -13,7 +14,6 @@ type PatchBody = {
   body?: unknown;
 };
 
-/** メッセージ編集（検証のみ・永続化は未接続。Phase B4）。 */
 export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const auth = await requireBearerUid(request);
   if (!auth.ok) return auth.response;
@@ -40,27 +40,33 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   if (!profile) {
     return apiJsonError(403, 'PREMIUM_REQUIRED', 'ユーザープロフィールがありません');
   }
-  if (profile.role === 'admin') {
-    return apiJsonError(403, 'FORBIDDEN_PEER', '管理者はメッセージ編集できません');
+
+  const access = await assertBoardWriteAccess(auth.uid, profile, peerUid);
+  if ('code' in access) {
+    return apiJsonError(access.status, access.code, access.message);
   }
 
-  const ent = resolveEntitlements(profile);
-  if (!ent['communication.message_board']) {
-    return apiJsonError(403, 'PREMIUM_REQUIRED', 'メッセージボードはプレミアムプランのみ利用できます');
+  const db = getFirebaseAdminApp().firestore();
+  const messageRef = db
+    .collection(COMMUNICATION_BOARD_THREADS)
+    .doc(access.threadId)
+    .collection(COMMUNICATION_BOARD_MESSAGES)
+    .doc(messageId);
+
+  const snap = await messageRef.get();
+  if (!snap.exists) {
+    return apiJsonError(404, 'NOT_FOUND', 'メッセージが見つかりません');
+  }
+  const data = snap.data()!;
+  if (data.authorUid !== auth.uid) {
+    return apiJsonError(403, 'FORBIDDEN_PEER', '自分のメッセージのみ編集できます');
   }
 
-  const isCoach = profile.role === 'coach' || profile.role === 'senior_coach';
-  const coachUid = isCoach ? auth.uid : peerUid;
-  const clientUid = isCoach ? peerUid : auth.uid;
-  const assignmentId = coachClientAssignmentDocId(coachUid, clientUid);
-  const asgSnap = await getFirebaseAdminApp().firestore().doc(`coach_client_assignments/${assignmentId}`).get();
-  if (!asgSnap.exists || asgSnap.data()?.status !== 'active') {
-    return apiJsonError(403, 'NOT_ASSIGNED_COACH', '担当コーチ／クライアントの割当が確認できません');
-  }
-  const d = asgSnap.data()!;
-  if (d.coachUid !== coachUid || d.clientUid !== clientUid) {
-    return apiJsonError(403, 'FORBIDDEN_PEER', '割当内容と一致しません');
-  }
+  await messageRef.update({
+    body: text,
+    edited: true,
+    editedAt: FieldValue.serverTimestamp(),
+  });
 
   return NextResponse.json({
     message: {

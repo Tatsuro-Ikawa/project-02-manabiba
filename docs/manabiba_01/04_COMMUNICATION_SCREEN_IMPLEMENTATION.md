@@ -38,36 +38,106 @@
 ### スレッド単位（Q&A 相当）
 
 - **コーチ–クライアントのペアあたり1会話スレッド（1タイムライン）**を既定とする（複数トピックに分岐するフォーラム型は採用しない）。プラン連動・用語の補足は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) 付録A・§4。
+- **共有 ON/OFF スイッチはない**。`coach_client_assignments` が `active` のペアが、そのまま1本のタイムラインで往復する（気づきノートの `sharedWithCoach` とは別系統）。
+
+### 共有プロセス（データの流れ）
+
+| 役割 | 相手の決め方 | 送信経路 |
+|------|-------------|----------|
+| **クライアント** | `getActiveCoachAssignmentForClient` で担当コーチ UID を自動解決 | `POST /api/communication/board/message`（`peerUid` = コーチ UID） |
+| **コーチ** | `?coachClient={uid}` でクライアント選択 | 同上（`peerUid` = クライアント UID） |
+
+1. API が Bearer・プレミアム（クライアントのみ）・active 割当を検証する。
+2. **Admin SDK** で `communication_board_threads/{coachUid}_{clientUid}/messages/{id}` に保存する（クライアント SDK からの直接 write は不可）。
+3. 画面は **`tab=board` 表示中のみ** Firestore `onSnapshot` で一覧を購読する。タブを離れる・クライアント未選択になると `unsubscribe` する（常時バックグラウンド監視はしない）。
+
+### Firestore データモデル
+
+| パス | 説明 |
+|------|------|
+| `communication_board_threads/{threadId}` | スレッド親。`threadId` = `{coachUid}_{clientUid}`（`coach_client_assignments` の ID と同一） |
+| `…/messages/{messageId}` | メッセージ1件 |
+
+**スレッド親フィールド（初回送信時に自動作成）**
+
+| フィールド | 型 | 説明 |
+|------------|-----|------|
+| coachUid | string | コーチ UID |
+| clientUid | string | クライアント UID |
+| createdAt | Timestamp | 作成 |
+| updatedAt | Timestamp | 最終更新 |
+
+**メッセージフィールド**
+
+| フィールド | 型 | 説明 |
+|------------|-----|------|
+| authorUid | string | 送信者 UID |
+| body | string | 本文 |
+| createdAt | Timestamp | 作成 |
+| edited | boolean | 編集済みフラグ |
+| editedAt | Timestamp（任意） | 最終編集 |
+| readAt | Timestamp（任意） | 既読（**フィールドのみ定義。サーバー更新は未実装**） |
+
+詳細は [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.15。
+
+### 権限・プラン
+
+| 対象 | 閲覧 | 送信・編集 |
+|------|------|------------|
+| **クライアント**（`plan === 'premium'` かつ有効契約） | ○ | ○ |
+| **クライアント**（プレミアム→下位後・`dataRetentionEndsAt` 内） | ○（閲覧のみ） | × |
+| **コーチ**（`role` が coach / senior_coach、active 割当あり） | ○ | ○（**プレミアム不要**） |
+| **管理者** | × | × |
+
+- クライアントのプレミアム判定: `resolveEntitlements` → **`communication.message_board`**
+- コーチの担当コーチ名表示: クライアントが `users/{coachUid}` を read するため、ルールに **`hasActiveCoachAssignmentAsClient`** を追加（2026-07）
+
+### UI 仕様と実装の対応
 
 | 仕様 | 実装状況 |
 |------|----------|
-| 相手左・自身右（LINE 風） | 実装済み（デモメッセージはクライアント／コーチで左右を切替）。 |
-| メタ行: `作成：yyyy/mm/dd`・「編集済み」・編集アイコン（編集日時は非表示） | 実装済み（JST は `Intl` + `Asia/Tokyo`）。 |
-| 編集はモーダル、保存／キャンセルのみ、オーバーレイクリックで閉じない、Esc では編集を閉じない | 実装済み（Esc は編集オープン中はサイドバー閉じにも使わないようキャプチャ処理）。 |
-| 入力: 朝・晩同様フォーカス。Esc で入力欄 blur | 実装済み。 |
-| クリアは確認ダイアログ | `window.confirm`。 |
-| 送信中は送る無効 | 実装済み。 |
-| 送信後は入力クリア＋フォーカス維持 | 実装済み。 |
-| クライアント送信上限（定数） | `COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT`（`src/lib/communicationConstants.ts`）。`mode === 'client'` かつ自分の吹き出しの件数で判定。 |
-| 既読（メッセージ単位） | 自分の吹き出しに `readAt` がある場合「既読 …」表示（デモは1件のみ）。 |
-| プレミアムのみ利用可 | `resolveEntitlements` の **`communication.message_board`**（`plan === 'premium'` かつ有効契約）。 |
-| プレミアム→スタンダード後 | **即時**に送信・編集不可。**履歴閲覧は可**。データは **`dataRetentionEndsAt` まで保持**し **90日後削除**（[04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §4.1）。 |
-| コーチ: 未選択時は案内＋入力不可、初回はクライアントピッカー | `CoachClientPickerModal` を利用。初回のみ自動オープン（解除後は再選択可）。 |
-| 管理者: 右上対象者非表示 | 実装済み。 |
-| 右上: `displayName` / `photoURL` | クライアント: 割当コーチのプロフィール。コーチ: 選択クライアントのプロフィール。 |
-| コーチ共有データ境界（1行） | `COACH_SHARED_JOURNAL_VISIBILITY_RULE` を画面下部に注記。 |
+| 相手左・自身右（LINE 風） | 実装済み（`authorUid` とログイン UID で左右判定） |
+| メタ行: `作成：yyyy/mm/dd`・「編集済み」・編集アイコン（編集日時は非表示） | 実装済み（JST は `Intl` + `Asia/Tokyo`） |
+| 編集はモーダル、保存／キャンセルのみ、オーバーレイクリックで閉じない、Esc では編集を閉じない | 実装済み（`PATCH /api/communication/board/message/{id}`） |
+| 入力: 朝・晩同様フォーカス。Esc で入力欄 blur | 実装済み |
+| クリアは確認ダイアログ | `window.confirm` |
+| 送信中は送る無効 | 実装済み |
+| 送信後は入力クリア＋フォーカス維持 | 実装済み（一覧は `onSnapshot` で反映） |
+| クライアント送信上限 | `COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT`（50件／スレッド内・クライアント発）。API と UI で同一判定 |
+| 既読（メッセージ単位） | UI 表示のみ対応。**サーバー更新は未実装** |
+| プレミアムのみ（クライアント） | `communication.message_board` |
+| プレミアム→スタンダード後 | **即時**に送信・編集不可。**履歴閲覧は可**（`dataRetentionEndsAt` まで） |
+| コーチ: 未選択時は案内＋入力不可、初回はクライアントピッカー | `CoachClientPickerModal` |
+| 管理者: 右上対象者非表示 | 実装済み |
+| 右上: `displayName` / `photoURL` | クライアント: 割当コーチ。コーチ: 選択クライアント |
+| リアルタイム更新 | **`tab=board` かつ peer 確定時のみ** `subscribeCommunicationBoardMessages` |
+| コーチ共有データ境界（1行） | `COACH_SHARED_JOURNAL_VISIBILITY_RULE` を画面下部に注記 |
 
 ---
 
-## プレミアム・サブスク連携（次の作業）
+## API（Phase B4）
 
-1. **プレミアム判定**: `resolveEntitlements` の `communication.message_board`（実装済みの `SubscriptionContext` 経由）。  
-2. **ダウングレード時**: プレミアム→スタンダードで **入力・編集を即時無効**、**履歴のみ閲覧**（§4.1）。  
-3. **メッセージの永続化**: Firestore コレクション設計・セキュリティルール（コーチは割当クライアントのスレッドのみ等）。  
-4. **送信上限**: 現状は「スレッド内・クライアント発の件数」のシミュレーション。要件に応じて **日次／月次リセット**やプラン別上限を [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md)（§6.1 の索引参照）と整合させる。  
-5. **既読**: サーバー更新（フィールドまたはサブコレクション）とルール。
+| メソッド | パス | 内容 |
+|----------|------|------|
+| POST | `/api/communication/board/message` | 送信（Firestore 永続化） |
+| PATCH | `/api/communication/board/message/{id}` | 編集（本人のメッセージのみ） |
 
-サブスク仕様の**正本・索引**は [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md) の **§6.1（サブスクリプション仕様が記載されているドキュメント索引）** に集約した。
+**ガード（共通）**: Bearer → クライアントは `communication.message_board`、コーチは role 判定 → `coach_client_assignments/{coachUid}_{clientUid}` が `active`。
+
+**エラーコード**: `PREMIUM_REQUIRED` / `NOT_ASSIGNED_COACH` / `FORBIDDEN_PEER` / `SEND_LIMIT` / `NOT_FOUND`
+
+決定の正本: [04_PHASE_B_API_INTERNAL_DECISIONS.md](./04_PHASE_B_API_INTERNAL_DECISIONS.md) §5。
+
+---
+
+## 残作業
+
+1. **既読**: `readAt` のサーバー更新とルール
+2. **送信上限**: 日次／月次リセットやプラン別上限（現状はスレッド内累計50件）
+3. **データ削除**: `dataRetentionEndsAt` 経過後の `communication_board_threads` バッチ削除（方針は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §4.1）
+4. **館長から**: ダミーから本番データへ
+
+サブスク仕様の**正本・索引**は [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md) の **§6.1**。
 
 ---
 
@@ -77,10 +147,14 @@
 |------|------|
 | ページエントリ | `src/app/communication/page.tsx`（`Suspense`） |
 | 画面ロジック | `src/components/communication/CommunicationPageClient.tsx` |
-| 定数・暫定フラグ | `src/lib/communicationConstants.ts` |
+| 購読・型 | `src/lib/communicationBoard.ts` |
+| API ガード | `src/lib/server/communicationBoardAccess.ts` |
+| 定数 | `src/lib/communicationConstants.ts` |
+| API | `src/app/api/communication/board/message/route.ts`、`…/[id]/route.ts` |
 | スタイル | `src/styles/home-trial.css`（`.communication-*`） |
 | クライアントピッカー | `src/components/trial/CoachClientPickerModal.tsx` |
-| 割当参照 | `src/lib/coachAffirmationShare.ts`（`getActiveCoachAssignmentForClient` 等） |
+| 割当参照 | `src/lib/coachAffirmationShare.ts` |
+| ルール | `firestore.rules`（`communication_board_threads`、`users` read 逆方向） |
 
 ---
 
@@ -88,8 +162,8 @@
 
 本ドキュメント対象外だが、同一リリース周期での変更として以下を参照する。
 
-- **セクション区切り・幅狭時のカラム順**: `docs/manabiba_01/04_HOME_SCREEN_IMPLEMENTATION.md` の「レイアウト更新（2026-05）」。
-- **今週の実施状況のコンパクトグリッド**: `HomeDashboard.tsx` + `home-trial.css`（週次グリッド・`weekly-result-date-row`）。
+- **セクション区切り・幅狭時のカラム順**: [04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) の「レイアウト更新（2026-05）」。
+- **今週の実施状況のコンパクトグリッド**: `HomeDashboard.tsx` + `home-trial.css`。
 
 ---
 
@@ -99,4 +173,5 @@
 |------|------|
 | 2026-05-12 | 初版: コミュニケーション UI・定数・プレミアム暫定フラグ・サブスク差し込みメモ。 |
 | 2026-05-12 | Zoom 別アプリ・運用再検討・スコープ外ドキュメントへの参照を追記。 |
-| 2026-05-17 | プレミアム判定を entitlement に更新。プレミアム→スタンダード時の Q&A 挙動（即時不可・履歴可・90日）を追記。 |
+| 2026-05-17 | プレミアム判定を entitlement に更新。プレミアム→スタンダード時の Q&A 挙動を追記。 |
+| 2026-07-06 | メッセージボード Firestore 永続化・`onSnapshot`（表示中のみ）・API 接続・コーチ権限・データモデル・共有プロセスを反映。デモメッセージ廃止。 |

@@ -20,6 +20,16 @@ import { canViewMessageBoardRetentionHistory } from '@/lib/subscription/dataRete
 import { DataRetentionBanner } from '@/components/subscription/DataRetentionBanner';
 import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
+import { subscribeCommunicationBoardMessages } from '@/lib/communicationBoard';
+import DirectorAnnouncementsEditModal from '@/components/communication/DirectorAnnouncementsEditModal';
+import { AffirmationMarkdownView } from '@/components/common/AffirmationMarkdownView';
+import {
+  directorAnnouncementDisplayDate,
+  fetchPublicDirectorAnnouncementsPage,
+  type DirectorAnnouncement,
+} from '@/lib/directorAnnouncements';
+import { DIRECTOR_ANNOUNCEMENT_PAGE_SIZE } from '@/lib/communicationConstants';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 type CommTab = 'director' | 'board';
 
@@ -61,57 +71,6 @@ type CommMsg = {
   /** 相手がこのメッセージを読んだ時刻（JST 表示用）。メッセージ単位。 */
   readAt?: Date | null;
 };
-
-type DirectorCard = {
-  id: string;
-  title: string;
-  body: string;
-  postedAt: Date;
-};
-
-const DEMO_DIRECTOR_CARDS: DirectorCard[] = [
-  {
-    id: 'd1',
-    title: '開館スケジュールのお知らせ',
-    body: 'ゴールデンウィーク期間の開館時間についてお知らせします。（ダミー本文）',
-    postedAt: new Date('2026-05-10T10:00:00+09:00'),
-  },
-  {
-    id: 'd2',
-    title: '稽古納めのご案内',
-    body: '年度末の稽古納めについてご案内します。（ダミー本文）',
-    postedAt: new Date('2026-04-28T15:30:00+09:00'),
-  },
-];
-
-const DEMO_MESSAGES_TEMPLATE: Omit<CommMsg, 'isMine'>[] = [
-  {
-    id: 'm1',
-    body: 'クライアントのレター',
-    createdAt: new Date('2026-05-08T09:00:00+09:00'),
-    edited: false,
-    readAt: new Date('2026-05-08T11:20:00+09:00'),
-  },
-  {
-    id: 'm2',
-    body: 'コーチからの回答',
-    createdAt: new Date('2026-05-08T12:00:00+09:00'),
-    edited: false,
-  },
-];
-
-function buildDemoMessages(isCoachView: boolean): CommMsg[] {
-  return [
-    {
-      ...DEMO_MESSAGES_TEMPLATE[0],
-      isMine: !isCoachView,
-    },
-    {
-      ...DEMO_MESSAGES_TEMPLATE[1],
-      isMine: isCoachView,
-    },
-  ];
-}
 
 function MessageEditModal(props: {
   open: boolean;
@@ -201,6 +160,15 @@ export default function CommunicationPageClient() {
   const isCoachRole = userProfile?.role === 'coach' || userProfile?.role === 'senior_coach';
   const isCoachView = loggedIn && mode === 'coach' && !!userProfile && isCoachRole;
   const isAdminView = loggedIn && mode === 'admin' && userProfile?.role === 'admin';
+  const showDirectorEditUi = isAdminView;
+
+  const [directorCards, setDirectorCards] = useState<DirectorAnnouncement[]>([]);
+  const [directorLoading, setDirectorLoading] = useState(false);
+  const [directorError, setDirectorError] = useState<string | null>(null);
+  const [directorPage, setDirectorPage] = useState(1);
+  const [directorHasMore, setDirectorHasMore] = useState(false);
+  const directorCursorsRef = useRef<(QueryDocumentSnapshot<DocumentData> | null)[]>([null]);
+  const [directorEditOpen, setDirectorEditOpen] = useState(false);
 
   const [assignedCoachUid, setAssignedCoachUid] = useState<string | null>(null);
 
@@ -214,7 +182,9 @@ export default function CommunicationPageClient() {
     return canViewMessageBoardRetentionHistory(userProfile);
   }, [userProfile, premiumUnlocked]);
 
-  const boardTabEnabled = premiumUnlocked || boardRetentionReadOnly;
+  const boardTabEnabled = premiumUnlocked || boardRetentionReadOnly || isCoachRole;
+
+  const boardReadAllowed = premiumUnlocked || boardRetentionReadOnly || isCoachView;
 
   const setTab = useCallback(
     (next: CommTab) => {
@@ -260,15 +230,23 @@ export default function CommunicationPageClient() {
           return;
         }
         if (!cancelled) setAssignedCoachUid(coachUid);
-        const prof = await getUserProfile(coachUid);
-        if (cancelled) return;
-        setCoachTarget({
-          name: prof?.displayName?.trim() || prof?.email || coachUid,
-          photoURL: prof?.photoURL ?? null,
-        });
-      } catch {
+        try {
+          const prof = await getUserProfile(coachUid);
+          if (cancelled) return;
+          setCoachTarget({
+            name: prof?.displayName?.trim() || prof?.email || coachUid,
+            photoURL: prof?.photoURL ?? null,
+          });
+        } catch (profileErr) {
+          console.error('担当コーチプロファイル取得エラー:', profileErr);
+          if (!cancelled) {
+            setCoachTarget({ name: '担当コーチ', photoURL: null });
+          }
+        }
+      } catch (asgErr) {
+        console.error('担当コーチ割当取得エラー:', asgErr);
         if (!cancelled) {
-          setCoachTarget({ name: '担当コーチ', photoURL: null });
+          setCoachTarget({ name: '担当コーチ（未割当）', photoURL: null });
           setAssignedCoachUid(null);
         }
       }
@@ -306,23 +284,59 @@ export default function CommunicationPageClient() {
   }, [coachClientUid]);
 
   useEffect(() => {
-    if ((!premiumUnlocked && !boardRetentionReadOnly) || currentTab !== 'board' || !isCoachView || coachClientUid) return;
+    if (!boardReadAllowed || currentTab !== 'board' || !isCoachView || coachClientUid) return;
     if (coachAutoPickerOnce.current) return;
     coachAutoPickerOnce.current = true;
     setCoachPickerOpen(true);
-  }, [premiumUnlocked, boardRetentionReadOnly, currentTab, isCoachView, coachClientUid]);
+  }, [boardReadAllowed, currentTab, isCoachView, coachClientUid]);
 
+  // メッセージボード表示中のみ Firestore を購読（タブを離れたら unsubscribe）
   useEffect(() => {
-    if ((premiumUnlocked || boardRetentionReadOnly) && currentTab === 'board' && loggedIn && (!isCoachView || coachClientUid)) {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id.startsWith('local-'))) return prev;
-        return buildDemoMessages(isCoachView);
-      });
-    }
-    if ((!premiumUnlocked && !boardRetentionReadOnly) || currentTab !== 'board') {
+    if (currentTab !== 'board' || !loggedIn || !user?.uid || !boardReadAllowed) {
       setMessages([]);
+      return;
     }
-  }, [premiumUnlocked, boardRetentionReadOnly, currentTab, loggedIn, isCoachView, coachClientUid]);
+
+    const peerUid = isCoachView ? coachClientUid : assignedCoachUid;
+    if (!peerUid) {
+      setMessages([]);
+      return;
+    }
+
+    const coachUid = isCoachView ? user.uid : peerUid;
+    const clientUid = isCoachView ? peerUid : user.uid;
+    const selfUid = user.uid;
+
+    const unsub = subscribeCommunicationBoardMessages(
+      coachUid,
+      clientUid,
+      (list) => {
+        setMessages(
+          list.map((m) => ({
+            id: m.id,
+            body: m.body,
+            isMine: m.authorUid === selfUid,
+            createdAt: m.createdAt,
+            edited: m.edited,
+            readAt: m.readAt,
+          }))
+        );
+      },
+      (err) => {
+        console.error('メッセージボード購読エラー:', err);
+      }
+    );
+
+    return () => unsub();
+  }, [
+    currentTab,
+    loggedIn,
+    user?.uid,
+    boardReadAllowed,
+    isCoachView,
+    coachClientUid,
+    assignedCoachUid,
+  ]);
 
   const clientSendCount = useMemo(
     () => messages.filter((m) => m.isMine && mode === 'client').length,
@@ -336,7 +350,9 @@ export default function CommunicationPageClient() {
     if (boardRetentionReadOnly) {
       return 'プレミアムプラン終了のため、メッセージボードは閲覧のみです（90日間）。';
     }
-    if (!premiumUnlocked) return 'プレミアムプランのみ利用できます。';
+    if (!premiumUnlocked && !boardRetentionReadOnly && !isCoachRole) {
+      return 'プレミアムプランのみ利用できます。';
+    }
     if (isAdminView) return '管理者モードではメッセージボードを利用できません。';
     if (isCoachView && !coachClientUid) return 'クライアントを選択してください。';
     if (mode === 'client' && !assignedCoachUid) return '担当コーチの割当がありません。';
@@ -346,6 +362,7 @@ export default function CommunicationPageClient() {
     loggedIn,
     boardRetentionReadOnly,
     premiumUnlocked,
+    isCoachRole,
     isAdminView,
     isCoachView,
     coachClientUid,
@@ -356,7 +373,7 @@ export default function CommunicationPageClient() {
 
   const canShowBoardMessages =
     loggedIn &&
-    (premiumUnlocked || boardRetentionReadOnly) &&
+    boardReadAllowed &&
     (!isCoachView || !!coachClientUid) &&
     (isCoachView || mode !== 'client' || !!assignedCoachUid);
 
@@ -388,11 +405,6 @@ export default function CommunicationPageClient() {
       if (!res.ok) {
         throw new Error(messageFromApiErrorPayload(data) || '保存に失敗しました。');
       }
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === editingId ? { ...m, body: trimmed, edited: true, createdAt: m.createdAt } : m
-        )
-      );
       setEditOpen(false);
       setEditingId(null);
       setEditDraft('');
@@ -430,17 +442,6 @@ export default function CommunicationPageClient() {
       if (!res.ok || !data.message) {
         throw new Error(messageFromApiErrorPayload(data) || '送信に失敗しました。');
       }
-      const msg = data.message;
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: msg.id,
-          body: msg.body,
-          isMine: true,
-          createdAt: new Date(msg.createdAt),
-          edited: msg.edited,
-        },
-      ]);
       setDraft('');
       window.setTimeout(() => inputRef.current?.focus(), 0);
     } catch (e) {
@@ -471,10 +472,36 @@ export default function CommunicationPageClient() {
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [editOpen]);
 
-  const sortedDirector = useMemo(
-    () => [...DEMO_DIRECTOR_CARDS].sort((a, b) => b.postedAt.getTime() - a.postedAt.getTime()),
-    []
-  );
+  const loadDirectorPage = useCallback(async (page: number) => {
+    setDirectorLoading(true);
+    setDirectorError(null);
+    try {
+      const cursor = directorCursorsRef.current[page - 1] ?? null;
+      const result = await fetchPublicDirectorAnnouncementsPage(DIRECTOR_ANNOUNCEMENT_PAGE_SIZE, cursor);
+      setDirectorCards(result.items);
+      setDirectorHasMore(result.hasMore);
+      setDirectorPage(page);
+      if (result.hasMore && result.nextCursor) {
+        directorCursorsRef.current[page] = result.nextCursor;
+      }
+    } catch (e) {
+      console.error('fetchPublicDirectorAnnouncementsPage error:', e);
+      setDirectorError('お知らせの読み込みに失敗しました。');
+    } finally {
+      setDirectorLoading(false);
+    }
+  }, []);
+
+  const reloadDirectorList = useCallback(() => {
+    directorCursorsRef.current = [null];
+    void loadDirectorPage(1);
+  }, [loadDirectorPage]);
+
+  useEffect(() => {
+    if (currentTab !== 'director') return;
+    directorCursorsRef.current = [null];
+    void loadDirectorPage(1);
+  }, [currentTab, loadDirectorPage]);
 
   const targetHeader = useMemo(() => {
     if (isAdminView) return null;
@@ -531,7 +558,9 @@ export default function CommunicationPageClient() {
               disabled={!boardTabEnabled}
               title={
                 !boardTabEnabled
-                  ? 'プレミアムプランのみ利用できます。'
+                  ? isCoachRole
+                    ? 'コーチモードでは利用できます'
+                    : 'プレミアムプランのみ利用できます。'
                   : boardRetentionReadOnly
                     ? '閲覧のみ（90日間）'
                     : undefined
@@ -549,6 +578,19 @@ export default function CommunicationPageClient() {
               </span>
             </button>
             <div className="trial-menu-spacer" aria-hidden="true" />
+            {showDirectorEditUi && currentTab === 'director' && (
+              <button
+                type="button"
+                className="trial-menu-share-btn"
+                onClick={() => setDirectorEditOpen(true)}
+                aria-label="館長からを編集"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  edit
+                </span>
+                <span className="trial-menu-share-btn-label">編集</span>
+              </button>
+            )}
             {isCoachView && currentTab === 'board' && (
               <button
                 type="button"
@@ -572,21 +614,66 @@ export default function CommunicationPageClient() {
                 館長から
               </h2>
               <p className="communication-page-lead mb-0">
-                一方通行のお知らせです。ホームの新着タイトルからリンクする想定で、ここでは新着順のカード一覧（ダミー）です。
+                一方通行のお知らせです。ホームの新着からもこちらへリンクします。
               </p>
-              <ul className="communication-director-list">
-                {sortedDirector.map((c) => (
-                  <li key={c.id} className="communication-director-card">
-                    <div className="communication-director-card-head">
-                      <h3 className="communication-director-card-title">{c.title}</h3>
-                      <time className="communication-director-card-date" dateTime={c.postedAt.toISOString()}>
-                        {formatJstYmdHm(c.postedAt)}
-                      </time>
-                    </div>
-                    <p className="communication-director-card-body">{c.body}</p>
-                  </li>
-                ))}
-              </ul>
+              {directorError && (
+                <p className="text-sm text-red-600 mt-2" role="alert">
+                  {directorError}
+                </p>
+              )}
+              {directorLoading && directorCards.length === 0 ? (
+                <p className="text-sm text-gray-500 mt-4">読み込み中…</p>
+              ) : directorCards.length === 0 ? (
+                <p className="text-sm text-gray-500 mt-4">お知らせはまだありません。</p>
+              ) : (
+                <ul className="communication-director-list">
+                  {directorCards.map((c) => {
+                    const displayDate = directorAnnouncementDisplayDate(c);
+                    return (
+                      <li key={c.id} className="communication-director-card">
+                        <div className="communication-director-card-head">
+                          <h3 className="communication-director-card-title">{c.title}</h3>
+                          {displayDate && (
+                            <time
+                              className="communication-director-card-date"
+                              dateTime={displayDate.toISOString()}
+                            >
+                              {formatJstYmdHm(displayDate)}
+                            </time>
+                          )}
+                        </div>
+                        <div className="communication-director-card-body">
+                          <AffirmationMarkdownView
+                            markdown={c.bodyMarkdown}
+                            className="communication-director-markdown"
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {(directorPage > 1 || directorHasMore) && (
+                <nav className="communication-director-pagination" aria-label="館長からのページ送り">
+                  <button
+                    type="button"
+                    className="communication-director-page-btn"
+                    disabled={directorPage <= 1 || directorLoading}
+                    onClick={() => void loadDirectorPage(directorPage - 1)}
+                  >
+                    前へ
+                  </button>
+                  <span className="communication-director-page-indicator">{directorPage} ページ</span>
+                  <button
+                    type="button"
+                    className="communication-director-page-btn"
+                    disabled={!directorHasMore || directorLoading}
+                    onClick={() => void loadDirectorPage(directorPage + 1)}
+                  >
+                    次へ
+                  </button>
+                </nav>
+              )}
             </section>
           )}
 
@@ -740,6 +827,15 @@ export default function CommunicationPageClient() {
             setCoachClientUid(null);
             setCoachPickerOpen(false);
           }}
+        />
+      )}
+
+      {showDirectorEditUi && user?.uid && (
+        <DirectorAnnouncementsEditModal
+          isOpen={directorEditOpen}
+          onClose={() => setDirectorEditOpen(false)}
+          authorUid={user.uid}
+          onSaved={reloadDirectorList}
         />
       )}
     </div>

@@ -58,6 +58,16 @@ service cloud.firestore {
         get(p).data.clientUid == clientUid;
     }
 
+    // クライアントが担当コーチの users/{coachUid} を read（メッセージボード等の表示名用）
+    function hasActiveCoachAssignmentAsClient(coachUid) {
+      let p = coachClientAssignmentDocPath(coachUid, request.auth.uid);
+      return isAuthenticated() &&
+        exists(p) &&
+        get(p).data.status == 'active' &&
+        get(p).data.coachUid == coachUid &&
+        get(p).data.clientUid == request.auth.uid;
+    }
+
     // 人コーチ（月次）を許可するか（サブスク由来のフラグで運用）。
     // 現状の型: users/{uid}.subscription.features.coachComments（boolean）
     function clientAllowsHumanCoachComments(clientUid) {
@@ -99,11 +109,51 @@ service cloud.firestore {
         request.resource.data.status is string;
       allow update, delete: if isAdminUser();
     }
+
+    // メッセージボード（1ペア1スレッド）。書き込みは API（Admin SDK）のみ。
+    function isCommunicationBoardParticipant(coachUid, clientUid) {
+      let p = coachClientAssignmentDocPath(coachUid, clientUid);
+      return isAuthenticated() &&
+        exists(p) &&
+        get(p).data.status == 'active' &&
+        get(p).data.coachUid == coachUid &&
+        get(p).data.clientUid == clientUid &&
+        (request.auth.uid == coachUid || request.auth.uid == clientUid);
+    }
+
+    // threadId は coach_client_assignments の ID と同一（{coachUid}_{clientUid}）
+    function isCommunicationBoardParticipantByThreadId(threadId) {
+      let p = /databases/$(database)/documents/coach_client_assignments/$(threadId);
+      return isAuthenticated() &&
+        exists(p) &&
+        get(p).data.status == 'active' &&
+        (request.auth.uid == get(p).data.coachUid || request.auth.uid == get(p).data.clientUid);
+    }
+
+    match /communication_board_threads/{threadId} {
+      allow read: if isCommunicationBoardParticipantByThreadId(threadId) &&
+        (
+          resource == null ||
+          (
+            resource.data.coachUid is string &&
+            resource.data.clientUid is string &&
+            threadId == resource.data.coachUid + '_' + resource.data.clientUid
+          )
+        );
+      allow write: if false;
+
+      match /messages/{messageId} {
+        allow read: if isCommunicationBoardParticipantByThreadId(threadId);
+        allow write: if false;
+      }
+    }
     
     // ユーザープロファイル
     match /users/{userId} {
-      // 読み取り: 本人、または担当コーチ（割当 active）
-      allow read: if isOwner(userId) || hasActiveCoachAssignmentForClient(userId);
+      // 読み取り: 本人、担当コーチ（割当 active）、または割当クライアント（コーチ表示名等）
+      allow read: if isOwner(userId) ||
+        hasActiveCoachAssignmentForClient(userId) ||
+        hasActiveCoachAssignmentAsClient(userId);
       
       // 作成: 自分のプロファイルのみ
       allow create: if isOwner(userId);
@@ -376,6 +426,17 @@ service cloud.firestore {
       allow create, update: if isAuthenticated() && 
         isAdminUser();
       allow delete: if false;
+    }
+
+    // 館長からお知らせ（コミュニケーション「館長から」・ホーム新着）
+    match /director_announcements/{announcementId} {
+      function isPublicDirectorAnnouncement() {
+        return resource.data.status in ['published', 'scheduled']
+          && resource.data.postedAt is timestamp
+          && resource.data.postedAt <= request.time;
+      }
+      allow read: if isPublicDirectorAnnouncement() || isAdminUser();
+      allow create, update, delete: if isAdminUser();
     }
   }
 }

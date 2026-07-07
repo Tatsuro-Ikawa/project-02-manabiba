@@ -7,6 +7,7 @@
 - **コレクション一覧**: [02_SYSTEM_ARCHITECTURE.md](./02_SYSTEM_ARCHITECTURE.md) の「6.1 Firestoreコレクション構造」と、[FIRESTORE_SECURITY_RULES_SETUP.md](../FIRESTORE_SECURITY_RULES_SETUP.md) のルールで定義されているパスをベースに整理。
 - **セキュリティルールの詳細**: [FIRESTORE_SECURITY_RULES_SETUP.md](../FIRESTORE_SECURITY_RULES_SETUP.md) を参照。
 - **A-11（2026-03-28）**: コーチ共有の **データ構造・フィールド名** を本書に反映（`coach_client_assignments`、`coach_share_rounds`、`coach_comment_versions`、`activeCoachingAffirmationId`、親 `affirmations` の共有メタ）。**気づきノート**は `journal_weekly` / `journal_monthly` の `sharedWithCoach` と **`coachDailySummaryByDate`**（§2.x-2-2）まで反映。ルールは `firestore.rules` を正本。説明は [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)・[03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。
+- **メッセージボード（2026-07-06）**: `communication_board_threads` / `messages` を §2.15 に追加。送信・編集は API（Admin SDK）のみ。一覧 read は割当当事者。詳細は [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)。
 
 ---
 
@@ -16,6 +17,10 @@
 （ルート）
 ├── coach_client_assignments/          # コーチ↔クライアント割当（A-11 現状案）
 │   └── {assignmentId}
+├── communication_board_threads/     # メッセージボード（1ペア1スレッド・§2.15）
+│   └── {coachUid}_{clientUid}
+│       └── messages/
+│           └── {messageId}
 ├── users/
 │   └── {uid}                          # ユーザープロファイル（1ユーザー1ドキュメント）
 │       ├── smart-goals/
@@ -606,6 +611,36 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 
 ---
 
+### 2.15 communication_board_threads / {threadId} / messages / {messageId}（メッセージボード）
+
+**コーチ↔クライアント Q&A**（プレミアム・クライアント側）。1ペア1タイムライン（パターンB）。実装仕様は [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)。
+
+- **ドキュメント ID**: `threadId` = `{coachUid}_{clientUid}`（`coach_client_assignments` と同一）
+- **書き込み**: **Next.js API のみ**（Admin SDK）。クライアント SDK からの create/update はルールで拒否
+- **読み取り**: 割当 `active` のコーチまたはクライアント。画面は `tab=board` 表示中のみ `onSnapshot`（`src/lib/communicationBoard.ts`）
+
+**スレッド親 `communication_board_threads/{threadId}`**
+
+| フィールド | 型（想定） | 説明 |
+|------------|------------|------|
+| coachUid | string | コーチ UID |
+| clientUid | string | クライアント UID |
+| createdAt | Timestamp | 初回メッセージ時 |
+| updatedAt | Timestamp | 最終メッセージ時 |
+
+**メッセージ `…/messages/{messageId}`**
+
+| フィールド | 型（想定） | 説明 |
+|------------|------------|------|
+| authorUid | string | 送信者 UID |
+| body | string | 本文 |
+| createdAt | Timestamp | 作成 |
+| edited | boolean | 編集済み |
+| editedAt | Timestamp \| null | 最終編集（任意） |
+| readAt | Timestamp \| null | 既読（任意・**サーバー更新は未実装**） |
+
+---
+
 ## 3. ユーザー登録とロールの手動設定（テスト用）
 
 現段階では、**ロールの変更は Firestore コンソールで手動**で行う。管理者が画面からロールを変更する機能は後で実装する想定。
@@ -667,7 +702,7 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 
 | パス                                  | read          | write |
 | ----------------------------------- | ------------- | ----- |
-| users/{userId}                      | 本人のみ          | 本人のみ  |
+| users/{userId}                      | 本人／担当コーチ（クライアント配下 read）／割当クライアント（コーチ表示名 read） | 本人のみ  |
 | users/{userId}/smart-goals/{goalId} | 本人のみ          | 本人のみ  |
 | users/{userId}/affirmation_drafts/{profileId} | 本人のみ | 本人のみ |
 | users/{userId}/affirmations/{affirmationId}  | 本人のみ | 本人のみ |
@@ -677,6 +712,8 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | users/{userId}/journal_weekly/{weekStartKey} | 本人／担当コーチ（`sharedWithCoach` ON 等） | 本人のみ |
 | users/{userId}/journal_monthly/{monthKey} | 本人／担当コーチ（`sharedWithCoach` ON 等） | 本人のみ |
 | coach_client_assignments/{assignmentId} | 関係者（コーチ・クライアント・管理者） | 管理者 |
+| communication_board_threads/{threadId} | 割当当事者（コーチ・クライアント） | **API のみ**（ルールでクライアント write 不可） |
+| communication_board_threads/…/messages/{messageId} | 同上 | **API のみ** |
 | users/.../affirmations/.../coach_share_rounds/... | **A-11 未実装**（想定: 本人＋担当コーチ） | **A-11 未実装** |
 | users/.../coach_share_rounds/.../coach_comment_versions/... | **A-11 未実装**（想定: 本人 read、コーチが version 追記） | **A-11 未実装** |
 | affirmation_profiles/{profileId}    | 認証ユーザ（想定）   | 管理者のみ（ルール未デプロイ時は要追加） |
