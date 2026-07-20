@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
             topP: 0.9,
           },
         }),
-        signal: AbortSignal.timeout(20000),
+        signal: AbortSignal.timeout(40000),
         cache: 'no-store',
       });
 

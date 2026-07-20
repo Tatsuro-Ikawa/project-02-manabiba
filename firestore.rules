@@ -29,6 +29,7 @@ service cloud.firestore {
             (sub.get('plan', '') == 'standard' || sub.get('plan', '') == 'premium') &&
             (
               sub.get('status', '') == 'active' ||
+              sub.get('status', '') == 'past_due' ||
               (
                 sub.get('status', '') == 'cancelled' &&
                 sub.get('currentPeriodEnd', timestamp.date(1970, 1, 1)) > request.time
@@ -158,8 +159,9 @@ service cloud.firestore {
       // 作成: 自分のプロファイルのみ
       allow create: if isOwner(userId);
       
-      // 更新: 自分のプロファイルのみ
-      allow update: if isOwner(userId);
+      // 更新: 自分のプロファイルのみ（subscription は Webhook のみが更新）
+      allow update: if isOwner(userId) &&
+        request.resource.data.get('subscription', null) == resource.data.get('subscription', null);
       
       // 削除: 自分のプロファイルのみ
       allow delete: if isOwner(userId);
@@ -429,14 +431,21 @@ service cloud.firestore {
     }
 
     // 館長からお知らせ（コミュニケーション「館長から」・ホーム新着）
+    // 一覧取得（list）では request.time をクライアントの now と静的に突き合わせられず
+    // クエリ全体が拒否されるため、公開判定は status のみで行う。
+    // 予約投稿（scheduled）の「postedAt <= now」による時刻ゲートは、
+    // クエリ側（fetchPublicDirectorAnnouncementsPage: where('postedAt','<=',now)）が担う。
     match /director_announcements/{announcementId} {
       function isPublicDirectorAnnouncement() {
-        return resource.data.status in ['published', 'scheduled']
-          && resource.data.postedAt is timestamp
-          && resource.data.postedAt <= request.time;
+        return resource.data.status in ['published', 'scheduled'];
       }
       allow read: if isPublicDirectorAnnouncement() || isAdminUser();
       allow create, update, delete: if isAdminUser();
+    }
+
+    // Stripe Webhook 冪等用（Admin SDK のみ書込）
+    match /stripe_webhook_events/{eventId} {
+      allow read, write: if false;
     }
   }
 }

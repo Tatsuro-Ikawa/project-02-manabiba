@@ -13,11 +13,15 @@ import {
   DATA_RETENTION_MSG,
   OPEN_PERIOD_PRICE_NOTE,
   buildFreeDowngradeConfirmMessage,
+  buildPremiumUpgradeConfirmMessage,
   buildStandardDowngradeConfirmMessage,
   featureMarkToDisplay,
   type CoursePlanKey,
 } from '@/lib/courseSelectionCatalog';
-import { applyDemoDowngradeToFree, applyDemoDowngradeToStandard } from '@/lib/firestore';
+import { isDemoSubscriptionPathEnabled } from '@/lib/subscription/demoSubscriptionPath';
+import { openStripeCustomerPortal } from '@/lib/client/openStripeCustomerPortal';
+import { changeStripePlan } from '@/lib/client/changeStripePlan';
+import { isOpenPricingPeriodActive } from '@/lib/stripe/openPricing';
 
 function planToCourseKey(plan: SubscriptionPlan): CoursePlanKey {
   if (plan === 'standard' || plan === 'premium') return plan;
@@ -109,11 +113,63 @@ export function CourseChangePanel({ userProfile }: CourseChangePanelProps) {
   const currentPlan = userProfile?.subscription?.plan ?? 'free';
   const current = planToCourseKey(currentPlan);
   const trialActive = isTrialActive(userProfile);
+  const hasStripeBilling = !!userProfile?.subscription?.stripeCustomerId?.trim();
+
+  const goToStripePortal = async (confirmMessage?: string) => {
+    if (confirmMessage && !window.confirm(confirmMessage)) return;
+    if (!user) {
+      alert('ログイン情報を取得できませんでした。');
+      return;
+    }
+    setBusy(true);
+    try {
+      await openStripeCustomerPortal(user, '/courses/change');
+    } catch (e) {
+      console.error('Customer Portal error:', e);
+      alert(
+        e instanceof Error
+          ? e.message
+          : 'プラン管理ページを開けませんでした。時間をおいて再度お試しください。'
+      );
+      setBusy(false);
+    }
+  };
+
+  const changePaidPlan = async (target: 'standard' | 'premium', confirmMessage: string) => {
+    if (!window.confirm(confirmMessage)) return;
+    if (!user) {
+      alert('ログイン情報を取得できませんでした。');
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await changeStripePlan(user, target);
+      await refreshUserProfile();
+      if (result.mode === 'downgrade_at_period_end' && result.effectiveAt) {
+        const when = new Date(result.effectiveAt).toLocaleString('ja-JP');
+        alert(
+          `スタンダードコースへの変更を予約しました。切替予定: ${when}\n反映まで数十秒かかることがあります。`
+        );
+      } else {
+        alert('プレミアムコースへ変更しました。反映まで数十秒かかることがあります。');
+      }
+    } catch (e) {
+      console.error('change-plan error:', e);
+      alert(e instanceof Error ? e.message : 'コース変更に失敗しました。時間をおいて再度お試しください。');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleSelect = async (target: CoursePlanKey) => {
     if (target === current || busy) return;
+    const openPricing = isOpenPricingPeriodActive();
 
     if (target === 'premium') {
+      if (hasStripeBilling && current === 'standard') {
+        await changePaidPlan('premium', buildPremiumUpgradeConfirmMessage(openPricing));
+        return;
+      }
       router.push('/apply?plan=premium');
       return;
     }
@@ -124,6 +180,16 @@ export function CourseChangePanel({ userProfile }: CourseChangePanelProps) {
     }
 
     if (target === 'free' && current !== 'free') {
+      if (hasStripeBilling) {
+        await goToStripePortal(buildFreeDowngradeConfirmMessage(trialActive));
+        return;
+      }
+      if (!isDemoSubscriptionPathEnabled()) {
+        alert(
+          'フリーコースへの変更・解約は、有料プランお申し込み後に Customer Portal からお手続きください。'
+        );
+        return;
+      }
       if (!window.confirm(buildFreeDowngradeConfirmMessage(trialActive))) return;
       if (!user?.uid) {
         alert('ログイン情報を取得できませんでした。');
@@ -131,6 +197,7 @@ export function CourseChangePanel({ userProfile }: CourseChangePanelProps) {
       }
       setBusy(true);
       try {
+        const { applyDemoDowngradeToFree } = await import('@/lib/firestore');
         await applyDemoDowngradeToFree(user.uid);
         await refreshUserProfile();
         const qs = trialActive ? '?downgraded=free&hadTrial=1' : '?downgraded=free';
@@ -145,13 +212,24 @@ export function CourseChangePanel({ userProfile }: CourseChangePanelProps) {
     }
 
     if (target === 'standard' && current === 'premium') {
-      if (!window.confirm(buildStandardDowngradeConfirmMessage(trialActive))) return;
+      if (hasStripeBilling) {
+        await changePaidPlan('standard', buildStandardDowngradeConfirmMessage(openPricing));
+        return;
+      }
+      if (!isDemoSubscriptionPathEnabled()) {
+        alert(
+          'プランのダウングレードは、有料プランお申し込み後にコース変更画面からお手続きください。'
+        );
+        return;
+      }
+      if (!window.confirm(buildStandardDowngradeConfirmMessage(openPricing))) return;
       if (!user?.uid) {
         alert('ログイン情報を取得できませんでした。');
         return;
       }
       setBusy(true);
       try {
+        const { applyDemoDowngradeToStandard } = await import('@/lib/firestore');
         await applyDemoDowngradeToStandard(user.uid);
         await refreshUserProfile();
         router.push('/trial_4w?downgraded=standard');
@@ -171,6 +249,27 @@ export function CourseChangePanel({ userProfile }: CourseChangePanelProps) {
         {trialActive && current !== 'free' ? '（28日お試し期間中）' : null}
       </p>
       <p className="sub-flow-note">{DATA_RETENTION_MSG}</p>
+
+      {hasStripeBilling ? (
+        <div className="sub-flow-note">
+          <p>
+            スタンダード⇔プレミアムの変更は、下のコースを選択するとこの画面から手続きできます（オープン期間中は期間限定価格）。
+          </p>
+          <p>
+            解約（フリー）・お支払い方法の更新は次の画面（
+            <button
+              type="button"
+              className="sub-flow-text-link"
+              disabled={busy}
+              onClick={() => void goToStripePortal()}
+            >
+              Customer Portal
+            </button>
+            ）から行えます。フリーにする場合は「サブスクリプションをキャンセル」を選んでください。
+          </p>
+          <p>手続き後、反映まで数十秒かかることがあります。</p>
+        </div>
+      ) : null}
 
       <div className="course-change-cols" role="group" aria-label="サブスクリプションコース">
         <section className="course-change-col" aria-label="フリーコース">

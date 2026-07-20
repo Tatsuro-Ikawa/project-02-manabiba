@@ -1,4 +1,5 @@
 import type { PrimaryCourse, UserProfile } from '@/types/auth';
+import { isDemoSubscriptionPathEnabled } from '@/lib/subscription/demoSubscriptionPath';
 
 /** ランディング等で選んだ主コースが 7日間スタートのみ（気づきノート nav 非活性） */
 export function isStart7dOnly(profile: UserProfile | null | undefined): boolean {
@@ -83,13 +84,23 @@ export const STANDARD_APPLY_PATH = '/apply?plan=standard';
 /** プレミアム（パーソナルコーチ）デモ申込 */
 export const PREMIUM_APPLY_PATH = '/apply?plan=premium';
 
-/** 申込フォームをスキップして気づきノートへ直行すべきか */
+/** 申込フォームをスキップして気づきノートへ直行すべきか（Stripe 契約済み or デモ環境のみ） */
 export function shouldSkipDemoApplyForm(
   profile: UserProfile | null | undefined,
   plan: 'standard' | 'premium'
 ): boolean {
   if (!profile?.subscription) return false;
   const userPlan = profile.subscription.plan;
+  const hasStripe = !!profile.subscription.stripeSubscriptionId?.trim();
+
+  if (hasStripe) {
+    if (plan === 'premium') return userPlan === 'premium';
+    if (userPlan === 'standard' || userPlan === 'premium') return true;
+    return false;
+  }
+
+  if (!isDemoSubscriptionPathEnabled()) return false;
+
   if (plan === 'premium') return userPlan === 'premium';
   if (userPlan === 'standard' || userPlan === 'premium') return true;
   return hasAiCoachOrPremiumSignup(profile);

@@ -54,6 +54,7 @@
 | 6 | プランと `courseId` | **standard**＝AI中心・メッセージボードなし。**premium**＝`ai_plus_personal` 相当＋Q&A。 |
 | 7 | Q&A / メッセージ | **コーチ–クライアント 1 ペア 1 スレッド**。プレミアム→スタンダード時は **即時入力不可・履歴閲覧可**。 |
 | 8 | データ保持 | **解約日またはプラン変更日**から **90日**。**`dataRetentionEndsAt`** に保存。 |
+| 9 | 課金マトリクス（Stripe） | **初回のみ28日トライアル**。アップグレードは即時日割り・トライアルなし。ダウン／解約は **期間末**。**オープン期間内は初回・アップ・ダウン・再申込とも期間限定価格（Coupon）**。正本: [04_STRIPE_BILLING_SPEC.md](./04_STRIPE_BILLING_SPEC.md)。 |
 
 ---
 
@@ -412,6 +413,7 @@ Phase C の C1〜C3 は **Stripe ダッシュボード上の設定だけ**では
 - [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](./04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)  
 - [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)  
 - [04_PHASE_B_API_INTERNAL_DECISIONS.md](./04_PHASE_B_API_INTERNAL_DECISIONS.md)（API 層・エラー形式）
+- [04_STRIPE_BILLING_SPEC.md](./04_STRIPE_BILLING_SPEC.md)（課金マトリクス・オープン価格 Coupon・プラン変更 API）
 
 ---
 
@@ -419,6 +421,7 @@ Phase C の C1〜C3 は **Stripe ダッシュボード上の設定だけ**では
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-18 | 付録B #9・参照: Stripe 課金仕様確定（オープン期間はアップ／ダウン／再申込も含む Coupon）。 |
 | 2026-05-12 | 初版: 利用区分、28日JST・失効UI、スコープ外、Zoom・個別の方針反映。 |
 | 2026-05-12 | 付録A（権威の所在／plan+trial／entitlement キー／Q&A スレッドの平易説明）、失効後の閲覧のみ・90日破棄・ホームオーバーレイ、3.1（ゲスト非表示）、共有＝既存コーチ共有、未提供UI非表示を追記。 |
 | 2026-05-12 | 付録B（1・2・5・7 確定）、付録C（entitlement 解決入力・決済と FeatureKey の分離・二重ガード／フロント方針）。A.2 に `addons` 任意の注記。 |

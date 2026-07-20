@@ -24,6 +24,10 @@ import {
 } from '@/lib/affirmationProfile';
 import { normalizeJournalWeekStartsOnField, getWeekStartDateKeyForDateKey, getTodayDateKeyTokyo, resolveJournalWeekStartsOn } from '@/lib/journalWeek';
 import {
+  DEMO_SUBSCRIPTION_PATH_DISABLED_MSG,
+  isDemoSubscriptionPathEnabled,
+} from '@/lib/subscription/demoSubscriptionPath';
+import {
   buildCoachDailySummaryEntry,
   parseCoachDailySummaryByDate,
   type JournalCoachDailySummaryEntry,
@@ -365,6 +369,9 @@ export async function applyDemoPlanEnrollment(
   plan: 'standard' | 'premium',
   billing?: ApplyBillingInput
 ): Promise<void> {
+  if (!isDemoSubscriptionPathEnabled()) {
+    throw new Error(DEMO_SUBSCRIPTION_PATH_DISABLED_MSG);
+  }
   await ensureUserEnrollmentPrimaryCourse(uid, 'kizuki');
 
   const ref = doc(db, 'users', uid);
@@ -418,6 +425,9 @@ export const SUBSCRIPTION_DATA_RETENTION_DAYS = 90;
  * - `dataRetentionEndsAt` = 変更日 +90日
  */
 export async function applyDemoDowngradeToFree(uid: string): Promise<void> {
+  if (!isDemoSubscriptionPathEnabled()) {
+    throw new Error(DEMO_SUBSCRIPTION_PATH_DISABLED_MSG);
+  }
   const ref = doc(db, 'users', uid);
   const retentionEnds = new Date();
   retentionEnds.setDate(retentionEnds.getDate() + SUBSCRIPTION_DATA_RETENTION_DAYS);
@@ -440,6 +450,9 @@ export async function applyDemoDowngradeToFree(uid: string): Promise<void> {
  * - `trialConsumedAt` は維持（お試し再付与なし）
  */
 export async function applyDemoDowngradeToStandard(uid: string): Promise<void> {
+  if (!isDemoSubscriptionPathEnabled()) {
+    throw new Error(DEMO_SUBSCRIPTION_PATH_DISABLED_MSG);
+  }
   const ref = doc(db, 'users', uid);
   const retentionEnds = new Date();
   retentionEnds.setDate(retentionEnds.getDate() + SUBSCRIPTION_DATA_RETENTION_DAYS);

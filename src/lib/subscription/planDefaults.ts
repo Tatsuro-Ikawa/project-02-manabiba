@@ -61,7 +61,10 @@ export function normalizeUserSubscription(raw: Record<string, unknown> | undefin
   return {
     plan,
     status:
-      raw?.status === 'inactive' || raw?.status === 'cancelled' || raw?.status === 'expired'
+      raw?.status === 'inactive' ||
+      raw?.status === 'past_due' ||
+      raw?.status === 'cancelled' ||
+      raw?.status === 'expired'
         ? raw.status
         : 'active',
     startDate: firestoreValueToDate(raw?.startDate) ?? new Date(),

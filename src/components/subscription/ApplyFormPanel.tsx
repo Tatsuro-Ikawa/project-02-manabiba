@@ -10,8 +10,9 @@ import {
   isReturningPaidSubscriber,
 } from '@/lib/subscription/courseReturn';
 import { shouldSkipDemoApplyForm } from '@/lib/enrollmentCourse';
-import { applyDemoPlanEnrollment } from '@/lib/firestore';
 import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
+import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
+import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 
 function parsePlan(raw: string | null): ApplyPlan | null {
   if (raw === 'standard' || raw === 'premium') return raw;
@@ -19,7 +20,7 @@ function parsePlan(raw: string | null): ApplyPlan | null {
 }
 
 export function ApplyFormPanel() {
-  const { user, userProfile, loading, refreshUserProfile } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const plan = useMemo(() => parsePlan(searchParams.get('plan')), [searchParams]);
@@ -97,13 +98,35 @@ export function ApplyFormPanel() {
         address: address.trim(),
         phone: phone.trim(),
       };
-      await applyDemoPlanEnrollment(user.uid, plan, billing);
-      await refreshUserProfile();
-      const welcomeQs = isReturning ? '?welcomeBack=1' : '';
-      router.replace(`/trial_4w${welcomeQs}`);
+      const authHeaders = await buildJsonAuthHeaders(user);
+      const res = await fetch('/api/stripe/checkout-session', {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, billing }),
+      });
+      const raw = await res.text();
+      let json: { url?: string; error?: string | { message?: string } } = {};
+      if (raw.trim()) {
+        try {
+          json = JSON.parse(raw) as typeof json;
+        } catch {
+          throw new Error('決済ページの準備に失敗しました（サーバー応答の解析に失敗）。');
+        }
+      }
+      if (!res.ok) {
+        throw new Error(messageFromApiErrorPayload(json) || '決済ページの準備に失敗しました。');
+      }
+      if (!json.url || typeof json.url !== 'string') {
+        throw new Error('決済ページの URL が取得できませんでした。');
+      }
+      window.location.href = json.url;
     } catch (err) {
-      console.error('demo apply enrollment error:', err);
-      setError('お申し込みの保存に失敗しました。しばらくしてから再試行してください。');
+      console.error('stripe checkout error:', err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'お申し込みの処理に失敗しました。しばらくしてから再試行してください。'
+      );
       setSubmitting(false);
     }
   };
@@ -113,7 +136,6 @@ export function ApplyFormPanel() {
       <h2 className="sub-flow-title">{pricing.label}</h2>
       <p className="sub-flow-lead">
         以下の内容をご確認のうえ、お申し込みください。
-        <span className="sub-flow-demo-badge">デモ</span>
       </p>
 
       {isReturning ? (
@@ -238,10 +260,10 @@ export function ApplyFormPanel() {
           className="trial-landing-cta sub-flow-submit"
           disabled={!agreeTokushoho || submitting}
         >
-          {submitting ? '送信中...' : isReturning ? '再開する（デモ）' : '申し込む（デモ）'}
+          {submitting ? 'Stripeへ移動中...' : isReturning ? '再開する' : '申し込む（決済へ）'}
         </button>
         <p className="sub-flow-note">
-          決済（Stripe）は未接続です。送信後、気づきノート画面へ移動します（課金は発生しません）。
+          「申し込む」を押すと Stripe の安全な決済ページへ移動します。カード情報は当サイトでは保存しません。
         </p>
       </form>
     </div>

@@ -94,7 +94,8 @@ export interface ApplyBillingInfo {
 // サブスクリプション情報
 export interface SubscriptionInfo {
   plan: SubscriptionPlan;
-  status: 'active' | 'inactive' | 'cancelled' | 'expired';
+  /** `past_due` = Stripe 再請求猶予中（有料機能は継続。C3・A-5） */
+  status: 'active' | 'past_due' | 'inactive' | 'cancelled' | 'expired';
   startDate: Date;
   endDate?: Date;
   /** 28 日お試し等の終了日時（JST 起点は運用で `users` 更新側が揃える）。未設定ならトライアル期限なし。 */

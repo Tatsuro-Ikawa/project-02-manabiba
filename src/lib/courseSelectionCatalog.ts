@@ -79,11 +79,21 @@ export const TRIAL_ENDS_ON_DOWNGRADE_MSG =
 
 export function buildFreeDowngradeConfirmMessage(trialActive: boolean): string {
   const trialNotice = trialActive ? `\n\n${TRIAL_ENDS_ON_DOWNGRADE_MSG}` : '';
-  return `${DATA_RETENTION_MSG}${trialNotice}\n\nフリーコースへ変更しますか？（デモ）`;
+  return `${DATA_RETENTION_MSG}${trialNotice}\n\nフリーコースへ変更（解約）しますか？Customer Portal で「サブスクリプションをキャンセル」を選択してください。`;
 }
 
-export function buildStandardDowngradeConfirmMessage(_trialActive: boolean): string {
+export function buildStandardDowngradeConfirmMessage(openPricing: boolean): string {
   const mbNotice =
-    '\n\nメッセージボードの新規投稿・編集は終了します。履歴は90日間閲覧できます。';
-  return `${DATA_RETENTION_MSG}${mbNotice}\n\nスタンダードコースへ変更しますか？（デモ）`;
+    '\n\nメッセージボードの新規投稿・編集は、期間末の切替後に終了します。履歴は90日間閲覧できます。';
+  const priceNotice = openPricing
+    ? '\n\nオープン期間中のため、切替後もスタンダードは期間限定価格が適用されます。'
+    : '';
+  return `${DATA_RETENTION_MSG}${mbNotice}${priceNotice}\n\nスタンダードコースへ変更しますか？（現在の請求期間の終了後に切替）`;
+}
+
+export function buildPremiumUpgradeConfirmMessage(openPricing: boolean): string {
+  const priceNotice = openPricing
+    ? '\n\nオープン期間中のため、プレミアムも期間限定価格が適用されます。'
+    : '';
+  return `プレミアムコースへアップグレードします。差額は日割りで即時請求されます。${priceNotice}\n\nよろしいですか？`;
 }

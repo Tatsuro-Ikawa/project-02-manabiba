@@ -10,11 +10,12 @@ function isKizukiTrialActive(profile: UserProfile): boolean {
 
 /**
  * 解約済みでも請求期間内なら有料プランとして扱う（Stripe cancel_at_period_end 想定）。
- * `inactive` は未払い停止等の想定のため、ここでは有効とみなさない。
+ * `past_due` は Stripe 再請求猶予中（A-5: 猶予あり）のため有効とみなす。
+ * `inactive` は再請求失敗後の停止等のため、ここでは有効とみなさない。
  */
 function isPaidSubscriptionInGoodStanding(profile: UserProfile): boolean {
   const { status, currentPeriodEnd } = profile.subscription;
-  if (status === 'active') return true;
+  if (status === 'active' || status === 'past_due') return true;
   if (status === 'cancelled' && currentPeriodEnd && Date.now() < currentPeriodEnd.getTime()) {
     return true;
   }
