@@ -3,6 +3,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { guardAiEntitlement } from '@/lib/server/aiEntitlementGate';
 import {
   buildImprovementApiPrompt,
+  buildImprovementExpandInstruction,
   MIN_REFLECTION_TEXT_CHARS,
 } from '@/lib/eveningAiImprovementInput';
 
@@ -139,6 +140,7 @@ export async function POST(request: NextRequest) {
   const userQuestion =
     typeof body.userQuestion === 'string' ? body.userQuestion.trim() : '';
   const userQuestionOrNull = userQuestion || null;
+  const hasUserQuestion = !!userQuestionOrNull;
 
   if (!reflectionText) {
     return NextResponse.json(
@@ -306,7 +308,7 @@ export async function POST(request: NextRequest) {
         '前回の下書き（短すぎたため拡張してください）:',
         generated.suggestion,
         '',
-        'この下書きを土台に、意味を変えず、情報を補って400〜500文字、見出し+文章の形で拡張してください。',
+        buildImprovementExpandInstruction(hasUserQuestion),
       ].join('\n');
       const expanded = await generateSuggestion(expandPrompt);
       if (typeof expanded.usageTotalTokenCount === 'number') {

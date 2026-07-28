@@ -413,7 +413,7 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | **実行条件** | `reflectionText` の合計 **50 文字以上**（項目3〜8。項目9は実行条件に含めない） |
 | **1日上限** | **3 回**（`eveningAiSuggestionRunCount`／JST 同日）。UI に回数表示は **出さない**。超過時のみエラー |
 | **プロンプト** | 確定版: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) **§11.0**（`buildImprovementApiPrompt`） |
-| **出力形式・文字数** | **400〜500 文字**（Unicode）。見出し＋改行＋本文。サーバ上限 `MAX_SUGGESTION_CHARS = 500` |
+| **出力形式・文字数** | **400〜500 文字**（Unicode）。見出し＋改行＋本文。**g あり**は質問への回答 1 ブロックのみ（a〜f は参照）。**g なし**は学び応答・前半＋後半。サーバ上限 `MAX_SUGGESTION_CHARS = 500` |
 
 ### 週次・月次・ホーム連携
 

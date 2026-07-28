@@ -351,6 +351,13 @@ UI・表示レベルの正本: [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TR
 | `reflectionText` | はい | 晩 **項目3〜8** を下表の **AI 連結見出し** で `\n\n` 連結。空欄はブロックごと省略 |
 | `userQuestion` | いいえ | 晩 **項目9**（`eveningAiQuestionText`）。実行条件（50文字）には **含めない** |
 
+**出力モード**（`userQuestion` の有無でプロンプトが分岐）:
+
+| 条件 | 出力 |
+|------|------|
+| **g なし** | 【本日の学びへの応答・前半】＋【後半】の **2 ブロック**（合計 400〜500 字） |
+| **g あり** | 【クライアントからの質問への回答】の **1 ブロックのみ**。a〜f は回答の参照用（学び応答ブロックは出さない） |
+
 **実行条件**: `reflectionText` の Unicode 合計 **50 文字以上**。同一日 **3 回**まで（`eveningAiSuggestionRunCount`）。
 
 **後方互換**: 実装時に `actionResultText` の併存期間を設けるかはコード側で判断。
