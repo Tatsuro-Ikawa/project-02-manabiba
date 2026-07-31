@@ -148,7 +148,7 @@
 | 4 | **コメント記入** | 共有されている項目ごとにコーチがコメントを記入・保存する。クライアントは後から自分の画面でそのコメントを確認できる。 |
 
 - **アファメーション（A-11）** のデータ置き場・フィールド名の現状案は [03_A11_COACH_SHARING_SCHEMA_DRAFT.md](./03_A11_COACH_SHARING_SCHEMA_DRAFT.md)（割当 `coach_client_assignments`、`coach_share_rounds` / `coach_comment_versions`）。
-- **気づきノート**（旧称: マネジメント日誌／学び帳）の人コーチ／AI／サブスク **コース定義・能力マトリックス** は [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。日次は人コーチに共有しない。週次は共有のみ、月次は質問・回答含む（現行プラン `ai_plus_personal`）。動的ルールではなく **コース（運用）で切替**。
+- **気づきノート**（旧称: マネジメント日誌／学び帳）の人コーチ／AI／サブスク **コース定義・能力マトリックス** は [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)。日次は **日ごと共有フラグ**で人コーチ閲覧可（デフォルト OFF）。週次は共有のみ、月次は質問・回答含む（現行プラン `ai_plus_personal`）。動的ルールではなく **コース（運用）で切替**。
 - この流れを**画面設計で考慮**し、ホーム・28日間トライアルそれぞれで「モード切替時の見え方」と「クライアントとの情報共有（コメントのやり取り）」のイメージを用意する（後述「3. 画面設計で作成するイメージ・成果物」）。
 
 ---

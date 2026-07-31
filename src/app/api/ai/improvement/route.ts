@@ -10,6 +10,8 @@ import {
 type ImprovementRequestBody = {
   reflectionText?: unknown;
   userQuestion?: unknown;
+  /** 朝の行動目標・行動内容と晩の満足度（参照用・文字数下限対象外） */
+  actionReferenceText?: unknown;
   /** @deprecated §4.z 改訂前。reflectionText 未指定時のみフォールバック */
   actionResultText?: unknown;
 };
@@ -141,6 +143,9 @@ export async function POST(request: NextRequest) {
     typeof body.userQuestion === 'string' ? body.userQuestion.trim() : '';
   const userQuestionOrNull = userQuestion || null;
   const hasUserQuestion = !!userQuestionOrNull;
+  const actionReferenceText =
+    typeof body.actionReferenceText === 'string' ? body.actionReferenceText.trim() : '';
+  const actionReferenceOrNull = actionReferenceText || null;
 
   if (!reflectionText) {
     return NextResponse.json(
@@ -169,7 +174,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const prompt = buildImprovementApiPrompt(reflectionText, userQuestionOrNull);
+  const prompt = buildImprovementApiPrompt(
+    reflectionText,
+    userQuestionOrNull,
+    actionReferenceOrNull
+  );
 
   if (ENABLE_AI_PROMPT_LOG) {
     console.info('ai/improvement prompt chars:', countChars(prompt));

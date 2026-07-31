@@ -15,9 +15,8 @@
 **朝・晩タブ**では、当日の振り返り入力（複数欄を連結したテキスト）をもとにコーチング風のコメントを生成する PoC です。画面上の表記は **「Aiコーチからのコメント」** です。
 
 - **画面・クライアント**: `src/components/trial/TrialMorningEvening.tsx`  
-  - 入力は `buildEveningReflectionText`（`src/lib/eveningAiImprovementInput.ts`）で晩の項目3〜8（a〜f）を UI 見出し付きで連結し、`reflectionText` に載せる。項目9は `userQuestion`（任意）。  
-  - **`reflectionText` 50 文字以上**のときのみ実行可（項目 g は含めない）。  
-  - **同一日あたり 3 回**まで実行（`eveningAiSuggestionRunCount`）。UI に回数表示は出さない。  
+  - 入力は `buildEveningReflectionText`（`src/lib/eveningAiImprovementInput.ts`）で晩の項目3〜8（a〜f）を UI 見出し付きで連結し、`reflectionText` に載せる。項目9は `userQuestion`（任意）。朝の行動目標・行動内容と晩の満足度は `buildEveningActionReferenceText` → `actionReferenceText`（参照専用・任意）。  
+  - **`reflectionText` 50 文字以上**のときのみ実行可（項目 g・行動参照は含めない）。  - **同一日あたり 3 回**まで実行（`eveningAiSuggestionRunCount`）。UI に回数表示は出さない。  
   - 生成結果は任意で **「Aiコーチからのコメントを保存」** により `eveningAiSuggestionText` に永続化。  
   - `POST /api/ai/improvement` を `fetch` で呼び出す（相対パス）。
 - **API ルート**: `src/app/api/ai/improvement/route.ts`  
@@ -341,7 +340,7 @@ UI・表示レベルの正本: [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TR
 
 ### 11.0 確定（§4.z）— 晩 Aiコーチプロンプト・入力・定数
 
-**コード正本**: `src/lib/eveningAiImprovementInput.ts`（`buildEveningReflectionText` / `buildImprovementApiPrompt` / 定数）。  
+**コード正本**: `src/lib/eveningAiImprovementInput.ts`（`buildEveningReflectionText` / `buildEveningActionReferenceText` / `buildImprovementApiPrompt` / 定数）。  
 **API 正本**: `src/app/api/ai/improvement/route.ts`（`MAX_SUGGESTION_CHARS = 500`、`MIN_REFLECTION_TEXT_CHARS = 50`、`EXPAND_BELOW_CHARS = 350`）。
 
 #### 11.0.1 API リクエスト（`POST /api/ai/improvement`）
@@ -350,13 +349,14 @@ UI・表示レベルの正本: [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TR
 |------------|------|------|
 | `reflectionText` | はい | 晩 **項目3〜8** を下表の **AI 連結見出し** で `\n\n` 連結。空欄はブロックごと省略 |
 | `userQuestion` | いいえ | 晩 **項目9**（`eveningAiQuestionText`）。実行条件（50文字）には **含めない** |
+| `actionReferenceText` | いいえ | **行動の参照情報**（朝の行動目標・行動内容、晩の満足度）。`buildEveningActionReferenceText`。空の項目は省略。実行条件（50文字）には **含めない** |
 
 **出力モード**（`userQuestion` の有無でプロンプトが分岐）:
 
 | 条件 | 出力 |
 |------|------|
 | **g なし** | 【本日の学びへの応答・前半】＋【後半】の **2 ブロック**（合計 400〜500 字） |
-| **g あり** | 【クライアントからの質問への回答】の **1 ブロックのみ**。a〜f は回答の参照用（学び応答ブロックは出さない） |
+| **g あり** | 【クライアントからの質問への回答】の **1 ブロックのみ**。a〜f および【行動の参照情報】は回答の参照用（学び応答ブロックは出さない） |
 
 **実行条件**: `reflectionText` の Unicode 合計 **50 文字以上**。同一日 **3 回**まで（`eveningAiSuggestionRunCount`）。
 
@@ -385,7 +385,17 @@ UI・表示レベルの正本: [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TR
 少し緊張したが、言えてほっとした。
 ```
 
-**含めないもの**: 朝の入力、◇行動（項目1・1.a・2）、◇明日の行動（項目12〜14）、項目9（質問は `userQuestion`）、項目10（応答）。**ブレーキ enum・反論関連フィールドは一切含めない**。
+#### 11.0.2a `actionReferenceText`（行動の参照情報）
+
+学び入力（a〜f）の **文脈参照** としてプロンプト末尾の【本日の学びへの入力】の **前** に載せる。主対象は a〜f / g。空の項目は行ごと省略（すべて空ならセクションごと省略）。
+
+| 行ラベル | Firestore（平文） | 備考 |
+|----------|-------------------|------|
+| `- 行動目標:` | `morningActionGoalText`（無ければ `morningTodayActionText`） | 朝 |
+| `- 行動内容:` | `morningActionContentText` | 朝 |
+| `- 行動の満足度:` | `eveningSatisfaction`（`N/10`） | 晩・数値があるときのみ |
+
+**含めないもの（`reflectionText` / `actionReferenceText` とも）**: ◇行動の実施度・どのように（項目1・1.a）、◇明日の行動（項目12〜14）、項目9（質問は `userQuestion`）、項目10（応答）。**ブレーキ enum・反論関連フィールドは一切含めない**。
 
 #### 11.0.3 週次レポート入力（`buildWeeklyAiReportInputFromDailies` 改訂案）
 
@@ -432,11 +442,13 @@ UI・表示レベルの正本: [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TR
 
 #### 11.0.4 プロンプト全文（写し）
 
-`buildImprovementApiPrompt(reflectionText, userQuestion)` が組み立てるテンプレート。末尾の `{reflectionText}` / 質問行は実行時に差し替え。
+`buildImprovementApiPrompt(reflectionText, userQuestion, actionReferenceText?)` が組み立てるテンプレート。末尾の入力ブロックは実行時に差し替え。
 
 ```
 あなたは日々の出来事から気づきを促す日本語コーチです。
-最下段の文章は、クライアントが以下の項目に対して入力した内容に対して改行区切りで連結したものです。
+最下段の【本日の学びへの入力】は、クライアントが項目 a〜f に入力した内容を改行区切りで連結したものです。
+【クライアントからの質問】は項目 g です。
+（actionReferenceText があるとき）【行動の参照情報】は朝の行動目標・行動内容と晩の満足度です。回答の根拠・文脈として参照してください（学び入力 a〜f の代替にはしない）。
 
 【入力項目】
 a.今日印象に残ったできごとは何でしたか？
@@ -451,6 +463,9 @@ g.Aiコーチに聞きたい事はありますか？
 
 ---
 クライアントが入力した文章
+
+（あれば）【行動の参照情報】
+{actionReferenceText}
 
 【本日の学びへの入力】
 {reflectionText}
@@ -677,6 +692,7 @@ g.Aiコーチに聞きたい事はありますか？
 
 | 日付 | 内容 |
 |------|------|
+| 2026-07-31 | §11.0: `actionReferenceText`（行動目標・行動内容・満足度）を参照情報として復活。g あり出力は質問回答 1 ブロックのみの分岐を反映 |
 | 2026-07-03 | §11.0 確定: 晩 AI プロンプト（400〜500字）・`reflectionText`/`userQuestion` API・`MAX_SUGGESTION_CHARS=500`。実装: `eveningAiImprovementInput.ts` |
 | 2026-06-24 | §11.0 追加（§4.z 改訂予定の見出し・データ・API 入力対照）。§11.1〜 を現行（旧 UI）と明記 |
 | 2026-06-24 | `docs/` 直下から `manabiba_01/04_VERTEX_AI_TRIAL_IMPROVEMENT.md` へ移動。§11 に全 API プロンプト全文を追加 |

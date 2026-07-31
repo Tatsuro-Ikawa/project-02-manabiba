@@ -309,7 +309,7 @@ function Trial4wContent() {
           </nav>
 
           {currentTab === 'affirmation' && <TrialAffirmation coachClientUid={coachClientUid} />}
-          {currentTab === 'morning_evening' && <TrialMorningEvening />}
+          {currentTab === 'morning_evening' && <TrialMorningEvening coachClientUid={coachClientUid} />}
           {currentTab === 'weekly' && <TrialWeekly coachClientUid={coachClientUid} />}
           {currentTab === 'monthly' && <TrialMonthly coachClientUid={coachClientUid} />}
         </div>

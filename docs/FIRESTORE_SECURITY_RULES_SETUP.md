@@ -5,7 +5,7 @@
 Firebase Firestoreがテストモードで作成され、30日後に自動的にアクセスが拒否されるようになりました。
 適切なセキュリティルールを設定して、アプリケーションを復旧させましょう。
 
-**※ 最新のルール**: プロジェクトルートの **`firestore.rules`** が実装の正本です。`site_content/home`、**`users/{userId}`**（コーチ↔クライアント相互 read 含む）、**`coach_client_assignments`**、**`communication_board_threads`**（メッセージボード・write は API のみ）、**A-11** の **`coach_share_rounds` / `coach_comment_versions`**、`journal_*` コーチ read 等を含みます。構造は [docs/manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md](../manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md)、メッセージボード仕様は [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](../manabiba_01/04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)。
+**※ 最新のルール**: プロジェクトルートの **`firestore.rules`** が実装の正本です。`site_content/home`、**`users/{userId}`**（コーチ↔クライアント相互 read・**管理者のプロファイル read** 含む）、**`coach_client_assignments`**、**`communication_board_threads`**（メッセージボード・write は API のみ）、**A-11** の **`coach_share_rounds` / `coach_comment_versions`**、`journal_*` コーチ read 等を含みます。構造は [docs/manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md](../manabiba_01/03_FIRESTORE_DATABASE_STRUCTURE.md)、メッセージボード仕様は [04_COMMUNICATION_SCREEN_IMPLEMENTATION.md](../manabiba_01/04_COMMUNICATION_SCREEN_IMPLEMENTATION.md)、管理者割当 UI は [04_ADMIN_COACH_ASSIGNMENT_SPEC.md](../manabiba_01/04_ADMIN_COACH_ASSIGNMENT_SPEC.md)。
 
 **デプロイ**: リポジトリのルールを本番 Firestore に反映するには **`firebase deploy --only firestore:rules`**（インデックスも変えた場合は `firestore:indexes` も）。手動 CLI が基本で、Vercel の自動デプロイとは別作業。手順の整理は [DEPLOY_GITHUB_VERCEL.md](./DEPLOY_GITHUB_VERCEL.md) の **§2.6** を参照。コンソールに直接貼る場合は **`firestore.rules` の内容全体**をコピーして使用してください（要 `firebase login`）。
 

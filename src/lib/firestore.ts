@@ -588,6 +588,8 @@ export type Trial4wDailyPlain = {
   eveningTomorrowGoalText: string | null;
   eveningTomorrowActionContentText: string | null;
   eveningTomorrowImagingDone: boolean | null;
+  /** 当該日の朝・晩本文を担当コーチがライブ閲覧できるか（デフォルト false。週次共有とは独立） */
+  sharedWithCoach?: boolean;
 };
 
 export type Trial4wDailyEncrypted = {
@@ -623,6 +625,7 @@ export type Trial4wDailyEncrypted = {
   eveningTomorrowGoalTextEncrypted: string | null;
   eveningTomorrowActionContentTextEncrypted: string | null;
   eveningTomorrowImagingDone: boolean | null;
+  sharedWithCoach?: boolean;
 
   createdAt?: Timestamp | FieldValue;
   updatedAt?: Timestamp | FieldValue;
@@ -661,6 +664,43 @@ function normalizeText(x: unknown): string | null {
   return t ? t : null;
 }
 
+function emptyTrial4wDailyPlain(dk: string): Trial4wDailyPlain {
+  return {
+    dateKey: dk,
+    tz: 'Asia/Tokyo',
+    morningAffirmationDeclaration: null,
+    morningTodayActionText: null,
+    morningActionGoalText: null,
+    morningActionContentText: null,
+    morningImagingDone: null,
+    eveningExecution: null,
+    eveningSpecificActionsText: null,
+    eveningResultText: null,
+    eveningResultExecutionText: null,
+    eveningResultGoalProgressText: null,
+    eveningSatisfaction: null,
+    eveningEmotionThoughtText: null,
+    eveningReflectionThoughtText: null,
+    eveningBrake: null,
+    eveningBrakeRebuttalChoice: null,
+    eveningRebuttalText: null,
+    eveningBrakeWorkedText: null,
+    eveningBrakeRebuttedText: null,
+    eveningBrakeWordsText: null,
+    eveningInsightText: null,
+    eveningImprovementText: null,
+    eveningAiQuestionText: null,
+    eveningAiSuggestionText: null,
+    eveningAiSuggestionRunCount: null,
+    eveningMessageToSelfText: null,
+    eveningTomorrowActionSeedText: null,
+    eveningTomorrowGoalText: null,
+    eveningTomorrowActionContentText: null,
+    eveningTomorrowImagingDone: null,
+    sharedWithCoach: false,
+  };
+}
+
 export async function getTrial4wDailyPlain(
   uid: string,
   dateKey?: string | null
@@ -669,39 +709,7 @@ export async function getTrial4wDailyPlain(
   const ref = doc(db, 'users', uid, JOURNAL_DAILY_SUBCOLLECTION, dk);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    return {
-      dateKey: dk,
-      tz: 'Asia/Tokyo',
-      morningAffirmationDeclaration: null,
-      morningTodayActionText: null,
-      morningActionGoalText: null,
-      morningActionContentText: null,
-      morningImagingDone: null,
-      eveningExecution: null,
-      eveningSpecificActionsText: null,
-      eveningResultText: null,
-      eveningResultExecutionText: null,
-      eveningResultGoalProgressText: null,
-      eveningSatisfaction: null,
-      eveningEmotionThoughtText: null,
-      eveningReflectionThoughtText: null,
-      eveningBrake: null,
-      eveningBrakeRebuttalChoice: null,
-      eveningRebuttalText: null,
-      eveningBrakeWorkedText: null,
-      eveningBrakeRebuttedText: null,
-      eveningBrakeWordsText: null,
-      eveningInsightText: null,
-      eveningImprovementText: null,
-      eveningAiQuestionText: null,
-      eveningAiSuggestionText: null,
-      eveningAiSuggestionRunCount: null,
-      eveningMessageToSelfText: null,
-      eveningTomorrowActionSeedText: null,
-      eveningTomorrowGoalText: null,
-      eveningTomorrowActionContentText: null,
-      eveningTomorrowImagingDone: null,
-    };
+    return emptyTrial4wDailyPlain(dk);
   }
   const data = snap.data() as Trial4wDailyEncrypted;
   const decryptOrNull = async (enc: unknown): Promise<string | null> => {
@@ -774,6 +782,7 @@ export async function getTrial4wDailyPlain(
     eveningTomorrowActionContentText: await decryptOrNull(data.eveningTomorrowActionContentTextEncrypted),
     eveningTomorrowImagingDone:
       typeof data.eveningTomorrowImagingDone === 'boolean' ? data.eveningTomorrowImagingDone : null,
+    sharedWithCoach: data.sharedWithCoach === true,
   };
 }
 
@@ -869,6 +878,7 @@ export async function listJournalDailyPlainInRange(params: {
       eveningTomorrowActionContentText: await decryptOrNull(raw.eveningTomorrowActionContentTextEncrypted),
       eveningTomorrowImagingDone:
         typeof raw.eveningTomorrowImagingDone === 'boolean' ? raw.eveningTomorrowImagingDone : null,
+      sharedWithCoach: raw.sharedWithCoach === true,
     };
   }
   return out;
@@ -919,6 +929,9 @@ export async function saveTrial4wDailyPlain(params: {
       typeof params.patch.eveningTomorrowImagingDone === 'boolean'
         ? params.patch.eveningTomorrowImagingDone
         : null;
+  }
+  if ('sharedWithCoach' in params.patch) {
+    payload.sharedWithCoach = !!params.patch.sharedWithCoach;
   }
 
   const encFields: Array<[keyof Trial4wDailyEncrypted, string | null]> = [];

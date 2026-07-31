@@ -4,13 +4,15 @@ import {
   computeMorningCompletionSymbol,
 } from '@/lib/trialDailyWeekSymbols';
 
-/** 週次 `coachDailySummaryByDate` の 1 日分（日次本文は含めない） */
+/** 週次 `coachDailySummaryByDate` の 1 日分（日次本文は含めない。sharedWithCoach は日次本文の共有可否） */
 export type JournalCoachDailySummaryEntry = {
   morningSym: string;
   morningCls: string;
   eveningSym: string;
   eveningCls: string;
   eveningSatisfaction: number | null;
+  /** 当該日の journal_daily.sharedWithCoach（コーチが朝・晩本文へ遷移可能か） */
+  sharedWithCoach?: boolean;
 };
 
 export function buildCoachDailySummaryEntry(
@@ -32,6 +34,7 @@ export function buildCoachDailySummaryEntry(
     eveningSym: e.sym,
     eveningCls: e.cls,
     eveningSatisfaction: sat,
+    sharedWithCoach: d?.sharedWithCoach === true,
   };
 }
 
@@ -53,6 +56,7 @@ export function parseCoachDailySummaryByDate(
         typeof o.eveningSatisfaction === 'number' && !Number.isNaN(o.eveningSatisfaction)
           ? o.eveningSatisfaction
           : null,
+      sharedWithCoach: o.sharedWithCoach === true,
     };
   }
   return out;

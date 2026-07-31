@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useViewMode } from '@/context/ViewModeContext';
 import { isKizukiNoteNavEnabled } from '@/lib/enrollmentCourse';
 
 type SidebarVariant = 'home' | 'trial';
@@ -28,8 +29,11 @@ export default function LeftSidebar({
 }: LeftSidebarProps) {
   const pathname = usePathname();
   const { user, userProfile, loading } = useAuth();
+  const { mode } = useViewMode();
   const loggedIn = !loading && !!user;
   const kizukiNoteEnabled = loggedIn && isKizukiNoteNavEnabled(userProfile);
+  const showAdminAssignments =
+    loggedIn && userProfile?.role === 'admin' && mode === 'admin';
 
   const isHome = pathname === '/';
   /** 気づきノート（旧トライアル本編）: `/trial_4w` および設定。コース選択ランディングは含めない */
@@ -39,6 +43,7 @@ export default function LeftSidebar({
   const isTrialSettings = pathname === '/trial_4w/settings';
   const isStartProgram = pathname.startsWith('/start-program');
   const isCommunication = pathname === '/communication';
+  const isAdminAssignments = pathname.startsWith('/admin/assignments');
 
   const handleNav = () => onClose?.();
 
@@ -104,6 +109,17 @@ export default function LeftSidebar({
         <span className="material-symbols-outlined" aria-hidden>forum</span>
         <span>コミュニケーション</span>
       </Link>
+      {showAdminAssignments ? (
+        <Link
+          href="/admin/assignments"
+          className={`sidebar-btn ${isAdminAssignments ? 'active' : ''}`}
+          aria-label="コーチ割当"
+          onClick={handleNav}
+        >
+          <span className="material-symbols-outlined" aria-hidden>group</span>
+          <span>コーチ割当</span>
+        </Link>
+      ) : null}
       {isKizukiNote && kizukiNoteEnabled && (
         <Link
           href="/trial_4w/settings"

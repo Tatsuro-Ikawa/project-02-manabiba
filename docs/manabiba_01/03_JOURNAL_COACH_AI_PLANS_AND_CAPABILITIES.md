@@ -15,7 +15,7 @@
 
 | 項目 | 内容 |
 |------|------|
-| **人コーチへの共有データ** | **週次・月次ドキュメント**を主とする。`journal_daily` は**本文を直接 read しない**（本人のみ）。**行動面記号・満足度**は `journal_weekly.coachDailySummaryByDate` に同期したサマリのみ、週次 `sharedWithCoach` ON 時にコーチへ表示（[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §5.2.1）。 |
+| **人コーチへの共有データ** | **日次・週次・月次**。`journal_daily` は **当該日 `sharedWithCoach` ON** かつ割当・プレミアムで本文 read 可（週次共有とは独立・デフォルト OFF）。週次・月次は従来どおり親の `sharedWithCoach`。行動面記号・満足度は引き続き `journal_weekly.coachDailySummaryByDate`（週次共有 ON 時）。 |
 | **AI** | 日次・週次・月次それぞれで質問・回答・（文脈としての）共有を**プロダクト上は許容**。実装詳細は **AI 実装フェーズ**で決定。 |
 | **AI への情報提供** | **クライアントが UI 上で明示的に操作（例: ボタン）したとき**に、当該期間の情報を API に載せる。**利用者の選択と責任**を前提とする（同意文面・表示は AI 実装時に詳細化）。 |
 | **動的ルール** | Firestore ルール内で「担当人数」などを**都度計算しない**。**コース ID または能力フラグ**を `users/{uid}`（等）に持ち、**運用でコースを切り替える**。 |
@@ -30,10 +30,11 @@
 
 | 区分 | 人コーチ・質問 | 人コーチ・回答 | 人コーチ・共有 | AI・質問 | AI・回答 | AI・共有 |
 |------|----------------|----------------|----------------|----------|----------|----------|
-| **日次** | なし | なし | なし | あり | あり | あり |
+| **日次** | なし | なし | あり（日ごと・ライブ閲覧） | あり | あり | あり |
 | **週次** | なし | なし | あり | あり | あり | あり |
 | **月次** | あり | あり | あり | あり | あり | あり |
 
+- **日次（人コーチ）**: **共有のみ（閲覧）**。日ごとの `journal_daily.sharedWithCoach`（デフォルト OFF）。ON 中はライブ閲覧。質問・回答スレッドは持たない。週次共有 ON でも日次本文は自動では含めない。
 - **週次（人コーチ）**: 共有のみ（閲覧）。**週単位の人コーチとの質問・回答スレッドは持たない**（負荷・運用で月次に集約）。
 - **月次（人コーチ）**: 共有に加え、**質問・回答あり**。枠の単位は **暦月 1 回**（`monthKey` は **東京（Asia/Tokyo）基準の `YYYY-MM`** とする想定）。**未送信分の翌月への繰越はなし**（当月未使用分は失効）。
   - **「月1回」の定義（確定）**: **クライアントがパーソナルコーチへ「質問」を送信できる回数が、暦月 1 回まで**（質問送信が消費トリガー）。共有 ON だけでは消費しない。
@@ -113,7 +114,7 @@ coachCapabilities.ai.journal.monthly    = { share, question, reply }
 
 | period | human.share | human.question | human.reply |
 |--------|-------------|----------------|-------------|
-| daily | false | false | false |
+| daily | true | false | false |
 | weekly | true | false | false |
 | monthly | true | true | true |
 
@@ -127,7 +128,7 @@ coachCapabilities.ai.journal.monthly    = { share, question, reply }
 
 | やりたいこと | 方針 |
 |--------------|------|
-| 人コーチが `journal_daily` を read しない | **パス単位で禁止**（本人のみ）。記号・満足度は **`journal_weekly.coachDailySummaryByDate`** 経由のみ（日次本文は含めない）。 |
+| 人コーチが `journal_daily` を read する | **当該日 `sharedWithCoach == true`** かつ **active 割当** かつ **`subscription.features.coachComments`**（プレミアム）。本文・チェック・満足度・AIコメント等すべて（閲覧のみ）。 |
 | 人コーチが `journal_weekly` を read する | **共有フラグ ON** かつ **active 割当** かつ **`subscription.features.coachComments`**（プレミアム相当）。週次本文＋サマリ map を read 可。 |
 | 人コーチが週次にコメントを書く | マトリックス上 **reply なし**のため、**`coach_comment_versions` 等の write 用パスを週次には置かない**／ルールで **create 禁止**が簡潔。 |
 | 人コーチが月次にコメントを書く | **月次ドキュメント配下**に A-11 と同型の `coach_share_rounds` / `coach_comment_versions` を用意し、`human.journal.monthly.reply` が true のコースだけ write 可。 |

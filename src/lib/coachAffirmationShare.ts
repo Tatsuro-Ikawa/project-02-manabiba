@@ -264,6 +264,154 @@ export async function getActiveCoachAssignmentForClient(
   return { id: d.id, data: d.data() as CoachClientAssignment };
 }
 
+/** ペアの割当ドキュメント（status 不問）。管理者 UI の再開判定用 */
+export async function getCoachClientAssignmentDoc(
+  coachUid: string,
+  clientUid: string
+): Promise<{ id: string; data: CoachClientAssignment } | null> {
+  const id = coachClientAssignmentDocId(coachUid, clientUid);
+  const snap = await getDoc(doc(db, COACH_CLIENT_ASSIGNMENTS, id));
+  if (!snap.exists()) return null;
+  return { id: snap.id, data: snap.data() as CoachClientAssignment };
+}
+
+/** クライアントに紐づく active 割当をすべて取得（付け替え時に複数あっても end するため） */
+export async function listActiveCoachAssignmentsForClient(
+  clientUid: string
+): Promise<{ id: string; data: CoachClientAssignment }[]> {
+  const q = query(
+    collection(db, COACH_CLIENT_ASSIGNMENTS),
+    where('clientUid', '==', clientUid),
+    where('status', '==', 'active')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({
+    id: d.id,
+    data: d.data() as CoachClientAssignment,
+  }));
+}
+
+export type AdminSetCoachClientAssignmentResult =
+  | { ok: true; action: 'created' | 'reactivated' | 'already_active' | 'replaced' }
+  | {
+      ok: false;
+      code: 'SAME_UID' | 'NEEDS_REPLACE' | 'NOT_FOUND';
+      message: string;
+      existingCoachUid?: string;
+    };
+
+/**
+ * 管理者: 割当を active にする（新規・再開・付け替え）。
+ * `allowReplace: true` のときだけ、クライアントの他コーチ active を ended してから set。
+ */
+export async function adminSetCoachClientAssignment(params: {
+  coachUid: string;
+  clientUid: string;
+  allowReplace?: boolean;
+}): Promise<AdminSetCoachClientAssignmentResult> {
+  const coachUid = params.coachUid.trim();
+  const clientUid = params.clientUid.trim();
+  if (!coachUid || !clientUid) {
+    return { ok: false, code: 'NOT_FOUND', message: 'コーチとクライアントを指定してください。' };
+  }
+  if (coachUid === clientUid) {
+    return { ok: false, code: 'SAME_UID', message: 'コーチとクライアントに同じユーザーは指定できません。' };
+  }
+
+  const assignmentId = coachClientAssignmentDocId(coachUid, clientUid);
+  if (assignmentId !== `${coachUid}_${clientUid}`) {
+    return { ok: false, code: 'NOT_FOUND', message: '割当 ID の形式が不正です。' };
+  }
+
+  const existingPair = await getCoachClientAssignmentDoc(coachUid, clientUid);
+  if (existingPair?.data.status === 'active') {
+    return { ok: true, action: 'already_active' };
+  }
+
+  const otherActives = (await listActiveCoachAssignmentsForClient(clientUid)).filter(
+    (a) => a.data.coachUid !== coachUid
+  );
+  if (otherActives.length > 0 && !params.allowReplace) {
+    return {
+      ok: false,
+      code: 'NEEDS_REPLACE',
+      message: 'このクライアントには既に担当コーチがいます。解除して付け替えますか？',
+      existingCoachUid: otherActives[0].data.coachUid,
+    };
+  }
+
+  const batch = writeBatch(db);
+  const now = serverTimestamp();
+
+  for (const a of otherActives) {
+    batch.update(doc(db, COACH_CLIENT_ASSIGNMENTS, a.id), {
+      status: 'ended',
+      endedAt: now,
+      updatedAt: now,
+    });
+  }
+
+  const ref = doc(db, COACH_CLIENT_ASSIGNMENTS, assignmentId);
+  const payload: Record<string, unknown> = {
+    coachUid,
+    clientUid,
+    status: 'active',
+    assignedAt: now,
+    endedAt: null,
+    updatedAt: now,
+  };
+  if (!existingPair) {
+    payload.createdAt = now;
+  }
+  batch.set(ref, payload, { merge: true });
+
+  await batch.commit();
+
+  if (otherActives.length > 0) return { ok: true, action: 'replaced' };
+  if (existingPair) return { ok: true, action: 'reactivated' };
+  return { ok: true, action: 'created' };
+}
+
+/** 管理者: 割当を ended にする（ドキュメントは削除しない） */
+export async function adminEndCoachClientAssignment(
+  coachUid: string,
+  clientUid: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const existing = await getCoachClientAssignmentDoc(coachUid, clientUid);
+  if (!existing) {
+    return { ok: false, message: '割当ドキュメントが見つかりません。' };
+  }
+  if (existing.data.status === 'ended') {
+    return { ok: true };
+  }
+  const now = serverTimestamp();
+  await updateDoc(doc(db, COACH_CLIENT_ASSIGNMENTS, existing.id), {
+    status: 'ended',
+    endedAt: now,
+    updatedAt: now,
+  });
+  return { ok: true };
+}
+
+/** 管理者: active 割当一覧（任意でコーチ絞り込み） */
+export async function listActiveCoachClientAssignments(opts?: {
+  coachUid?: string;
+}): Promise<{ id: string; data: CoachClientAssignment }[]> {
+  const coachUid = opts?.coachUid?.trim();
+  const q = coachUid
+    ? query(
+        collection(db, COACH_CLIENT_ASSIGNMENTS),
+        where('coachUid', '==', coachUid),
+        where('status', '==', 'active')
+      )
+    : query(collection(db, COACH_CLIENT_ASSIGNMENTS), where('status', '==', 'active'));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({
+    id: d.id,
+    data: d.data() as CoachClientAssignment,
+  }));
+}
+
 export async function getAffirmationCoachShareState(
   clientUid: string,
   affirmationId: string

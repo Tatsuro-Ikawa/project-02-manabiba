@@ -151,10 +151,12 @@ service cloud.firestore {
     
     // ユーザープロファイル
     match /users/{userId} {
-      // 読み取り: 本人、担当コーチ（割当 active）、または割当クライアント（コーチ表示名等）
+      // 読み取り: 本人、担当コーチ（割当 active）、割当クライアント（コーチ表示名等）、管理者（割当 UI の識別用）
+      // ※ サブコレクション（affirmations / journal_* 等）は別 match のため admin でも本文は読めない
       allow read: if isOwner(userId) ||
         hasActiveCoachAssignmentForClient(userId) ||
-        hasActiveCoachAssignmentAsClient(userId);
+        hasActiveCoachAssignmentAsClient(userId) ||
+        isAdminUser();
       
       // 作成: 自分のプロファイルのみ
       allow create: if isOwner(userId);
@@ -191,9 +193,17 @@ service cloud.firestore {
 
       // マネジメント日誌（学び帳）— 日次: 朝・晩
       // パス: users/{uid}/journal_daily/{dateKey}
-      // 現段階: 本人のみ read/write（コーチ共有は A-11 等で後続）
+      // 本人: read/write。担当コーチ: active 割当 + プレミアム(coachComments) + 当該日 sharedWithCoach
+      // （週次共有とは独立。閲覧のみ・コメント用サブコレなし）
       match /journal_daily/{dateKey} {
-        allow read: if isOwner(userId);
+        allow read: if isOwner(userId) || (
+          hasActiveCoachAssignmentForClient(userId) &&
+          clientAllowsHumanCoachComments(userId) &&
+          (
+            resource == null ||
+            resource.data.get('sharedWithCoach', false) == true
+          )
+        );
         allow create, update, delete: if isOwner(userId) && journalWriteAllowedForOwner(userId);
       }
 

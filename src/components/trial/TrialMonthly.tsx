@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getJournalMonthlyPlain,
@@ -146,6 +146,7 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
     coachContextReady,
   } = useTrialJournalCoachContext(coachClientUid);
   const { level } = useJournalDetailLevel();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [monthKey, setMonthKey] = useState('');
   const [data, setData] = useState<JournalMonthlyPlain | null>(null);
@@ -307,13 +308,19 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
     [user, data, canEdit, contentUid]
   );
 
-  const gotoDaily = useCallback((dateKey: string) => {
-    if (isCoachView) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'morning_evening');
-    url.searchParams.set('date', dateKey);
-    window.history.replaceState({}, '', url.pathname + url.search);
-  }, [isCoachView]);
+  const gotoDaily = useCallback(
+    (dateKey: string) => {
+      if (isCoachView) {
+        const summary = coachSummaryByDate[dateKey];
+        if (!summary?.sharedWithCoach) return;
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'morning_evening');
+      url.searchParams.set('date', dateKey);
+      router.replace(url.pathname + url.search);
+    },
+    [isCoachView, coachSummaryByDate, router]
+  );
 
   const monthCalendarCells = useMemo(() => {
     const r = getMonthStartEndDateKey(displayMonthKey);
@@ -614,7 +621,8 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
         </div>
         {isCoachView ? (
           <p className="text-sm text-gray-600 mb-2">
-            クライアントの月次を閲覧中です（行動記号は各週の「コーチと共有 ON」週から表示。日次本文は非共有です）。
+            クライアントの月次を閲覧中です（行動記号は各週の「コーチと共有 ON」週から表示。日次本文は各日の共有
+            ON 時のみ朝・晩タブで閲覧できます）。
           </p>
         ) : null}
         <div className="week-nav" aria-label="月ナビ">
@@ -699,7 +707,7 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
             <h4>◇行動面</h4>
             <p className="text-sm text-gray-600 mb-3">
               {isCoachView
-                ? '各日の朝・晩の実行結果（記号のみ）。週次で共有 ON の日だけ表示されます。'
+                ? '各日の朝・晩の実行結果（記号）。週次共有 ON の週のみ表示。日次本文が共有 ON の日は記号クリックで朝・晩へ移動できます。'
                 : '各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。'}
             </p>
             <div className="month-calendar-grid" role="grid" aria-label="行動の結果（月間カレンダー）">
@@ -720,16 +728,25 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
                 const e = summary
                   ? { sym: summary.eveningSym, cls: summary.eveningCls }
                   : computeEveningExecutionSymbol(d, c.dateKey, todayKey);
+                const coachCanOpenDaily = isCoachView && summary?.sharedWithCoach === true;
                 return (
                   <div key={c.dateKey} className="month-cal-cell" role="gridcell">
                     <span className="cell-date">{c.day}</span>
                     <div className="cell-symbols">
-                      {isCoachView ? (
+                      {isCoachView && !coachCanOpenDaily ? (
                         <>
-                          <span className={`monthly-symbol ${m.cls}`} aria-label={`${c.dateKey} 朝`}>
+                          <span
+                            className={`monthly-symbol ${m.cls}`}
+                            aria-label={`${c.dateKey} 朝（日次未共有）`}
+                            title="この日の朝・晩本文は共有されていません"
+                          >
                             {m.sym}
                           </span>
-                          <span className={`monthly-symbol ${e.cls}`} aria-label={`${c.dateKey} 晩`}>
+                          <span
+                            className={`monthly-symbol ${e.cls}`}
+                            aria-label={`${c.dateKey} 晩（日次未共有）`}
+                            title="この日の朝・晩本文は共有されていません"
+                          >
                             {e.sym}
                           </span>
                         </>
@@ -740,7 +757,7 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
                             className={`monthly-symbol ${m.cls}`}
                             onClick={() => gotoDaily(c.dateKey)}
                             aria-label={`${c.dateKey} 朝`}
-                            disabled={!user}
+                            disabled={!user && !isCoachView}
                           >
                             {m.sym}
                           </button>
@@ -749,7 +766,7 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
                             className={`monthly-symbol ${e.cls}`}
                             onClick={() => gotoDaily(c.dateKey)}
                             aria-label={`${c.dateKey} 晩`}
-                            disabled={!user}
+                            disabled={!user && !isCoachView}
                           >
                             {e.sym}
                           </button>

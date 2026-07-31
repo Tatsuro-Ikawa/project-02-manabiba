@@ -54,16 +54,39 @@ export function buildEveningReflectionText(data: Trial4wDailyPlain): string {
   return blocks.join('\n\n');
 }
 
+/**
+ * 晩 AI の参照情報: 朝の行動目標・行動内容と晩の満足度。
+ * `reflectionText`（a〜f）の文字数下限には含めない。空の項目は省略。
+ */
+export function buildEveningActionReferenceText(data: Trial4wDailyPlain): string {
+  const lines: string[] = [];
+  const goal = (data.morningActionGoalText ?? data.morningTodayActionText ?? '').trim();
+  const content = (data.morningActionContentText ?? '').trim();
+  if (goal) lines.push(`- 行動目標: ${goal}`);
+  if (content) lines.push(`- 行動内容: ${content}`);
+  if (typeof data.eveningSatisfaction === 'number' && !Number.isNaN(data.eveningSatisfaction)) {
+    lines.push(`- 行動の満足度: ${data.eveningSatisfaction}/10`);
+  }
+  return lines.join('\n');
+}
+
 export function normalizeEveningUserQuestion(text: string | null | undefined): string | null {
   const t = (text ?? '').trim();
   return t || null;
 }
 
-function buildPromptHeader(): string[] {
-  return [
+function buildPromptHeader(hasActionReference: boolean): string[] {
+  const lines = [
     'あなたは日々の出来事から気づきを促す日本語コーチです。',
     '最下段の【本日の学びへの入力】は、クライアントが項目 a〜f に入力した内容を改行区切りで連結したものです。',
     '【クライアントからの質問】は項目 g です。',
+  ];
+  if (hasActionReference) {
+    lines.push(
+      '【行動の参照情報】は朝の行動目標・行動内容と晩の満足度です。回答の根拠・文脈として参照してください（学び入力 a〜f の代替にはしない）。'
+    );
+  }
+  lines.push(
     '',
     '【入力項目】',
     'a.今日印象に残ったできごとは何でしたか？',
@@ -73,8 +96,9 @@ function buildPromptHeader(): string[] {
     'e.この出来事から何を学びましたか？',
     'f.今日の学びをどう明日に活かしますか？',
     'g.Aiコーチに聞きたい事はありますか？',
-    '',
-  ];
+    ''
+  );
+  return lines;
 }
 
 /** g あり: 質問への回答のみ（a〜f は参照用） */
@@ -84,16 +108,16 @@ function buildOutputSectionForQuestion(): string[] {
     '',
     '【出力内容】',
     'クライアントの質問（項目 g）にのみ答えてください。',
-    '【本日の学びへの入力】（項目 a〜f）は、回答の根拠・具体例・文脈として十分に参照してください。',
+    '【本日の学びへの入力】（項目 a〜f）と【行動の参照情報】（あれば）は、回答の根拠・具体例・文脈として十分に参照してください。',
     '「本日の学びへの応答・前半」「本日の学びへの応答・後半」は出力しません。',
     '',
     '出力は 1 ブロックのみ。「1行目見出し＋改行＋本文」。',
     '見出し: 【クライアントからの質問への回答】',
     `合計 ${IMPROVEMENT_SUGGESTION_TARGET_MIN}〜${IMPROVEMENT_SUGGESTION_TARGET_MAX} 文字（Unicode）。`,
     '',
-    '- 質問の意図を先に取り、直接的に答える',
-    '- クライアントが a〜f に書いた言葉を具体的に引用・言い換えして参照する（汎用論だけにならない）',
-    '- 参照の優先度: 質問の意図 → a → e → d → b → c → f',
+    '- 質問はクライアントが a〜f に書いた記述の後の質問であるため、その流れに沿った内容の回答をする',
+    '- クライアントの言葉を受容しながら本人の無意識下の自己意識について示唆する',
+    '- クライアントの明日の行動に対して気づきや学びから変化を促すこころのあり方や行動を中心に提案する',
     '',
   ];
 }
@@ -105,6 +129,7 @@ function buildOutputSectionForReflectionOnly(): string[] {
     '',
     '【出力内容】',
     'クライアントの質問（項目 g）はありません。本日の学びへの応答のみ出力してください。',
+    '【行動の参照情報】がある場合は、出来事の文脈として参照してください。',
     '',
     '出力は 2 ブロック。「1行目見出し＋改行＋本文」。',
     `合計 ${IMPROVEMENT_SUGGESTION_TARGET_MIN}〜${IMPROVEMENT_SUGGESTION_TARGET_MAX} 文字（Unicode）。`,
@@ -135,6 +160,7 @@ function buildPromptConstraints(hasUserQuestion: boolean): string[] {
     `- ${IMPROVEMENT_SUGGESTION_TARGET_MAX}文字に近づく場合は、最後の1文を省略しても文を途中で切らない`,
     `- ${IMPROVEMENT_SUGGESTION_TARGET_MAX}文字を超えないよう調整する`,
     '-【本日の学びへの入力】は項目 a〜f のみ（質問 g は別欄）',
+    '-【行動の参照情報】がある場合は文脈として参照してよい（出力の主対象は a〜f / g）',
     '',
   ];
 }
@@ -150,26 +176,38 @@ export function buildImprovementExpandInstruction(hasUserQuestion: boolean): str
 /** Vertex `POST /api/ai/improvement` 用プロンプト（§11.0 正本） */
 export function buildImprovementApiPrompt(
   reflectionText: string,
-  userQuestion: string | null
+  userQuestion: string | null,
+  actionReferenceText?: string | null
 ): string {
   const trimmedQuestion = userQuestion?.trim() ?? '';
   const hasUserQuestion = trimmedQuestion.length > 0;
   const questionLine = hasUserQuestion ? trimmedQuestion : '（なし）';
+  const trimmedActionRef = actionReferenceText?.trim() ?? '';
+  const hasActionReference = trimmedActionRef.length > 0;
   const outputSection = hasUserQuestion
     ? buildOutputSectionForQuestion()
     : buildOutputSectionForReflectionOnly();
 
+  const clientInput: string[] = [
+    'クライアントが入力した文章',
+    '',
+  ];
+  if (hasActionReference) {
+    clientInput.push('【行動の参照情報】', trimmedActionRef, '');
+  }
+  clientInput.push(
+    '【本日の学びへの入力】',
+    reflectionText,
+    '【クライアントからの質問】',
+    questionLine
+  );
+
   return [
-    ...buildPromptHeader(),
+    ...buildPromptHeader(hasActionReference),
     ...outputSection,
     ...buildPromptConstraints(hasUserQuestion),
     '---',
     '',
-    'クライアントが入力した文章',
-    '',
-    '【本日の学びへの入力】',
-    reflectionText,
-    '【クライアントからの質問】',
-    questionLine,
+    ...clientInput,
   ].join('\n');
 }

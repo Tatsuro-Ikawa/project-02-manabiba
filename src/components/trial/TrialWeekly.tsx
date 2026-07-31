@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   formatWeekRangeShortJa,
@@ -115,6 +115,7 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
     coachContextReady,
   } = useTrialJournalCoachContext(coachClientUid);
   const { level } = useJournalDetailLevel();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [weekStartKey, setWeekStartKey] = useState('');
   const [data, setData] = useState<JournalWeeklyPlain | null>(null);
@@ -493,13 +494,19 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
     setSaving(false);
   }, [user, data, getBaseWeekStartKey, isCoachView]);
 
-  const gotoDaily = useCallback((dateKey: string) => {
-    if (isCoachView) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'morning_evening');
-    url.searchParams.set('date', dateKey);
-    window.history.replaceState({}, '', url.pathname + url.search);
-  }, [isCoachView]);
+  const gotoDaily = useCallback(
+    (dateKey: string) => {
+      if (isCoachView) {
+        const summary = coachSummaryByDate[dateKey];
+        if (!summary?.sharedWithCoach) return;
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'morning_evening');
+      url.searchParams.set('date', dateKey);
+      router.replace(url.pathname + url.search);
+    },
+    [isCoachView, coachSummaryByDate, router]
+  );
 
   if (isCoachView && !coachClientUid) {
     return (
@@ -611,7 +618,8 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
         </div>
         {isCoachView ? (
           <p className="text-sm text-gray-600 mb-2">
-            クライアントの週次を閲覧中です（行動記号・満足度グラフは週次共有に連動。日次の本文は非共有です）。
+            クライアントの週次を閲覧中です（行動記号・満足度は週次共有に連動。日次本文は各日の「コーチと共有」ON
+            のときのみ朝・晩タブで閲覧できます）。
           </p>
         ) : null}
         <p className="text-sm text-gray-600 mb-2">週の開始：{effectiveStart === 'monday' ? '月曜' : '日曜'}（JST）</p>
@@ -698,7 +706,7 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
             <h4>◇行動面</h4>
             <p className="text-sm text-gray-600 mb-3">
               {isCoachView
-                ? '各日の朝・晩の実行結果（記号のみ）。日次の詳細本文は共有されません。'
+                ? '各日の朝・晩の実行結果（記号）。日次本文が共有 ON の日は記号クリックで朝・晩へ移動できます。'
                 : '各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。'}
             </p>
             <div className="weekly-result-grid" role="grid" aria-label="行動の結果（7日）">
@@ -713,26 +721,45 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
                   : computeEveningExecutionSymbol(d, dk, todayKey);
                 const [, mm, dd] = dk.split('-').map((x) => Number(x));
                 const wd = getJsWeekdayInTokyo(dk);
+                const coachCanOpenDaily = isCoachView && summary?.sharedWithCoach === true;
                 return (
                   <div key={dk} className="weekly-result-cell" role="row">
                     <div className="weekly-result-date">{mm}/{dd}</div>
                     <div className="weekly-result-dow">{DOW_JA[wd]}</div>
                     <div className="weekly-result-symbols">
-                      {isCoachView ? (
+                      {isCoachView && !coachCanOpenDaily ? (
                         <>
-                          <span className={`weekly-symbol ${m.cls}`} aria-label={`${dk} 朝`}>
+                          <span
+                            className={`weekly-symbol ${m.cls}`}
+                            aria-label={`${dk} 朝（日次未共有）`}
+                            title="この日の朝・晩本文は共有されていません"
+                          >
                             {m.sym}
                           </span>
-                          <span className={`weekly-symbol ${e.cls}`} aria-label={`${dk} 晩`}>
+                          <span
+                            className={`weekly-symbol ${e.cls}`}
+                            aria-label={`${dk} 晩（日次未共有）`}
+                            title="この日の朝・晩本文は共有されていません"
+                          >
                             {e.sym}
                           </span>
                         </>
                       ) : (
                         <>
-                          <button type="button" className={`weekly-symbol ${m.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 朝`}>
+                          <button
+                            type="button"
+                            className={`weekly-symbol ${m.cls}`}
+                            onClick={() => gotoDaily(dk)}
+                            aria-label={`${dk} 朝`}
+                          >
                             {m.sym}
                           </button>
-                          <button type="button" className={`weekly-symbol ${e.cls}`} onClick={() => gotoDaily(dk)} aria-label={`${dk} 晩`}>
+                          <button
+                            type="button"
+                            className={`weekly-symbol ${e.cls}`}
+                            onClick={() => gotoDaily(dk)}
+                            aria-label={`${dk} 晩`}
+                          >
                             {e.sym}
                           </button>
                         </>

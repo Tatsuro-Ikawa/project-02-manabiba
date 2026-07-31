@@ -104,7 +104,7 @@
 
 **実装フェーズ1（アファメーションのみ）**: 共有・送信・コーチ返信の最低限ルートは実装済み。次フェーズでは以下を詰める。
 - [ProtoHeader](./src/components/proto/ProtoHeader.tsx) の **要対応バッジ**
-- **管理者向け割当 UI**（当面コンソール運用）
+- **管理者向け割当 UI** → [04_ADMIN_COACH_ASSIGNMENT_SPEC.md](./04_ADMIN_COACH_ASSIGNMENT_SPEC.md)（`/admin/assignments` **実装済み**）
 - コーチパネルの **960px ブレークポイント**
 - クライアントの **未読（`clientUnreadLatestCoachReply`）を開封操作で false にする UI/挙動**
 - サブスク（プラン）→ `coachShareQuotaPerMonth` の同期（現状は暫定フォールバック）
@@ -112,7 +112,7 @@
 ### 5.2 気づきノート — 人コーチ・AI・コース（2026-04-04 確定、2026-05-02 Vertex 週月レポート・改善の仕様追記）
 
 - **正本**: [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md)
-- **共有範囲（人コーチ）**: `journal_daily` は**本文を直接 read しない**。週次・月次ドキュメント（`journal_weekly` / `journal_monthly`）は **`sharedWithCoach` ON** かつ割当・プラン条件で read。**行動面記号・満足度グラフ**は `journal_weekly.coachDailySummaryByDate` に同期したサマリのみコーチに見せる（§5.2.1）。
+- **共有範囲（人コーチ）**: `journal_daily` は **日ごと `sharedWithCoach` ON** かつ割当・プレミアムで本文ライブ閲覧可（週次共有とは独立・デフォルト OFF・閲覧のみ）。週次・月次ドキュメントは **`sharedWithCoach` ON** かつ割当・プラン条件で read。**行動面記号・満足度グラフ**は `journal_weekly.coachDailySummaryByDate` に同期したサマリ（§5.2.1）。サマリに `sharedWithCoach` を含め、コーチが週／月から日次本文へ遷移可能か判定する。
 - **能力マトリックス**: 日次・週次・月次 ×（人コーチ: 質問／回答／共有）×（AI: 質問／回答／共有）を表で固定。**将来は各セルを boolean で拡張**し、**コース（プラン）**で切替。ルール内の動的計算（例: 担当クライアント数）は行わず、**コース ID または能力フラグ**で運用。
 - **コース案**: `ai_only`（AI のみ）、`ai_plus_personal`（AI ＋ パーソナルコーチ）。詳細は上記ドキュメント §3・§4。
 - **AI へのデータ提供**: **クライアントがボタン等で明示操作したとき**に限り文脈を送る前提。**詳細は AI 実装フェーズ**で決定（同書 §6）。
@@ -124,12 +124,23 @@
 | 項目 | 内容 |
 |------|------|
 | **保存先** | `users/{uid}/journal_weekly/{weekStartKey}.coachDailySummaryByDate`（平文・暗号化しない） |
-| **1 日分の形** | `{ morningSym, morningCls, eveningSym, eveningCls, eveningSatisfaction }`（`dateKey` をキー） |
+| **1 日分の形** | `{ morningSym, morningCls, eveningSym, eveningCls, eveningSatisfaction, sharedWithCoach? }`（`dateKey` をキー。`sharedWithCoach` は日次本文共有可否） |
 | **同期タイミング** | (1) 日次保存時（`saveTrial4wDailyPlain` 後に当該日を更新）(2) 週次「コーチと共有」ON 時に当該週 7 日分をバックフィル |
 | **記号の正本** | `src/lib/trialDailyWeekSymbols.ts`（クライアント UI と同一ロジックを `buildCoachDailySummaryEntry` で適用） |
-| **コーチ UI（週）** | 行動面 7 日グリッド・成果面満足度グラフをサマリから表示。記号クリックで朝・晩へ遷移しない |
-| **コーチ UI（月）** | 月間カレンダー記号は **週次 `sharedWithCoach` ON** の各週サマリを `dateKey` でマージして表示 |
+| **コーチ UI（週）** | 行動面 7 日グリッド・成果面満足度グラフをサマリから表示。**日次本文共有 ON の日**は記号クリックで朝・晩へ遷移 |
+| **コーチ UI（月）** | 月間カレンダー記号は **週次 `sharedWithCoach` ON** の各週サマリを `dateKey` でマージして表示。日次共有 ON の日は同様に遷移可 |
 | **実装** | `src/lib/journalCoachDailySummary.ts`、`syncCoachDailySummaryForDate` / `backfillCoachDailySummaryForWeek`（`firestore.ts`） |
+
+### 5.2.2 日次（朝・晩）本文のコーチ共有（2026-07-31 確定）
+
+| 項目 | 内容 |
+|------|------|
+| **単位** | 日ごと ON/OFF（`journal_daily/{dateKey}.sharedWithCoach`）。週次共有に日次本文は含めない |
+| **閲覧** | ON 中はライブ（送信／スナップショットなし）。フィールドはすべて（暗号化テキスト・チェック・満足度・AIコメント含む） |
+| **コメント** | なし（閲覧のみ） |
+| **権限** | プレミアム（`coachComments`）＋ active 割当 |
+| **デフォルト** | OFF。コミュニケーションで合意のうえ必要な日だけ ON |
+| **UI** | クライアント: 見出し右「コーチと共有」。コーチ: 朝・晩タブ閲覧＋週／月記号から遷移 |
 
 ---
 
@@ -407,13 +418,14 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | 項目 | 内容 |
 |------|------|
 | **UI** | 項目9の入力欄の下に **「Aiコーチへ送信」** ボタン。項目10に応答表示・保存（モック準拠） |
-| **リクエスト** | **A案**: `POST /api/ai/improvement` の body を `{ reflectionText, userQuestion? }` に拡張（後方互換は実装時に判断） |
+| **リクエスト** | **A案**: `POST /api/ai/improvement` の body を `{ reflectionText, userQuestion?, actionReferenceText? }` に拡張（後方互換は実装時に判断） |
 | **`reflectionText`** | 項目 **3〜8** を新ラベル順で連結（ブレーキ・反論は含めない） |
 | **`userQuestion`** | 項目9。任意 |
-| **実行条件** | `reflectionText` の合計 **50 文字以上**（項目3〜8。項目9は実行条件に含めない） |
+| **`actionReferenceText`** | 朝の行動目標・行動内容と晩の満足度（参照専用・50文字下限対象外）。`buildEveningActionReferenceText` |
+| **実行条件** | `reflectionText` の合計 **50 文字以上**（項目3〜8。項目9・行動参照は実行条件に含めない） |
 | **1日上限** | **3 回**（`eveningAiSuggestionRunCount`／JST 同日）。UI に回数表示は **出さない**。超過時のみエラー |
 | **プロンプト** | 確定版: [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) **§11.0**（`buildImprovementApiPrompt`） |
-| **出力形式・文字数** | **400〜500 文字**（Unicode）。見出し＋改行＋本文。**g あり**は質問への回答 1 ブロックのみ（a〜f は参照）。**g なし**は学び応答・前半＋後半。サーバ上限 `MAX_SUGGESTION_CHARS = 500` |
+| **出力形式・文字数** | **400〜500 文字**（Unicode）。見出し＋改行＋本文。**g あり**は質問への回答 1 ブロックのみ（a〜f・行動参照は文脈）。**g なし**は学び応答・前半＋後半。サーバ上限 `MAX_SUGGESTION_CHARS = 500` |
 
 ### 週次・月次・ホーム連携
 

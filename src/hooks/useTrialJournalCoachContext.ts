@@ -7,7 +7,7 @@ import { getCoachClientAssignment } from '@/lib/coachAffirmationShare';
 import { getUserProfile, type UserProfile } from '@/lib/firestore';
 import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
 
-/** 週・月タブのコーチ閲覧（`coachClient` URL）用コンテキスト */
+/** 週・月・朝晩タブのコーチ閲覧（`coachClient` URL）用コンテキスト */
 export function useTrialJournalCoachContext(coachClientUid: string | null) {
   const { user, userProfile, loading } = useAuth();
   const { mode } = useViewMode();

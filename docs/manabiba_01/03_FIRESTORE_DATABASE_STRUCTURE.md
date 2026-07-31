@@ -132,22 +132,24 @@
 
 晩 UI 改訂後の Vertex 入力連結の正本は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) **§11.0**。本表はフィールド ↔ UI 見出し ↔ AI への載せ方の索引。
 
-| §4.z 順 | UI 見出し（晩） | `Trial4wDailyPlain` | `improvement` の `reflectionText` | `weekly-report` 日次ブロック |
-|--------|----------------|---------------------|:---------------------------------:|:----------------------------:|
-| — | （朝）今日の行動目標 | `morningActionGoalText` 等 | 含めない（改訂後） | ● |
-| — | （朝）行動内容 | `morningActionContentText` | 含めない | ● |
+| §4.z 順 | UI 見出し（晩） | `Trial4wDailyPlain` | `improvement` 入力 | `weekly-report` 日次ブロック |
+|--------|----------------|---------------------|:------------------:|:----------------------------:|
+| — | （朝）今日の行動目標 | `morningActionGoalText` 等 | `actionReferenceText`（参照） | ● |
+| — | （朝）行動内容 | `morningActionContentText` | `actionReferenceText`（参照） | ● |
 | 1 | 行動目標に対してどのくらい実施できましたか？ | `eveningExecution` | 含めない | ● |
 | 1.a | どのように行動できましたか？ | `eveningSpecificActionsText` | 含めない | ●（値あり時） |
-| 2 | 行動の満足度を10点のうちどのくらいでしたか？ | `eveningSatisfaction` | 含めない | ● |
-| 3 | 今日印象に残ったできごとは何でしたか？ | `eveningResultExecutionText` | **●** | ● |
-| 4 | その時、どんな気持ちになりましたか？ | `eveningEmotionThoughtText` | **●** | ● |
-| 5 | その時、どのような考えが思い浮かびましたか？ | `eveningReflectionThoughtText`（新規） | **●** | ● |
-| 6 | そこから、なにか気づくことはありましたか？ | `eveningBrakeWorkedText` | **●** | ● |
-| 7 | この出来事から何を学びましたか？ | `eveningInsightText` | **●** | ● |
-| 8 | 今日の学びをどう明日に活かしますか？ | `eveningImprovementText` | **●** | ● |
+| 2 | 行動の満足度を10点のうちどのくらいでしたか？ | `eveningSatisfaction` | `actionReferenceText`（参照） | ● |
+| 3 | 今日印象に残ったできごとは何でしたか？ | `eveningResultExecutionText` | **`reflectionText`** | ● |
+| 4 | その時、どんな気持ちになりましたか？ | `eveningEmotionThoughtText` | **`reflectionText`** | ● |
+| 5 | その時、どのような考えが思い浮かびましたか？ | `eveningReflectionThoughtText`（新規） | **`reflectionText`** | ● |
+| 6 | そこから、なにか気づくことはありましたか？ | `eveningBrakeWorkedText` | **`reflectionText`** | ● |
+| 7 | この出来事から何を学びましたか？ | `eveningInsightText` | **`reflectionText`** | ● |
+| 8 | 今日の学びをどう明日に活かしますか？ | `eveningImprovementText` | **`reflectionText`** | ● |
 | 9 | Aiコーチに聞きたい事はありますか？ | `eveningAiQuestionText`（新規） | `userQuestion`（別パラメータ） | 含めない |
 | 12 | 明日の行動目標（1文） | `eveningTomorrowActionSeedText` | 含めない | ●（任意・実装時に判断） |
 | 13 | 明日の行動内容 | `eveningTomorrowActionContentText` | 含めない | ●（詳細のみ・値あり時） |
+
+**`actionReferenceText`**: 学び入力の文脈参照。50 文字下限の対象外。正本は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §11.0.2a。
 
 **廃止（AI 入力から除外）**: `eveningBrake` 系・`eveningResultText`・`eveningResultGoalProgressText`・反論関連。週次インプットの **【こころのブレーキ】** 節も廃止（§4.z）。
 

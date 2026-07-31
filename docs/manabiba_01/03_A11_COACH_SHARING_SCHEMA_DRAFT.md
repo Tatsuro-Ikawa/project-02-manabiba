@@ -10,7 +10,7 @@
 - **送信**: **1クライアント N回/月**（テーマ非依存）。月中の残り M はテーマ変更しても引き継ぎ、**残り M 回まで**「コーチへ送信」可能。フィンガープリントは同一ラウンドの短時間連打防止程度に抑制  
 - **コーチコメント**: **履歴を残す**（同一ラウンド内の編集もバージョンとして追記）
 
-**要決定**（実装時）: 管理者 UI の詳細・`isAdminUser()` の判定方法は既存 [firestore.rules](../../firestore.rules) に合わせる。割当の **ドキュメント ID は §1・§8.5 で確定**（ルールでの `exists` / `get` 用）。
+**管理者 UI**: 画面仕様は [04_ADMIN_COACH_ASSIGNMENT_SPEC.md](./04_ADMIN_COACH_ASSIGNMENT_SPEC.md) で確定（`/admin/assignments`）。`isAdminUser()` は既存 [firestore.rules](../../firestore.rules) に合わせる。割当の **ドキュメント ID は §1・§8.5 で確定**（ルールでの `exists` / `get` 用）。
 
 ---
 
@@ -422,7 +422,8 @@ function hasActiveCoachAssignmentForClient(clientUid) {
 ### 12.3 未実装（次フェーズ）
 
 - [ProtoHeader](../../src/components/proto/ProtoHeader.tsx) の **要対応バッジ**（§11.4）  
-- **管理者向け割当 UI**（当面コンソール運用）  
+- **管理者向け割当 UI** → [04_ADMIN_COACH_ASSIGNMENT_SPEC.md](./04_ADMIN_COACH_ASSIGNMENT_SPEC.md)（`/admin/assignments` **実装済み**）  
+
 - コーチパネルの **960px ブレークポイント**（現状は `lg:grid-cols` のみ）  
 - クライアントの **`clientUnreadLatestCoachReply` を開封で false** にする明示操作（現状は未実装）
 - サブスク（プラン）→ `coachShareQuotaPerMonth` の同期（現状はクライアント側フォールバックで暫定）
@@ -503,3 +504,4 @@ users/{clientUid}/journal_monthly/{monthKey}
 | 2026-03-30 | 月次クォータ方式に更新（1クライアント N回/月・テーマ非依存）。フィンガープリントは短時間連打防止へ縮小 |
 | 2026-04-04 | §12.4 追加: 気づきノート（週次・月次）拡張と [03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md](./03_JOURNAL_COACH_AI_PLANS_AND_CAPABILITIES.md) への参照 |
 | 2026-04-19 | **§12 更新**: トライアル行動宣言の共有 UI（`coachClient` URL・タイトルバー共有・下部パネル撤廃）。Firestore デプロイ手順は [DEPLOY_GITHUB_VERCEL.md](../DEPLOY_GITHUB_VERCEL.md) §2.6 を参照 |
+| 2026-07-31 | 管理者割当 UI を [04_ADMIN_COACH_ASSIGNMENT_SPEC.md](./04_ADMIN_COACH_ASSIGNMENT_SPEC.md) で確定。§12.3・冒頭の要決定を更新 |

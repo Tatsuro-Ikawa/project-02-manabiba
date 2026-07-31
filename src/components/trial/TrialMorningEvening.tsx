@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import { AutosizeTextarea } from '@/components/trial/AutosizeTextarea';
 import {
@@ -16,12 +15,15 @@ import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import {
   AI_SUGGESTION_DAILY_LIMIT,
+  buildEveningActionReferenceText,
   buildEveningReflectionText,
   countUnicodeChars,
   MIN_REFLECTION_TEXT_CHARS,
   normalizeEveningUserQuestion,
 } from '@/lib/eveningAiImprovementInput';
 import TrialSaveStatusLine from '@/components/trial/TrialSaveStatusLine';
+import { JournalCoachShareHeader } from '@/components/trial/JournalCoachShareHeader';
+import { useTrialJournalCoachContext } from '@/hooks/useTrialJournalCoachContext';
 import {
   journalShowEveningAiCoach,
   journalShowEveningEmotionThought,
@@ -120,8 +122,17 @@ function TrialSegmentedToggle<T extends string>({
   );
 }
 
-export default function TrialMorningEvening() {
-  const { user, loading } = useAuth();
+export default function TrialMorningEvening({ coachClientUid = null }: { coachClientUid?: string | null }) {
+  const {
+    user,
+    loading,
+    isCoachView,
+    contentUid,
+    canEdit,
+    coachCommentsEnabled,
+    coachContextError,
+    coachContextReady,
+  } = useTrialJournalCoachContext(coachClientUid);
   const { level } = useJournalDetailLevel();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date'); // YYYY-MM-DD
@@ -135,6 +146,8 @@ export default function TrialMorningEvening() {
   const [aiSaving, setAiSaving] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  const inputDisabled = saving || !canEdit;
+
   useEffect(() => {
     if (dateParam) setDateKey(dateParam);
   }, [dateParam]);
@@ -142,55 +155,69 @@ export default function TrialMorningEvening() {
   const effectiveDateKey = useMemo(() => dateKey || dateParam || '', [dateKey, dateParam]);
 
   const load = useCallback(async () => {
-    if (!user) return;
+    if (!contentUid) return;
     try {
-      const doc = await getTrial4wDailyPlain(user.uid, effectiveDateKey || null);
+      const doc = await getTrial4wDailyPlain(contentUid, effectiveDateKey || null);
       setData(doc);
+      setMsg(null);
     } catch (e) {
       console.error(e);
+      const permission = e instanceof Error && /permission|insufficient/i.test(e.message);
       setMsg(
-        '読み込みに失敗しました。Firestore ルールのデプロイ（journal_daily）とログイン状態を確認してください。'
+        isCoachView
+          ? permission
+            ? 'この日の朝・晩はクライアントが共有していません（日次の「コーチと共有」が OFF、または権限不足）。'
+            : 'クライアントの朝・晩の読み込みに失敗しました。'
+          : '読み込みに失敗しました。Firestore ルールのデプロイ（journal_daily）とログイン状態を確認してください。'
       );
-      // 画面が止まらないように空の初期値で継続
-      setData({
-        dateKey: effectiveDateKey || '',
-        tz: 'Asia/Tokyo',
-        morningAffirmationDeclaration: null,
-        morningTodayActionText: null,
-        morningActionGoalText: null,
-        morningActionContentText: null,
-        morningImagingDone: null,
-        eveningExecution: null,
-        eveningSpecificActionsText: null,
-        eveningResultText: null,
-        eveningResultExecutionText: null,
-        eveningResultGoalProgressText: null,
-        eveningSatisfaction: null,
-        eveningEmotionThoughtText: null,
-        eveningReflectionThoughtText: null,
-        eveningBrake: null,
-        eveningBrakeRebuttalChoice: null,
-        eveningRebuttalText: null,
-        eveningBrakeWorkedText: null,
-        eveningBrakeRebuttedText: null,
-        eveningBrakeWordsText: null,
-        eveningInsightText: null,
-        eveningImprovementText: null,
-        eveningAiQuestionText: null,
-        eveningAiSuggestionText: null,
-        eveningAiSuggestionRunCount: null,
-        eveningMessageToSelfText: null,
-        eveningTomorrowActionSeedText: null,
-        eveningTomorrowGoalText: null,
-        eveningTomorrowActionContentText: null,
-        eveningTomorrowImagingDone: null,
-      });
+      if (!isCoachView) {
+        setData({
+          dateKey: effectiveDateKey || '',
+          tz: 'Asia/Tokyo',
+          morningAffirmationDeclaration: null,
+          morningTodayActionText: null,
+          morningActionGoalText: null,
+          morningActionContentText: null,
+          morningImagingDone: null,
+          eveningExecution: null,
+          eveningSpecificActionsText: null,
+          eveningResultText: null,
+          eveningResultExecutionText: null,
+          eveningResultGoalProgressText: null,
+          eveningSatisfaction: null,
+          eveningEmotionThoughtText: null,
+          eveningReflectionThoughtText: null,
+          eveningBrake: null,
+          eveningBrakeRebuttalChoice: null,
+          eveningRebuttalText: null,
+          eveningBrakeWorkedText: null,
+          eveningBrakeRebuttedText: null,
+          eveningBrakeWordsText: null,
+          eveningInsightText: null,
+          eveningImprovementText: null,
+          eveningAiQuestionText: null,
+          eveningAiSuggestionText: null,
+          eveningAiSuggestionRunCount: null,
+          eveningMessageToSelfText: null,
+          eveningTomorrowActionSeedText: null,
+          eveningTomorrowGoalText: null,
+          eveningTomorrowActionContentText: null,
+          eveningTomorrowImagingDone: null,
+          sharedWithCoach: false,
+        });
+      } else {
+        setData(null);
+      }
     }
-  }, [user, effectiveDateKey]);
+  }, [contentUid, effectiveDateKey, isCoachView]);
 
   useEffect(() => {
-    if (!loading && user) void load();
-  }, [loading, user, load]);
+    if (loading) return;
+    if (isCoachView && !coachClientUid) return;
+    if (!coachContextReady) return;
+    if (!contentUid) return;
+    void load();
+  }, [loading, contentUid, load, isCoachView, coachClientUid, coachContextReady]);
 
   useEffect(() => {
     // 日付切替時のみ、保存済みの Aiコーチからのコメントを初期表示へ反映する。
@@ -200,11 +227,11 @@ export default function TrialMorningEvening() {
 
   const savePatch = useCallback(
     async (patch: Partial<Trial4wDailyPlain>) => {
-      if (!user || !data) return;
+      if (!canEdit || !user || !data || !contentUid) return;
       setSaving(true);
       setMsg(null);
       try {
-        await saveTrial4wDailyPlain({ uid: user.uid, dateKey: data.dateKey, patch });
+        await saveTrial4wDailyPlain({ uid: contentUid, dateKey: data.dateKey, patch });
         await load();
         setMsg('保存しました。');
         setTimeout(() => setMsg(null), 2500);
@@ -215,7 +242,7 @@ export default function TrialMorningEvening() {
         setSaving(false);
       }
     },
-    [user, data, load]
+    [canEdit, user, data, contentUid, load]
   );
 
   const gotoDate = useCallback((nextKey: string) => {
@@ -230,6 +257,10 @@ export default function TrialMorningEvening() {
     () => (data ? buildEveningReflectionText(data) : ''),
     [data]
   );
+  const aiActionReferenceText = useMemo(
+    () => (data ? buildEveningActionReferenceText(data) : ''),
+    [data]
+  );
   const aiUserQuestion = useMemo(
     () => (data ? normalizeEveningUserQuestion(data.eveningAiQuestionText) : null),
     [data]
@@ -238,11 +269,13 @@ export default function TrialMorningEvening() {
   const aiRunCount = Math.max(0, data?.eveningAiSuggestionRunCount ?? 0);
   const isAiRunLimitReached = aiRunCount >= AI_SUGGESTION_DAILY_LIMIT;
   const canRunAiSuggestion =
+    canEdit &&
     countUnicodeChars(aiReflectionText) >= MIN_REFLECTION_TEXT_CHARS &&
     !aiLoading &&
     !isAiRunLimitReached;
 
   const handleGenerateAiSuggestion = async () => {
+    if (!canEdit) return;
     if (isAiRunLimitReached) {
       setAiError(
         `本日のAiコーチからのコメントは上限（${AI_SUGGESTION_DAILY_LIMIT}回）に達しました。明日再度お試しください。`
@@ -260,10 +293,15 @@ export default function TrialMorningEvening() {
     setAiSuggestion(null);
     try {
       const authHeaders = await buildJsonAuthHeaders(user);
-      const body: { reflectionText: string; userQuestion?: string } = {
+      const body: {
+        reflectionText: string;
+        userQuestion?: string;
+        actionReferenceText?: string;
+      } = {
         reflectionText: aiReflectionText,
       };
       if (aiUserQuestion) body.userQuestion = aiUserQuestion;
+      if (aiActionReferenceText) body.actionReferenceText = aiActionReferenceText;
       const res = await fetch('/api/ai/improvement', {
         method: 'POST',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
@@ -297,6 +335,7 @@ export default function TrialMorningEvening() {
   };
 
   const handleSaveAiSuggestion = async () => {
+    if (!canEdit) return;
     if (!aiSuggestion || !data) return;
     try {
       setAiSaving(true);
@@ -313,6 +352,47 @@ export default function TrialMorningEvening() {
       setAiSaving(false);
     }
   };
+
+  if (isCoachView && !coachClientUid) {
+    return (
+      <div className="trial-tab-content">
+        <div className="morning-evening-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
+          </div>
+          <p className="text-sm text-gray-600">メニューバーの「共有」からクライアントを選択してください。</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (coachContextError) {
+    return (
+      <div className="trial-tab-content">
+        <div className="morning-evening-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
+          </div>
+          <p className="text-sm text-red-600" role="alert">
+            {coachContextError}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!coachContextReady) {
+    return (
+      <div className="trial-tab-content">
+        <div className="morning-evening-container">
+          <div className="trial-tab-heading-row">
+            <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
+          </div>
+          <p className="text-sm text-gray-500">読み込み中…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user && !loading) {
     return (
@@ -334,7 +414,34 @@ export default function TrialMorningEvening() {
           <div className="trial-tab-heading-row">
             <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
           </div>
-          <p className="text-sm text-gray-500">読み込み中…</p>
+          {msg ? (
+            <p className="text-sm text-red-600" role="alert">
+              {msg}
+            </p>
+          ) : (
+            <p className="text-sm text-gray-500">読み込み中…</p>
+          )}
+          {isCoachView && effectiveDateKey ? (
+            <div className="date-nav mt-3">
+              <button
+                type="button"
+                className="date-nav-btn"
+                aria-label="前の日"
+                onClick={() => gotoDate(addDaysDateKey(effectiveDateKey, -1))}
+              >
+                ‹
+              </button>
+              <span className="date-nav-label">{formatDateLabelJa(effectiveDateKey)}</span>
+              <button
+                type="button"
+                className="date-nav-btn"
+                aria-label="次の日"
+                onClick={() => gotoDate(addDaysDateKey(effectiveDateKey, 1))}
+              >
+                ›
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -343,9 +450,30 @@ export default function TrialMorningEvening() {
   return (
     <div className="trial-tab-content">
       <div className="morning-evening-container">
-        <div className="trial-tab-heading-row">
+        <div className="trial-tab-heading-row trial-tab-heading-row--journal">
           <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
+          <JournalCoachShareHeader
+            enabled={coachCommentsEnabled}
+            checked={!!data.sharedWithCoach}
+            disabled={inputDisabled}
+            readOnly={isCoachView}
+            ariaLabel="この日の朝・晩をコーチに共有する"
+            onChange={(v) => {
+              setData((prev) => (prev ? { ...prev, sharedWithCoach: v } : prev));
+              void savePatch({ sharedWithCoach: v });
+            }}
+          />
         </div>
+        {isCoachView ? (
+          <p className="text-sm text-gray-600 mb-2">
+            クライアントの朝・晩を閲覧中です（編集不可。日次の「コーチと共有」が ON の日のみ表示できます）。
+          </p>
+        ) : coachCommentsEnabled ? (
+          <p className="text-xs text-gray-500 mb-2">
+            デフォルトは共有オフです。コミュニケーションで合意のうえ、必要な日だけ共有を ON
+            にしてください（週次共有とは別です）。
+          </p>
+        ) : null}
         <div className="date-nav">
           <button
             type="button"
@@ -381,7 +509,7 @@ export default function TrialMorningEvening() {
               <button
                 type="button"
                 className={`trial-segmented-toggle__btn${data.morningAffirmationDeclaration === 'done' ? ' trial-segmented-toggle__btn--active' : ''}`}
-                disabled={saving}
+                disabled={inputDisabled}
                 aria-pressed={data.morningAffirmationDeclaration === 'done'}
                 onClick={() =>
                   void savePatch({
@@ -411,7 +539,7 @@ export default function TrialMorningEvening() {
               <AutosizeTextarea
                 className="w-full text-sm border border-gray-300 rounded p-2"
                 value={data.morningTodayActionText ?? ''}
-                disabled={saving}
+                disabled={inputDisabled}
                 onChange={(e) => setData((prev) => (prev ? { ...prev, morningTodayActionText: e.target.value } : prev))}
                 onBlur={() => void savePatch({ morningTodayActionText: data.morningTodayActionText })}
                 placeholder="入力してください"
@@ -423,7 +551,7 @@ export default function TrialMorningEvening() {
                 <AutosizeTextarea
                   className="w-full text-sm border border-gray-300 rounded p-2"
                   value={data.morningActionContentText ?? ''}
-                  disabled={saving}
+                  disabled={inputDisabled}
                   onChange={(e) =>
                     setData((prev) =>
                       prev ? { ...prev, morningActionContentText: e.target.value } : prev
@@ -455,7 +583,7 @@ export default function TrialMorningEvening() {
                   <button
                     type="button"
                     className={`trial-segmented-toggle__btn${data.morningImagingDone === true ? ' trial-segmented-toggle__btn--active' : ''}`}
-                    disabled={saving}
+                    disabled={inputDisabled}
                     aria-pressed={data.morningImagingDone === true}
                     onClick={() =>
                       void savePatch({
@@ -484,7 +612,7 @@ export default function TrialMorningEvening() {
               <span className="trial-l3-label">行動目標に対してどのくらい実施できましたか？</span>
               <TrialSegmentedToggle<Trial4wEveningExecution>
                 value={data.eveningExecution}
-                disabled={saving}
+                disabled={inputDisabled}
                 options={EVENING_EXECUTION_OPTIONS}
                 onPick={(v) => void savePatch({ eveningExecution: v })}
               />
@@ -494,7 +622,7 @@ export default function TrialMorningEvening() {
                 <EveningQuestionField
                   label="どのように行動できましたか？"
                   value={data.eveningSpecificActionsText ?? ''}
-                  saving={saving}
+                  saving={inputDisabled}
                   onChange={(v) =>
                     setData((prev) => (prev ? { ...prev, eveningSpecificActionsText: v } : prev))
                   }
@@ -510,7 +638,7 @@ export default function TrialMorningEvening() {
                   max={10}
                   step={1}
                   value={data.eveningSatisfaction ?? ''}
-                  disabled={saving}
+                  disabled={inputDisabled}
                   onChange={(e) =>
                     setData((prev) =>
                       prev
@@ -534,7 +662,7 @@ export default function TrialMorningEvening() {
             <EveningQuestionField
               label="今日印象に残ったできごとは何でしたか？"
               value={data.eveningResultExecutionText ?? ''}
-              saving={saving}
+              saving={inputDisabled}
               onChange={(v) =>
                 setData((prev) => (prev ? { ...prev, eveningResultExecutionText: v } : prev))
               }
@@ -544,7 +672,7 @@ export default function TrialMorningEvening() {
               <EveningQuestionField
                 label="その時、どんな気持ちになりましたか？"
                 value={data.eveningEmotionThoughtText ?? ''}
-                saving={saving}
+                saving={inputDisabled}
                 onChange={(v) =>
                   setData((prev) => (prev ? { ...prev, eveningEmotionThoughtText: v } : prev))
                 }
@@ -555,7 +683,7 @@ export default function TrialMorningEvening() {
               <EveningQuestionField
                 label="その時、どのような考えが思い浮かびましたか？"
                 value={data.eveningReflectionThoughtText ?? ''}
-                saving={saving}
+                saving={inputDisabled}
                 onChange={(v) =>
                   setData((prev) => (prev ? { ...prev, eveningReflectionThoughtText: v } : prev))
                 }
@@ -566,7 +694,7 @@ export default function TrialMorningEvening() {
               <EveningQuestionField
                 label="そこから、なにか気づくことはありましたか？"
                 value={data.eveningBrakeWorkedText ?? ''}
-                saving={saving}
+                saving={inputDisabled}
                 onChange={(v) =>
                   setData((prev) => (prev ? { ...prev, eveningBrakeWorkedText: v } : prev))
                 }
@@ -576,7 +704,7 @@ export default function TrialMorningEvening() {
             <EveningQuestionField
               label="この出来事から何を学びましたか？"
               value={data.eveningInsightText ?? ''}
-              saving={saving}
+              saving={inputDisabled}
               onChange={(v) => setData((prev) => (prev ? { ...prev, eveningInsightText: v } : prev))}
               onBlur={() => void savePatch({ eveningInsightText: data.eveningInsightText })}
             />
@@ -584,7 +712,7 @@ export default function TrialMorningEvening() {
               <EveningQuestionField
                 label="今日の学びをどう明日に活かしますか？"
                 value={data.eveningImprovementText ?? ''}
-                saving={saving}
+                saving={inputDisabled}
                 onChange={(v) =>
                   setData((prev) => (prev ? { ...prev, eveningImprovementText: v } : prev))
                 }
@@ -597,7 +725,7 @@ export default function TrialMorningEvening() {
                 <EveningQuestionField
                   label="Aiコーチに聞きたい事はありますか？"
                   value={data.eveningAiQuestionText ?? ''}
-                  saving={saving}
+                  saving={inputDisabled}
                   onChange={(v) =>
                     setData((prev) => (prev ? { ...prev, eveningAiQuestionText: v } : prev))
                   }
@@ -659,7 +787,7 @@ export default function TrialMorningEvening() {
               <EveningQuestionField
                 label="他に残しておきたいこと"
                 value={data.eveningMessageToSelfText ?? ''}
-                saving={saving}
+                saving={inputDisabled}
                 onChange={(v) =>
                   setData((prev) => (prev ? { ...prev, eveningMessageToSelfText: v } : prev))
                 }
@@ -681,7 +809,7 @@ export default function TrialMorningEvening() {
             <EveningQuestionField
               label="明日の行動目標（1文）"
               value={data.eveningTomorrowActionSeedText ?? ''}
-              saving={saving}
+              saving={inputDisabled}
               placeholder="入力してください（保存すると翌日の朝「今日の行動内容（目標）」に反映されます）"
               onChange={(v) =>
                 setData((prev) => (prev ? { ...prev, eveningTomorrowActionSeedText: v } : prev))
@@ -695,7 +823,7 @@ export default function TrialMorningEvening() {
               <EveningQuestionField
                 label="明日の行動内容"
                 value={data.eveningTomorrowActionContentText ?? ''}
-                saving={saving}
+                saving={inputDisabled}
                 onChange={(v) =>
                   setData((prev) => (prev ? { ...prev, eveningTomorrowActionContentText: v } : prev))
                 }
@@ -710,7 +838,7 @@ export default function TrialMorningEvening() {
                 <button
                   type="button"
                   className={`trial-segmented-toggle__btn${data.eveningTomorrowImagingDone === true ? ' trial-segmented-toggle__btn--active' : ''}`}
-                  disabled={saving}
+                  disabled={inputDisabled}
                   aria-pressed={data.eveningTomorrowImagingDone === true}
                   onClick={() =>
                     void savePatch({
