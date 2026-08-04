@@ -9,6 +9,7 @@ import ProtoFooter from '@/components/proto/ProtoFooter';
 import CoachClientPickerModal from '@/components/trial/CoachClientPickerModal';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/context/ViewModeContext';
+import { useClientBoardUnread, useCoachBoardUnread } from '@/hooks/useBoardUnread';
 import { getActiveCoachAssignmentForClient } from '@/lib/coachAffirmationShare';
 import { getUserProfile } from '@/lib/firestore';
 import {
@@ -155,12 +156,23 @@ export default function CommunicationPageClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const chatRegionRef = useRef<HTMLDivElement>(null);
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
+  const markReadInFlight = useRef(false);
+  const lastMarkedPeerRef = useRef<string | null>(null);
   const coachAutoPickerOnce = useRef(false);
 
   const isCoachRole = userProfile?.role === 'coach' || userProfile?.role === 'senior_coach';
   const isCoachView = loggedIn && mode === 'coach' && !!userProfile && isCoachRole;
   const isAdminView = loggedIn && mode === 'admin' && userProfile?.role === 'admin';
   const showDirectorEditUi = isAdminView;
+  const isClientView = loggedIn && mode === 'client' && !isCoachRole;
+
+  const coachBoardUnread = useCoachBoardUnread(user?.uid, isCoachView);
+  const clientBoardUnread = useClientBoardUnread(user?.uid, isClientView);
+  const showBoardTabNew = isCoachView
+    ? coachBoardUnread.anyUnread
+    : clientBoardUnread.hasUnread;
 
   const [directorCards, setDirectorCards] = useState<DirectorAnnouncement[]>([]);
   const [directorLoading, setDirectorLoading] = useState(false);
@@ -379,6 +391,68 @@ export default function CommunicationPageClient() {
 
   const inputDisabled = !!boardDisabledReason;
 
+  const boardPeerUid = isCoachView ? coachClientUid : assignedCoachUid;
+
+  const markBoardRead = useCallback(async () => {
+    const peerUid = boardPeerUid;
+    if (!user || !peerUid || !canShowBoardMessages) return;
+    if (markReadInFlight.current) return;
+    if (lastMarkedPeerRef.current === peerUid && messages.every((m) => m.isMine || m.readAt)) {
+      return;
+    }
+    markReadInFlight.current = true;
+    try {
+      const authHeaders = await buildJsonAuthHeaders(user);
+      const res = await fetch('/api/communication/board/read', {
+        method: 'POST',
+        headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ peerUid }),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as {
+          error?: string | { message?: string };
+        };
+        console.warn('board mark-read failed:', messageFromApiErrorPayload(payload));
+        return;
+      }
+      lastMarkedPeerRef.current = peerUid;
+      if (isCoachView) void coachBoardUnread.refresh();
+      else void clientBoardUnread.refresh();
+    } catch (e) {
+      console.warn(e);
+    } finally {
+      markReadInFlight.current = false;
+    }
+  }, [
+    boardPeerUid,
+    user,
+    canShowBoardMessages,
+    messages,
+    isCoachView,
+    coachBoardUnread.refresh,
+    clientBoardUnread.refresh,
+  ]);
+
+  // 最下部（最終メッセージ）が見えたら既読にする
+  useEffect(() => {
+    if (currentTab !== 'board' || !canShowBoardMessages || !boardPeerUid) return;
+    lastMarkedPeerRef.current = null;
+    const sentinel = bottomSentinelRef.current;
+    const root = chatRegionRef.current;
+    if (!sentinel) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          void markBoardRead();
+        }
+      },
+      { root: root ?? null, threshold: 0.1 }
+    );
+    io.observe(sentinel);
+    return () => io.disconnect();
+  }, [currentTab, canShowBoardMessages, boardPeerUid, messages.length, markBoardRead]);
+
   const openEdit = (m: CommMsg) => {
     setEditingId(m.id);
     setEditDraft(m.body);
@@ -576,6 +650,11 @@ export default function CommunicationPageClient() {
               <span className="menu-text" aria-hidden="true">
                 メッセージボード
               </span>
+              {showBoardTabNew ? (
+                <span className="board-unread-new board-unread-new--chip" aria-hidden>
+                  New
+                </span>
+              ) : null}
             </button>
             <div className="trial-menu-spacer" aria-hidden="true" />
             {showDirectorEditUi && currentTab === 'director' && (
@@ -595,8 +674,15 @@ export default function CommunicationPageClient() {
               <button
                 type="button"
                 className="trial-menu-share-btn"
-                onClick={() => setCoachPickerOpen(true)}
-                aria-label="クライアントを選択"
+                onClick={() => {
+                  void coachBoardUnread.refresh();
+                  setCoachPickerOpen(true);
+                }}
+                aria-label={
+                  coachBoardUnread.anyUnread
+                    ? 'クライアントを選択（未読メッセージあり）'
+                    : 'クライアントを選択'
+                }
               >
                 <span className="material-symbols-outlined" aria-hidden="true">
                   group
@@ -604,6 +690,11 @@ export default function CommunicationPageClient() {
                 <span className="trial-menu-share-btn-label">
                   {coachClientUid ? clientTarget?.name ?? coachClientUid : 'クライアント選択'}
                 </span>
+                {coachBoardUnread.anyUnread ? (
+                  <span className="board-unread-new board-unread-new--chip" aria-hidden>
+                    New
+                  </span>
+                ) : null}
               </button>
             )}
           </nav>
@@ -705,6 +796,7 @@ export default function CommunicationPageClient() {
                 )}
 
                 <div
+                  ref={chatRegionRef}
                   className="communication-chat-region"
                   role="region"
                   aria-label="コーチとのメッセージ"
@@ -740,6 +832,9 @@ export default function CommunicationPageClient() {
                           </article>
                         </li>
                       ))}
+                      <li aria-hidden className="communication-msg-bottom-sentinel">
+                        <div ref={bottomSentinelRef} />
+                      </li>
                     </ul>
                   ) : (
                     <div className="communication-chat-placeholder" aria-hidden />

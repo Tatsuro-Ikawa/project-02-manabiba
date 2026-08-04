@@ -6,9 +6,10 @@ import {
   listActiveCoachAssignmentsForCoach,
   resolveClientUidFromAssignmentDoc,
 } from '@/lib/coachAffirmationShare';
+import { fetchBoardUnreadClientUidsForCoach } from '@/lib/communicationBoardUnread';
 import { getUserProfile } from '@/lib/firestore';
 
-type ClientRow = { clientUid: string; label: string };
+type ClientRow = { clientUid: string; label: string; hasUnread: boolean };
 
 type Props = {
   open: boolean;
@@ -39,7 +40,7 @@ export default function CoachClientPickerModal({
     setError(null);
     try {
       const assignments = await listActiveCoachAssignmentsForCoach(coachUid);
-      const enriched: ClientRow[] = [];
+      const enriched: Omit<ClientRow, 'hasUnread'>[] = [];
       for (const a of assignments) {
         const clientUid = resolveClientUidFromAssignmentDoc(coachUid, a.id, a.data.clientUid);
         const canonical = await getCoachClientAssignment(coachUid, clientUid);
@@ -53,7 +54,11 @@ export default function CoachClientPickerModal({
         const label = prof?.displayName || prof?.email || clientUid;
         enriched.push({ clientUid, label });
       }
-      setRows(enriched);
+      const unread = await fetchBoardUnreadClientUidsForCoach(
+        coachUid,
+        enriched.map((r) => r.clientUid)
+      );
+      setRows(enriched.map((r) => ({ ...r, hasUnread: unread.has(r.clientUid) })));
       setSelectedUid((prev) => prev ?? currentClientUid ?? (enriched[0]?.clientUid ?? null));
       if (assignments.length > 0 && enriched.length === 0) {
         setError(
@@ -135,6 +140,7 @@ export default function CoachClientPickerModal({
                   <tr>
                     <th style={{ width: 64 }}>選択</th>
                     <th>クライアント名</th>
+                    <th style={{ width: 72 }}>状態</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -148,6 +154,13 @@ export default function CoachClientPickerModal({
                       >
                         <td className="text-center">{selected ? '✓' : ''}</td>
                         <td>{r.label}</td>
+                        <td className="text-center">
+                          {r.hasUnread ? (
+                            <span className="board-unread-new" aria-label="未読メッセージあり">
+                              New
+                            </span>
+                          ) : null}
+                        </td>
                       </tr>
                     );
                   })}
@@ -184,4 +197,3 @@ export default function CoachClientPickerModal({
     </div>
   );
 }
-

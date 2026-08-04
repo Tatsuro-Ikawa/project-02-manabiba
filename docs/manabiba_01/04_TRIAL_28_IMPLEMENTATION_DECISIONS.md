@@ -127,7 +127,7 @@
 | **1 日分の形** | `{ morningSym, morningCls, eveningSym, eveningCls, eveningSatisfaction, sharedWithCoach? }`（`dateKey` をキー。`sharedWithCoach` は日次本文共有可否） |
 | **同期タイミング** | (1) 日次保存時（`saveTrial4wDailyPlain` 後に当該日を更新）(2) 週次「コーチと共有」ON 時に当該週 7 日分をバックフィル |
 | **記号の正本** | `src/lib/trialDailyWeekSymbols.ts`（クライアント UI と同一ロジックを `buildCoachDailySummaryEntry` で適用） |
-| **コーチ UI（週）** | 行動面 7 日グリッド・成果面満足度グラフをサマリから表示。**日次本文共有 ON の日**は記号クリックで朝・晩へ遷移 |
+| **コーチ UI（週）** | 行動面 7 日グリッド・成果面満足度グラフをサマリから表示。記号クリックで朝・晩へ遷移可（本文は日次 `sharedWithCoach` ON の日のみ。朝・晩タブ内でも日付ナビで移動可） |
 | **コーチ UI（月）** | 月間カレンダー記号は **週次 `sharedWithCoach` ON** の各週サマリを `dateKey` でマージして表示。日次共有 ON の日は同様に遷移可 |
 | **実装** | `src/lib/journalCoachDailySummary.ts`、`syncCoachDailySummaryForDate` / `backfillCoachDailySummaryForWeek`（`firestore.ts`） |
 

@@ -629,6 +629,11 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | clientUid | string | クライアント UID |
 | createdAt | Timestamp | 初回メッセージ時 |
 | updatedAt | Timestamp | 最終メッセージ時 |
+| lastMessageAt | Timestamp \| null | 最新メッセージ時刻（未読判定） |
+| lastMessageAuthorUid | string \| null | 最新メッセージ送信者 |
+| lastMessageId | string \| null | 最新メッセージ ID（任意） |
+| coachLastReadAt | Timestamp \| null | コーチの既読時刻（最下部到達時） |
+| clientLastReadAt | Timestamp \| null | クライアントの既読時刻（最下部到達時） |
 
 **メッセージ `…/messages/{messageId}`**
 
@@ -639,7 +644,9 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | createdAt | Timestamp | 作成 |
 | edited | boolean | 編集済み |
 | editedAt | Timestamp \| null | 最終編集（任意） |
-| readAt | Timestamp \| null | 既読（任意・**サーバー更新は未実装**） |
+| readAt | Timestamp \| null | 相手が最下部到達したときの既読時刻 |
+
+**未読判定（案C）**: 相手が最新投稿者かつ `lastMessageAt > (自分の LastReadAt)`（未設定は未読）。実装: `src/lib/communicationBoardUnread.ts`。
 
 ---
 

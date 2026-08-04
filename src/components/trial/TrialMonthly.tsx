@@ -310,16 +310,15 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
 
   const gotoDaily = useCallback(
     (dateKey: string) => {
-      if (isCoachView) {
-        const summary = coachSummaryByDate[dateKey];
-        if (!summary?.sharedWithCoach) return;
-      }
       const url = new URL(window.location.href);
       url.searchParams.set('tab', 'morning_evening');
       url.searchParams.set('date', dateKey);
+      if (coachClientUid) {
+        url.searchParams.set('coachClient', coachClientUid);
+      }
       router.replace(url.pathname + url.search);
     },
-    [isCoachView, coachSummaryByDate, router]
+    [router, coachClientUid]
   );
 
   const monthCalendarCells = useMemo(() => {
@@ -707,7 +706,7 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
             <h4>◇行動面</h4>
             <p className="text-sm text-gray-600 mb-3">
               {isCoachView
-                ? '各日の朝・晩の実行結果（記号）。週次共有 ON の週のみ表示。日次本文が共有 ON の日は記号クリックで朝・晩へ移動できます。'
+                ? '各日の朝・晩の実行結果（記号）。週次共有 ON の週のみ表示。記号クリックで朝・晩へ移動できます（本文は日次「コーチと共有」ON の日のみ表示）。'
                 : '各日の朝・晩の実行結果。記号をクリックすると当該日の朝・晩へ移動します。'}
             </p>
             <div className="month-calendar-grid" role="grid" aria-label="行動の結果（月間カレンダー）">
@@ -728,50 +727,35 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
                 const e = summary
                   ? { sym: summary.eveningSym, cls: summary.eveningCls }
                   : computeEveningExecutionSymbol(d, c.dateKey, todayKey);
-                const coachCanOpenDaily = isCoachView && summary?.sharedWithCoach === true;
+                const openTitle = isCoachView
+                  ? summary?.sharedWithCoach
+                    ? '朝・晩本文を開く（日次共有 ON）'
+                    : '朝・晩を開く（未共有の日は本文を表示できません）'
+                  : undefined;
                 return (
                   <div key={c.dateKey} className="month-cal-cell" role="gridcell">
                     <span className="cell-date">{c.day}</span>
                     <div className="cell-symbols">
-                      {isCoachView && !coachCanOpenDaily ? (
-                        <>
-                          <span
-                            className={`monthly-symbol ${m.cls}`}
-                            aria-label={`${c.dateKey} 朝（日次未共有）`}
-                            title="この日の朝・晩本文は共有されていません"
-                          >
-                            {m.sym}
-                          </span>
-                          <span
-                            className={`monthly-symbol ${e.cls}`}
-                            aria-label={`${c.dateKey} 晩（日次未共有）`}
-                            title="この日の朝・晩本文は共有されていません"
-                          >
-                            {e.sym}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className={`monthly-symbol ${m.cls}`}
-                            onClick={() => gotoDaily(c.dateKey)}
-                            aria-label={`${c.dateKey} 朝`}
-                            disabled={!user && !isCoachView}
-                          >
-                            {m.sym}
-                          </button>
-                          <button
-                            type="button"
-                            className={`monthly-symbol ${e.cls}`}
-                            onClick={() => gotoDaily(c.dateKey)}
-                            aria-label={`${c.dateKey} 晩`}
-                            disabled={!user && !isCoachView}
-                          >
-                            {e.sym}
-                          </button>
-                        </>
-                      )}
+                      <button
+                        type="button"
+                        className={`monthly-symbol ${m.cls}`}
+                        onClick={() => gotoDaily(c.dateKey)}
+                        aria-label={`${c.dateKey} 朝`}
+                        title={openTitle}
+                        disabled={!user && !isCoachView}
+                      >
+                        {m.sym}
+                      </button>
+                      <button
+                        type="button"
+                        className={`monthly-symbol ${e.cls}`}
+                        onClick={() => gotoDaily(c.dateKey)}
+                        aria-label={`${c.dateKey} 晩`}
+                        title={openTitle}
+                        disabled={!user && !isCoachView}
+                      >
+                        {e.sym}
+                      </button>
                     </div>
                   </div>
                 );

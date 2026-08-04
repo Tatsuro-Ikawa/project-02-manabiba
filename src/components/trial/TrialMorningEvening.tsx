@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import { AutosizeTextarea } from '@/components/trial/AutosizeTextarea';
 import {
@@ -11,6 +11,7 @@ import {
   type Trial4wEveningExecution,
   type Trial4wDailyPlain,
 } from '@/lib/firestore';
+import { getTodayDateKeyTokyo } from '@/lib/journalWeek';
 import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import {
@@ -134,10 +135,11 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
     coachContextReady,
   } = useTrialJournalCoachContext(coachClientUid);
   const { level } = useJournalDetailLevel();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const dateParam = searchParams.get('date'); // YYYY-MM-DD
 
-  const [dateKey, setDateKey] = useState<string>(dateParam ?? '');
+  const [dateKey, setDateKey] = useState<string>(() => dateParam || getTodayDateKeyTokyo());
   const [data, setData] = useState<Trial4wDailyPlain | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -149,30 +151,41 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
   const inputDisabled = saving || !canEdit;
 
   useEffect(() => {
-    if (dateParam) setDateKey(dateParam);
+    if (dateParam) {
+      setDateKey(dateParam);
+      return;
+    }
+    setDateKey((prev) => prev || getTodayDateKeyTokyo());
   }, [dateParam]);
 
-  const effectiveDateKey = useMemo(() => dateKey || dateParam || '', [dateKey, dateParam]);
+  /** 日付ナビ・読込に使う確定キー（未指定時は当日 JST） */
+  const resolvedDateKey = useMemo(
+    () => dateKey || dateParam || getTodayDateKeyTokyo(),
+    [dateKey, dateParam]
+  );
 
   const load = useCallback(async () => {
     if (!contentUid) return;
+    const dk = resolvedDateKey;
     try {
-      const doc = await getTrial4wDailyPlain(contentUid, effectiveDateKey || null);
+      const doc = await getTrial4wDailyPlain(contentUid, dk);
       setData(doc);
+      setDateKey(doc.dateKey || dk);
       setMsg(null);
     } catch (e) {
       console.error(e);
       const permission = e instanceof Error && /permission|insufficient/i.test(e.message);
+      setDateKey(dk);
       setMsg(
         isCoachView
           ? permission
-            ? 'この日の朝・晩はクライアントが共有していません（日次の「コーチと共有」が OFF、または権限不足）。'
+            ? 'この日の朝・晩はクライアントが共有していません（日次の「コーチと共有」が OFF、または権限不足）。‹ › で他の日へ移動できます。'
             : 'クライアントの朝・晩の読み込みに失敗しました。'
           : '読み込みに失敗しました。Firestore ルールのデプロイ（journal_daily）とログイン状態を確認してください。'
       );
       if (!isCoachView) {
         setData({
-          dateKey: effectiveDateKey || '',
+          dateKey: dk,
           tz: 'Asia/Tokyo',
           morningAffirmationDeclaration: null,
           morningTodayActionText: null,
@@ -209,7 +222,7 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
         setData(null);
       }
     }
-  }, [contentUid, effectiveDateKey, isCoachView]);
+  }, [contentUid, resolvedDateKey, isCoachView]);
 
   useEffect(() => {
     if (loading) return;
@@ -245,14 +258,21 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
     [canEdit, user, data, contentUid, load]
   );
 
-  const gotoDate = useCallback((nextKey: string) => {
-    setDateKey(nextKey);
-    const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'morning_evening');
-    url.searchParams.set('date', nextKey);
-    window.history.replaceState({}, '', url.pathname + url.search);
-  }, []);
-
+  const gotoDate = useCallback(
+    (nextKey: string) => {
+      setDateKey(nextKey);
+      setData(null);
+      setMsg(null);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'morning_evening');
+      url.searchParams.set('date', nextKey);
+      if (coachClientUid) {
+        url.searchParams.set('coachClient', coachClientUid);
+      }
+      router.replace(url.pathname + url.search);
+    },
+    [router, coachClientUid]
+  );
   const aiReflectionText = useMemo(
     () => (data ? buildEveningReflectionText(data) : ''),
     [data]
@@ -414,6 +434,11 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
           <div className="trial-tab-heading-row">
             <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
           </div>
+          {isCoachView ? (
+            <p className="text-sm text-gray-600 mb-2">
+              クライアントの朝・晩を閲覧中です（編集不可。日次の「コーチと共有」が ON の日のみ本文を表示できます）。
+            </p>
+          ) : null}
           {msg ? (
             <p className="text-sm text-red-600" role="alert">
               {msg}
@@ -421,22 +446,22 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
           ) : (
             <p className="text-sm text-gray-500">読み込み中…</p>
           )}
-          {isCoachView && effectiveDateKey ? (
+          {isCoachView ? (
             <div className="date-nav mt-3">
               <button
                 type="button"
                 className="date-nav-btn"
                 aria-label="前の日"
-                onClick={() => gotoDate(addDaysDateKey(effectiveDateKey, -1))}
+                onClick={() => gotoDate(addDaysDateKey(resolvedDateKey, -1))}
               >
                 ‹
               </button>
-              <span className="date-nav-label">{formatDateLabelJa(effectiveDateKey)}</span>
+              <span className="date-nav-label">{formatDateLabelJa(resolvedDateKey)}</span>
               <button
                 type="button"
                 className="date-nav-btn"
                 aria-label="次の日"
-                onClick={() => gotoDate(addDaysDateKey(effectiveDateKey, 1))}
+                onClick={() => gotoDate(addDaysDateKey(resolvedDateKey, 1))}
               >
                 ›
               </button>

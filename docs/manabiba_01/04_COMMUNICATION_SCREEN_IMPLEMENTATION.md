@@ -66,6 +66,11 @@
 | clientUid | string | クライアント UID |
 | createdAt | Timestamp | 作成 |
 | updatedAt | Timestamp | 最終更新 |
+| lastMessageAt | Timestamp | 最新メッセージ時刻 |
+| lastMessageAuthorUid | string | 最新送信者 |
+| lastMessageId | string | 最新メッセージ ID |
+| coachLastReadAt | Timestamp（任意） | コーチ既読（最下部到達） |
+| clientLastReadAt | Timestamp（任意） | クライアント既読（最下部到達） |
 
 **メッセージフィールド**
 
@@ -76,7 +81,7 @@
 | createdAt | Timestamp | 作成 |
 | edited | boolean | 編集済みフラグ |
 | editedAt | Timestamp（任意） | 最終編集 |
-| readAt | Timestamp（任意） | 既読（**フィールドのみ定義。サーバー更新は未実装**） |
+| readAt | Timestamp（任意） | 相手既読（`POST …/board/read` で更新） |
 
 詳細は [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.15。
 
@@ -104,7 +109,8 @@
 | 送信中は送る無効 | 実装済み |
 | 送信後は入力クリア＋フォーカス維持 | 実装済み（一覧は `onSnapshot` で反映） |
 | クライアント送信上限 | `COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT`（50件／スレッド内・クライアント発）。API と UI で同一判定 |
-| 既読（メッセージ単位） | UI 表示のみ対応。**サーバー更新は未実装** |
+| 既読（スレッド親＋メッセージ） | **実装済み**。チャット最下部が見えたら `POST /api/communication/board/read`。親の `*LastReadAt` と相手メッセージの `readAt` を更新。送信側に「既読」表示 |
+| 未読 `New` | コーチ: クライアント選択行・共有ボタン付近・メッセージボードタブ。クライアント: サイドバー「コミュニケーション」・メッセージボードタブ。取得は表示時（ライブ監視なし）。ボード専用（アファメ要対応とは別） |
 | プレミアムのみ（クライアント） | `communication.message_board` |
 | プレミアム→スタンダード後 | **即時**に送信・編集不可。**履歴閲覧は可**（`dataRetentionEndsAt` まで） |
 | コーチ: 未選択時は案内＋入力不可、初回はクライアントピッカー | `CoachClientPickerModal` |
@@ -119,8 +125,9 @@
 
 | メソッド | パス | 内容 |
 |----------|------|------|
-| POST | `/api/communication/board/message` | 送信（Firestore 永続化） |
+| POST | `/api/communication/board/message` | 送信（Firestore 永続化・スレッド親の lastMessage* 更新） |
 | PATCH | `/api/communication/board/message/{id}` | 編集（本人のメッセージのみ） |
+| POST | `/api/communication/board/read` | 既読（最下部到達時。親 LastReadAt ＋相手メッセージ readAt） |
 
 **ガード（共通）**: Bearer → クライアントは `communication.message_board`、コーチは role 判定 → `coach_client_assignments/{coachUid}_{clientUid}` が `active`。
 
@@ -132,10 +139,10 @@
 
 ## 残作業
 
-1. **既読**: `readAt` のサーバー更新とルール
-2. **送信上限**: 日次／月次リセットやプラン別上限（現状はスレッド内累計50件）
-3. **データ削除**: `dataRetentionEndsAt` 経過後の `communication_board_threads` バッチ削除（方針は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §4.1）
-4. **館長から**: ダミーから本番データへ
+1. **送信上限**: 日次／月次リセットやプラン別上限（現状はスレッド内累計50件）
+2. **データ削除**: `dataRetentionEndsAt` 経過後の `communication_board_threads` バッチ削除（方針は [04_SUBSCRIPTION_PRODUCT_SCOPE.md](./04_SUBSCRIPTION_PRODUCT_SCOPE.md) §4.1）
+3. **館長から**: ダミーから本番データへ
+4. **未読メタのバックフィル**（任意）: 導入前の既存スレッドは、次の送受信まで `lastMessage*` が無く New が出ない場合あり
 
 サブスク仕様の**正本・索引**は [01_ROLES_AND_SUBSCRIPTION_DESIGN.md](./01_ROLES_AND_SUBSCRIPTION_DESIGN.md) の **§6.1**。
 
@@ -148,11 +155,12 @@
 | ページエントリ | `src/app/communication/page.tsx`（`Suspense`） |
 | 画面ロジック | `src/components/communication/CommunicationPageClient.tsx` |
 | 購読・型 | `src/lib/communicationBoard.ts` |
+| 未読判定 | `src/lib/communicationBoardUnread.ts` / `src/hooks/useBoardUnread.ts` |
 | API ガード | `src/lib/server/communicationBoardAccess.ts` |
 | 定数 | `src/lib/communicationConstants.ts` |
-| API | `src/app/api/communication/board/message/route.ts`、`…/[id]/route.ts` |
-| スタイル | `src/styles/home-trial.css`（`.communication-*`） |
-| クライアントピッカー | `src/components/trial/CoachClientPickerModal.tsx` |
+| API | `src/app/api/communication/board/message/route.ts`、`…/[id]/route.ts`、`…/read/route.ts` |
+| スタイル | `src/styles/home-trial.css`（`.communication-*` / `.board-unread-new`） |
+| クライアントピッカー | `src/components/trial/CoachClientPickerModal.tsx`（行に New） |
 | 割当参照 | `src/lib/coachAffirmationShare.ts` |
 | ルール | `firestore.rules`（`communication_board_threads`、`users` read 逆方向） |
 
@@ -171,6 +179,7 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-04 | 未読 New（案C）・既読 API（最下部到達）・共有ボタン／ピッカー／サイドバー表示。ボード専用。 |
 | 2026-05-12 | 初版: コミュニケーション UI・定数・プレミアム暫定フラグ・サブスク差し込みメモ。 |
 | 2026-05-12 | Zoom 別アプリ・運用再検討・スコープ外ドキュメントへの参照を追記。 |
 | 2026-05-17 | プレミアム判定を entitlement に更新。プレミアム→スタンダード時の Q&A 挙動を追記。 |

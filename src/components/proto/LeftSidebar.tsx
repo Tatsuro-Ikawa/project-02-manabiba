@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useViewMode } from '@/context/ViewModeContext';
+import { useClientBoardUnread, useCoachBoardUnread } from '@/hooks/useBoardUnread';
 import { isKizukiNoteNavEnabled } from '@/lib/enrollmentCourse';
 
 type SidebarVariant = 'home' | 'trial';
@@ -34,6 +35,13 @@ export default function LeftSidebar({
   const kizukiNoteEnabled = loggedIn && isKizukiNoteNavEnabled(userProfile);
   const showAdminAssignments =
     loggedIn && userProfile?.role === 'admin' && mode === 'admin';
+  const isCoachRole = userProfile?.role === 'coach' || userProfile?.role === 'senior_coach';
+  const isCoachView = loggedIn && mode === 'coach' && !!userProfile && isCoachRole;
+  const isClientView = loggedIn && mode === 'client';
+
+  const coachUnread = useCoachBoardUnread(user?.uid, isCoachView);
+  const clientUnread = useClientBoardUnread(user?.uid, isClientView && !isCoachRole);
+  const showCommNew = isCoachView ? coachUnread.anyUnread : clientUnread.hasUnread;
 
   const isHome = pathname === '/';
   /** 気づきノート（旧トライアル本編）: `/trial_4w` および設定。コース選択ランディングは含めない */
@@ -103,10 +111,17 @@ export default function LeftSidebar({
       <Link
         href="/communication"
         className={`sidebar-btn ${isCommunication ? 'active' : ''}`}
-        aria-label="コミュニケーション"
+        aria-label={showCommNew ? 'コミュニケーション（未読あり）' : 'コミュニケーション'}
         onClick={handleNav}
       >
-        <span className="material-symbols-outlined" aria-hidden>forum</span>
+        <span className="sidebar-btn-icon-wrap">
+          <span className="material-symbols-outlined" aria-hidden>forum</span>
+          {showCommNew ? (
+            <span className="board-unread-new board-unread-new--sidebar-dot" aria-hidden>
+              New
+            </span>
+          ) : null}
+        </span>
         <span>コミュニケーション</span>
       </Link>
       {showAdminAssignments ? (

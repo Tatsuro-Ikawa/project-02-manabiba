@@ -64,9 +64,17 @@ export async function POST(request: NextRequest) {
         clientUid: access.clientUid,
         createdAt: now,
         updatedAt: now,
+        lastMessageAt: now,
+        lastMessageAuthorUid: auth.uid,
+        lastMessageId: messageRef.id,
       });
     } else {
-      tx.update(threadRef, { updatedAt: now });
+      tx.update(threadRef, {
+        updatedAt: now,
+        lastMessageAt: now,
+        lastMessageAuthorUid: auth.uid,
+        lastMessageId: messageRef.id,
+      });
     }
     tx.set(messageRef, {
       authorUid: auth.uid,

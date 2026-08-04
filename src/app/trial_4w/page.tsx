@@ -13,6 +13,7 @@ import TrialWeekly from '@/components/trial/TrialWeekly';
 import TrialMonthly from '@/components/trial/TrialMonthly';
 import CoachClientPickerModal from '@/components/trial/CoachClientPickerModal';
 import JournalDetailLevelSwitch from '@/components/trial/JournalDetailLevelSwitch';
+import { useCoachBoardUnread } from '@/hooks/useBoardUnread';
 import {
   ensureKizukiTrialEndsAtIfNeeded,
   ensureUserEnrollmentPrimaryCourse,
@@ -106,6 +107,7 @@ function Trial4wContent() {
     (userProfile.role === 'coach' || userProfile.role === 'senior_coach');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [coachClientLabel, setCoachClientLabel] = useState<string | null>(null);
+  const boardUnread = useCoachBoardUnread(user?.uid, isCoachView);
 
   useEffect(() => {
     if (!coachClientUid) {
@@ -282,14 +284,19 @@ function Trial4wContent() {
                 <button
                   type="button"
                   className={`trial-menu-share-btn${coachClientUid ? ' trial-menu-share-btn--active' : ''}`}
-                  onClick={() => setPickerOpen(true)}
+                  onClick={() => {
+                    void boardUnread.refresh();
+                    setPickerOpen(true);
+                  }}
                   title={coachShareButtonTitle}
                   aria-label={
                     coachClientUid && coachClientLabel
-                      ? `共有（表示中: ${coachClientLabel}）`
+                      ? `共有（表示中: ${coachClientLabel}${boardUnread.anyUnread ? '・未読あり' : ''}）`
                       : coachClientUid
                         ? '共有（クライアント表示中）'
-                        : '共有（クライアント選択）'
+                        : boardUnread.anyUnread
+                          ? '共有（未読メッセージあり）'
+                          : '共有（クライアント選択）'
                   }
                 >
                   <span className="material-symbols-outlined" aria-hidden="true">
@@ -303,6 +310,11 @@ function Trial4wContent() {
                   ) : (
                     <span className="trial-menu-share-btn-label">共有</span>
                   )}
+                  {boardUnread.anyUnread ? (
+                    <span className="board-unread-new board-unread-new--chip" aria-hidden>
+                      New
+                    </span>
+                  ) : null}
                 </button>
               </>
             )}
