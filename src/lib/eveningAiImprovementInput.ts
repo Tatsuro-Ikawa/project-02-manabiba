@@ -102,7 +102,8 @@ function buildPromptHeader(hasActionReference: boolean): string[] {
 }
 
 /** g あり: 質問への回答のみ（a〜f は参照用） */
-function buildOutputSectionForQuestion(): string[] {
+function buildOutputSectionForQuestion(clientLabel: string): string[] {
+  const heading = questionAnswerHeading(clientLabel);
   return [
     'その入力に対して以下を出力ください。',
     '',
@@ -112,7 +113,8 @@ function buildOutputSectionForQuestion(): string[] {
     '「本日の学びへの応答・前半」「本日の学びへの応答・後半」は出力しません。',
     '',
     '出力は 1 ブロックのみ。「1行目見出し＋改行＋本文」。',
-    '見出し: 【クライアントからの質問への回答】',
+    `見出し: ${heading}`,
+    '見出しは上記のとおり「○○さんからの質問への回答」の形にしてください（「クライアント」は使わない）。',
     `合計 ${IMPROVEMENT_SUGGESTION_TARGET_MIN}〜${IMPROVEMENT_SUGGESTION_TARGET_MAX} 文字（Unicode）。`,
     '',
     '- 質問はクライアントが a〜f に書いた記述の後の質問であるため、その流れに沿った内容の回答をする',
@@ -165,10 +167,40 @@ function buildPromptConstraints(hasUserQuestion: boolean): string[] {
   ];
 }
 
+/** 見出し用の表示名（空・異常時は「あなた」。名前があるときは「○○さん」） */
+export function normalizeClientDisplayNameForHeading(name: string | null | undefined): string {
+  const t = (name ?? '').trim().replace(/\s+/g, ' ');
+  if (!t) return 'あなた';
+  // 見出しが長くなりすぎないよう制限（「さん」分を考慮）
+  const chars = [...t];
+  let base = chars.length > 22 ? `${chars.slice(0, 22).join('')}…` : t;
+  if (/さん$/.test(base)) return base;
+  return `${base}さん`;
+}
+
+export function questionAnswerHeading(displayName: string | null | undefined): string {
+  const label = normalizeClientDisplayNameForHeading(displayName);
+  return `【${label}からの質問への回答】`;
+}
+
+/** 生成結果・保存済み本文の見出しを表示名に揃える */
+export function applyClientDisplayNameToAiSuggestion(
+  text: string,
+  displayName: string | null | undefined
+): string {
+  if (!text) return text;
+  const heading = questionAnswerHeading(displayName);
+  return text.replace(/【[^】\n]*からの質問への回答】/g, heading);
+}
+
 /** 短文時の拡張指示（`improvement` route 用） */
-export function buildImprovementExpandInstruction(hasUserQuestion: boolean): string {
+export function buildImprovementExpandInstruction(
+  hasUserQuestion: boolean,
+  clientDisplayName?: string | null
+): string {
   if (hasUserQuestion) {
-    return `この下書きを土台に、意味を変えず、質問への回答として情報を補って${IMPROVEMENT_SUGGESTION_TARGET_MIN}〜${IMPROVEMENT_SUGGESTION_TARGET_MAX}文字、見出し【クライアントからの質問への回答】＋本文の形で拡張してください。`;
+    const heading = questionAnswerHeading(clientDisplayName);
+    return `この下書きを土台に、意味を変えず、質問への回答として情報を補って${IMPROVEMENT_SUGGESTION_TARGET_MIN}〜${IMPROVEMENT_SUGGESTION_TARGET_MAX}文字、見出し${heading}＋本文の形で拡張してください。`;
   }
   return `この下書きを土台に、意味を変えず、情報を補って${IMPROVEMENT_SUGGESTION_TARGET_MIN}〜${IMPROVEMENT_SUGGESTION_TARGET_MAX}文字、見出し+文章の形で拡張してください。`;
 }
@@ -177,15 +209,17 @@ export function buildImprovementExpandInstruction(hasUserQuestion: boolean): str
 export function buildImprovementApiPrompt(
   reflectionText: string,
   userQuestion: string | null,
-  actionReferenceText?: string | null
+  actionReferenceText?: string | null,
+  clientDisplayName?: string | null
 ): string {
   const trimmedQuestion = userQuestion?.trim() ?? '';
   const hasUserQuestion = trimmedQuestion.length > 0;
   const questionLine = hasUserQuestion ? trimmedQuestion : '（なし）';
   const trimmedActionRef = actionReferenceText?.trim() ?? '';
   const hasActionReference = trimmedActionRef.length > 0;
+  const clientLabel = normalizeClientDisplayNameForHeading(clientDisplayName);
   const outputSection = hasUserQuestion
-    ? buildOutputSectionForQuestion()
+    ? buildOutputSectionForQuestion(clientLabel)
     : buildOutputSectionForReflectionOnly();
 
   const clientInput: string[] = [

@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleAuth } from 'google-auth-library';
 import { guardAiEntitlement } from '@/lib/server/aiEntitlementGate';
 import {
+  applyClientDisplayNameToAiSuggestion,
   buildImprovementApiPrompt,
   buildImprovementExpandInstruction,
   MIN_REFLECTION_TEXT_CHARS,
 } from '@/lib/eveningAiImprovementInput';
+import { getAdminUserProfile } from '@/lib/server/adminUserProfile';
+import { requireBearerUid } from '@/lib/server/bearerAuth';
 
 type ImprovementRequestBody = {
   reflectionText?: unknown;
@@ -174,10 +177,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let clientDisplayName: string | null = null;
+  try {
+    const auth = await requireBearerUid(request);
+    if (auth.ok) {
+      const profile = await getAdminUserProfile(auth.uid);
+      clientDisplayName = profile?.displayName?.trim() || null;
+    }
+  } catch (e) {
+    console.warn('ai/improvement: displayName lookup failed', e);
+  }
+
   const prompt = buildImprovementApiPrompt(
     reflectionText,
     userQuestionOrNull,
-    actionReferenceOrNull
+    actionReferenceOrNull,
+    clientDisplayName
   );
 
   if (ENABLE_AI_PROMPT_LOG) {
@@ -317,7 +332,7 @@ export async function POST(request: NextRequest) {
         '前回の下書き（短すぎたため拡張してください）:',
         generated.suggestion,
         '',
-        buildImprovementExpandInstruction(hasUserQuestion),
+        buildImprovementExpandInstruction(hasUserQuestion, clientDisplayName),
       ].join('\n');
       const expanded = await generateSuggestion(expandPrompt);
       if (typeof expanded.usageTotalTokenCount === 'number') {
@@ -328,10 +343,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const charCount = generated.charCount;
+    const suggestionBody = applyClientDisplayNameToAiSuggestion(
+      generated.suggestion,
+      clientDisplayName
+    );
+    const charCount = countChars(suggestionBody);
     const tokenNote =
       usageSum > 0 ? `\n（使用トークン合計: ${usageSum}）` : '';
-    const suggestionOut = `${generated.suggestion}${tokenNote}`;
+    const suggestionOut = `${suggestionBody}${tokenNote}`;
     const charCountOut = countChars(suggestionOut);
 
     if (ENABLE_AI_PROMPT_LOG) {

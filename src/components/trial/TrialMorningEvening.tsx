@@ -16,6 +16,7 @@ import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import {
   AI_SUGGESTION_DAILY_LIMIT,
+  applyClientDisplayNameToAiSuggestion,
   buildEveningActionReferenceText,
   buildEveningReflectionText,
   countUnicodeChars,
@@ -130,6 +131,7 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
     isCoachView,
     contentUid,
     canEdit,
+    journalProfile,
     coachCommentsEnabled,
     coachContextError,
     coachContextReady,
@@ -285,6 +287,13 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
     () => (data ? normalizeEveningUserQuestion(data.eveningAiQuestionText) : null),
     [data]
   );
+  const aiSuggestionDisplay = useMemo(
+    () =>
+      aiSuggestion
+        ? applyClientDisplayNameToAiSuggestion(aiSuggestion, journalProfile?.displayName)
+        : null,
+    [aiSuggestion, journalProfile?.displayName]
+  );
 
   const aiRunCount = Math.max(0, data?.eveningAiSuggestionRunCount ?? 0);
   const isAiRunLimitReached = aiRunCount >= AI_SUGGESTION_DAILY_LIMIT;
@@ -357,10 +366,13 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
   const handleSaveAiSuggestion = async () => {
     if (!canEdit) return;
     if (!aiSuggestion || !data) return;
+    const toSave =
+      applyClientDisplayNameToAiSuggestion(aiSuggestion, journalProfile?.displayName) || aiSuggestion;
     try {
       setAiSaving(true);
       setAiError(null);
-      await savePatch({ eveningAiSuggestionText: aiSuggestion });
+      await savePatch({ eveningAiSuggestionText: toSave });
+      setAiSuggestion(toSave);
       setMsg('Aiコーチからのコメントを保存しました。');
     } catch (e) {
       setAiError(
@@ -782,10 +794,10 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
                 </div>
                 <div className="form-row">
                   <span className="trial-l3-label">Aiコーチからのコメント</span>
-                  {aiSuggestion ? (
+                  {aiSuggestionDisplay ? (
                     <>
                       <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded p-2 whitespace-pre-wrap">
-                        {aiSuggestion}
+                        {aiSuggestionDisplay}
                       </p>
                       <div className="flex items-center gap-2">
                         <button

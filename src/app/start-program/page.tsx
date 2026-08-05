@@ -15,7 +15,7 @@ import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 import { ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
 
 /**
- * 7日間スタートプログラム（現状はダミー本体）。
+ * 7日間スタートプログラム（PDF版提供）。
  * 未ログイン・未同意のときはログイン／同意フローへリダイレクトする。
  */
 function StartProgramContent() {
@@ -109,12 +109,32 @@ function StartProgramContent() {
                 気づきノート（有料機能）はご利用いただけません。{DATA_RETENTION_MSG}
               </p>
             ) : null}
-            <h1 className="legal-page-title">7日間スタートプログラム（ダミー）</h1>
+            <h1 className="legal-page-title">7日間スタートプログラム（pdf版提供）</h1>
             <p className="legal-page-lead">
-              セルフコーチングによる「自分を変える7日間プログラム」の画面です。会員登録時の利用規約・プライバシー同意（1回）のうえで表示しています。
+              セルフコーチングによる「自分を変える7日間プログラム」のpdf版を準備しました。<br/>ドキュメントをクリックして表示後、ダウンロードしてお使いください。
             </p>
-            <p className="legal-page-placeholder">
-              左メニューの <strong>スタート</strong> からいつでもこの画面に戻れます。コンテンツ・日次タスク・進捗表示などは今後実装予定です。
+            <p className="legal-page-lead">
+              会員登録時の利用規約・プライバシーポリシーに従って、ご利用ください。
+              <br />
+              なお、ご自身による再配布はご遠慮願います。
+            </p>
+            <p className="start-program-pdf-actions">
+              <a
+                href="/contents/Pub-260805_v1.0.pdf"
+                className="start-program-pdf-cover-link"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="7日間スタートプログラム PDFを別タブで開く"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/img/Pub-260805_v1.0.png"
+                  alt="7日間スタートプログラム PDF版の表紙"
+                  className="start-program-pdf-cover"
+                  width={720}
+                  height={1040}
+                />
+              </a>
             </p>
             <p className="legal-page-back">
               <Link href="/">ホームへ戻る</Link>
