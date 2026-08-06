@@ -2761,10 +2761,10 @@
   color: var(--color-success);
 }
 .trial-monthly-container .month-cal-cell .cell-symbols .symbol-delta {
-  color: var(--color-warning);
+  color: var(--color-success);
 }
 .trial-monthly-container .month-cal-cell .cell-symbols .symbol-x {
-  color: var(--color-error);
+  color: var(--color-warning);
 }
 .trial-monthly-container .month-cal-cell .cell-symbols .symbol-none {
   color: var(--color-text-disabled);
@@ -2870,8 +2870,8 @@
 }
 
 .trial-weekly-container .weekly-symbol.symbol-o { color: #0f766e; }
-.trial-weekly-container .weekly-symbol.symbol-delta { color: #b45309; }
-.trial-weekly-container .weekly-symbol.symbol-x { color: #b91c1c; }
+.trial-weekly-container .weekly-symbol.symbol-delta { color: #0f766e; }
+.trial-weekly-container .weekly-symbol.symbol-x { color: #b45309; }
 .trial-weekly-container .weekly-symbol.symbol-none { color: var(--color-text-secondary); }
 
 .trial-weekly-container .weekly-symbol:disabled {
