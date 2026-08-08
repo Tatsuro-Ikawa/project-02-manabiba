@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { isYouTubeUrl } from '@/lib/youtube';
-import { updateHomeLatestVideos, type HomeLatestVideoEntry } from '@/lib/firestore';
+import {
+  updateHomeLatestVideos,
+  updateUserHomeLatestVideos,
+  type HomeLatestVideoEntry,
+} from '@/lib/firestore';
+import { HOME_LIST_MAX_ITEMS, HOME_SECTION_TITLES, type HomeListSaveTarget } from '@/lib/homeContentConstants';
 
 export interface LatestVideoItem {
   id: string;
@@ -23,6 +28,10 @@ interface LatestVideosEditModalProps {
   initialItems?: LatestVideoItem[];
   /** 保存成功時に親で再取得するためのコールバック */
   onSaved?: () => void;
+  /** site=共通（管理者）、personal=個人リスト */
+  saveTarget?: HomeListSaveTarget;
+  /** personal 時に必須 */
+  uid?: string | null;
 }
 
 export default function LatestVideosEditModal({
@@ -30,6 +39,8 @@ export default function LatestVideosEditModal({
   onClose,
   initialItems = [],
   onSaved,
+  saveTarget = 'site',
+  uid = null,
 }: LatestVideosEditModalProps) {
   const [fetchingId, setFetchingId] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -46,18 +57,25 @@ export default function LatestVideosEditModal({
   );
 
   const handleAddRow = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        title: '',
-        url: '',
-        thumbnailUrl: '',
-        order: prev.length + 1,
-        author_name: '',
-        author_url: '',
-      },
-    ]);
+    setItems((prev) => {
+      if (prev.length >= HOME_LIST_MAX_ITEMS) {
+        setSaveError(`登録できるのは最大 ${HOME_LIST_MAX_ITEMS} 件までです。`);
+        return prev;
+      }
+      setSaveError(null);
+      return [
+        ...prev,
+        {
+          id: String(Date.now()),
+          title: '',
+          url: '',
+          thumbnailUrl: '',
+          order: prev.length + 1,
+          author_name: '',
+          author_url: '',
+        },
+      ];
+    });
   };
 
   const handleRemove = (id: string) => {
@@ -130,6 +148,14 @@ export default function LatestVideosEditModal({
 
   const handleSave = async () => {
     setSaveError(null);
+    if (items.length > HOME_LIST_MAX_ITEMS) {
+      setSaveError(`登録できるのは最大 ${HOME_LIST_MAX_ITEMS} 件までです。`);
+      return;
+    }
+    if (saveTarget === 'personal' && !uid) {
+      setSaveError('ログイン状態を確認してから再度お試しください。');
+      return;
+    }
     setSaving(true);
     try {
       const payload: HomeLatestVideoEntry[] = items.map(({ id: _id, ...rest }) => ({
@@ -140,7 +166,11 @@ export default function LatestVideosEditModal({
         author_name: rest.author_name || undefined,
         author_url: rest.author_url || undefined,
       }));
-      await updateHomeLatestVideos(payload);
+      if (saveTarget === 'personal' && uid) {
+        await updateUserHomeLatestVideos(uid, payload);
+      } else {
+        await updateHomeLatestVideos(payload);
+      }
       onSaved?.();
       onClose();
     } catch (e) {
@@ -166,7 +196,7 @@ export default function LatestVideosEditModal({
       <div className="home-edit-modal-content">
         <div className="home-edit-modal-header">
           <h2 id="latest-videos-modal-title" className="home-edit-modal-title">
-            最新動画の編集
+            {HOME_SECTION_TITLES.videos}の編集
           </h2>
           <button
             type="button"
@@ -179,7 +209,8 @@ export default function LatestVideosEditModal({
         </div>
         <div className="home-edit-modal-body">
           <p className="text-sm text-gray-600 mb-4">
-            YouTube の URL を貼り付け、「URLから情報を取得」でタイトル・サムネイル・作成者を自動入力できます。
+            YouTube の URL を貼り付け、「URLから情報を取得」でタイトル・サムネイル・作成者を自動入力できます。最大{' '}
+            {HOME_LIST_MAX_ITEMS} 件まで登録できます。
           </p>
           {saveError && (
             <p className="text-sm text-red-600 mb-2" role="alert">
@@ -271,9 +302,11 @@ export default function LatestVideosEditModal({
           <button
             type="button"
             onClick={handleAddRow}
-            className="mt-2 text-sm text-blue-600 hover:underline"
+            className="mt-2 text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+            disabled={items.length >= HOME_LIST_MAX_ITEMS}
           >
             + 行を追加
+            {items.length >= HOME_LIST_MAX_ITEMS ? `（上限 ${HOME_LIST_MAX_ITEMS} 件）` : ''}
           </button>
         </div>
         <div className="home-edit-modal-footer">

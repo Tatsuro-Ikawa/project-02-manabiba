@@ -2154,8 +2154,15 @@ export const updateLastLogin = async (uid: string): Promise<void> => {
 // サイト共通コンテンツ（ホーム画面用）
 const HOME_CONTENT_COLLECTION = 'site_content';
 const HOME_CONTENT_DOC_ID = 'home';
+const USER_HOME_CONTENT_SUB = 'home_content';
+const USER_HOME_CONTENT_DOC = 'lists';
+const HOME_LIST_MAX = 25;
 
-/** ホーム画面用コンテンツを取得（未認証でも読める） */
+function clampHomeList<T>(items: T[]): T[] {
+  return items.slice(0, HOME_LIST_MAX);
+}
+
+/** ホーム画面用コンテンツを取得（未認証でも読める・ゲスト／フリー向け共通） */
 export const getHomeContent = async (): Promise<HomeContent | null> => {
   try {
     const docRef = doc(db, HOME_CONTENT_COLLECTION, HOME_CONTENT_DOC_ID);
@@ -2175,6 +2182,27 @@ export const getHomeContent = async (): Promise<HomeContent | null> => {
   }
 };
 
+/** ユーザー個人のホーム一覧（未作成時は空） */
+export const getUserHomeContent = async (uid: string): Promise<HomeContent> => {
+  try {
+    const docRef = doc(db, 'users', uid, USER_HOME_CONTENT_SUB, USER_HOME_CONTENT_DOC);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      return { latestVideos: [], latestArticles: [], referenceLinks: [] };
+    }
+    const data = snap.data();
+    return {
+      latestVideos: Array.isArray(data.latestVideos) ? data.latestVideos : [],
+      latestArticles: Array.isArray(data.latestArticles) ? data.latestArticles : [],
+      referenceLinks: Array.isArray(data.referenceLinks) ? data.referenceLinks : [],
+      updatedAt: data.updatedAt,
+    };
+  } catch (error) {
+    console.error('getUserHomeContent error:', error);
+    throw error;
+  }
+};
+
 /** 最新動画一覧を更新（管理者のみ。セキュリティルールで admin を要求） */
 export const updateHomeLatestVideos = async (
   latestVideos: HomeLatestVideoEntry[]
@@ -2182,7 +2210,7 @@ export const updateHomeLatestVideos = async (
   try {
     const docRef = doc(db, HOME_CONTENT_COLLECTION, HOME_CONTENT_DOC_ID);
     const payload = {
-      latestVideos,
+      latestVideos: clampHomeList(latestVideos),
       updatedAt: serverTimestamp(),
     };
     await setDoc(docRef, payload, { merge: true });
@@ -2199,7 +2227,7 @@ export const updateHomeLatestArticles = async (
   try {
     const docRef = doc(db, HOME_CONTENT_COLLECTION, HOME_CONTENT_DOC_ID);
     const payload = {
-      latestArticles,
+      latestArticles: clampHomeList(latestArticles),
       updatedAt: serverTimestamp(),
     };
     await setDoc(docRef, payload, { merge: true });
@@ -2216,12 +2244,66 @@ export const updateHomeReferenceLinks = async (
   try {
     const docRef = doc(db, HOME_CONTENT_COLLECTION, HOME_CONTENT_DOC_ID);
     const payload = {
-      referenceLinks,
+      referenceLinks: clampHomeList(referenceLinks),
       updatedAt: serverTimestamp(),
     };
     await setDoc(docRef, payload, { merge: true });
   } catch (error) {
     console.error('updateHomeReferenceLinks error:', error);
+    throw error;
+  }
+};
+
+/** 個人ホーム: お気に入り動画 */
+export const updateUserHomeLatestVideos = async (
+  uid: string,
+  latestVideos: HomeLatestVideoEntry[]
+): Promise<void> => {
+  try {
+    const docRef = doc(db, 'users', uid, USER_HOME_CONTENT_SUB, USER_HOME_CONTENT_DOC);
+    await setDoc(
+      docRef,
+      { latestVideos: clampHomeList(latestVideos), updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('updateUserHomeLatestVideos error:', error);
+    throw error;
+  }
+};
+
+/** 個人ホーム: 参考にしたい記事 */
+export const updateUserHomeLatestArticles = async (
+  uid: string,
+  latestArticles: HomeLatestArticleEntry[]
+): Promise<void> => {
+  try {
+    const docRef = doc(db, 'users', uid, USER_HOME_CONTENT_SUB, USER_HOME_CONTENT_DOC);
+    await setDoc(
+      docRef,
+      { latestArticles: clampHomeList(latestArticles), updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('updateUserHomeLatestArticles error:', error);
+    throw error;
+  }
+};
+
+/** 個人ホーム: 使えるサイト */
+export const updateUserHomeReferenceLinks = async (
+  uid: string,
+  referenceLinks: HomeReferenceLinkEntry[]
+): Promise<void> => {
+  try {
+    const docRef = doc(db, 'users', uid, USER_HOME_CONTENT_SUB, USER_HOME_CONTENT_DOC);
+    await setDoc(
+      docRef,
+      { referenceLinks: clampHomeList(referenceLinks), updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('updateUserHomeReferenceLinks error:', error);
     throw error;
   }
 };

@@ -39,6 +39,8 @@
 │       │   └── {monthKey}             # YYYY-MM（JST・暦月）
 │       ├── affirmation_drafts/        # アファメーション穴埋め下書き（暗号化スロット）
 │       │   └── {profileId}
+│       ├── home_content/              # ホーム個人リスト（Standard 以上）
+│       │   └── lists                  # latestVideos / latestArticles / referenceLinks
 │       ├── affirmation_profiles/      # ユーザー定義・改変プロファイル（将来）
 │       │   └── {profileId}
 │       ├── affirmations/              # アファメーション（親＝メタ、案 B）
@@ -74,11 +76,11 @@
 ├── affirmation_profiles/              # システム定義アファメーションプロファイル（管理者が編集）
 │   └── {profileId}                    # 穴埋めテンプレート（Markdown [[slotId:n]] 等）。read: 認証ユーザ想定、write: admin
 │
-└── site_content/                      # サイト共通コンテンツ（ホーム用。管理者が編集）
-    └── home                           # ホーム画面用 1 ドキュメント（おすすめ動画・いちおしサイト・注目記事・広告等）
+└── site_content/                      # サイト共通コンテンツ（ゲスト／フリー向けホーム。管理者が編集）
+    └── home                           # ホーム画面用 1 ドキュメント（お気に入り動画・使えるサイト・参考記事・広告等）
 ```
 
-- **site_content / home**: ホーム画面の「最新動画」「参考リンク」「最新記事」「広告」など、管理者が編集する共通コンテンツを 1 ドキュメントで持つ想定。読み取りは未認証含む全員可、書き込みは管理者（admin）のみ。フィールド例は下記「2.x site_content / home」を参照。
+- **site_content / home**: ゲスト／フリー向けの共通リスト。読み取りは未認証含む全員可、書き込みは管理者（admin）のみ。**Standard 以上（お試し含む）は個人リスト**（`users/{uid}/home_content/lists`）を使い、共通は表示しない。フィールド例は下記「2.9」を参照。
 
 ---
 
@@ -463,20 +465,31 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 
 ---
 
-### 2.9 site_content / home（ホーム画面用・登録案）
+### 2.9 site_content / home（ホーム画面・ゲスト／フリー向け共通）
 
-ホームの「最新動画」「参考リンク」「最新記事」「広告」などを保存するための **1 ドキュメント**。管理者のみ書き込み可、表示用の読み取りは未認証含む全員可を想定。
+ホームの動画・記事・サイト・広告などを保存するための **1 ドキュメント**。管理者のみ書き込み可、表示用の読み取りは未認証含む全員可。**表示対象はゲスト／フリー**（および管理者モードでの編集プレビュー）。Ai／プレミアムは §2.9.1 の個人ドキュメントを使う。
 
 | フィールド | 型（想定） | 説明 |
 |------------|------------|------|
-| **latestVideos** | 配列 | 最新動画一覧。各要素: `{ url, title, thumbnailUrl, order, author_name?, author_url? }`（`author_name` / `author_url` は oEmbed 取得値。ホームで「作成者」表示に利用） |
-| **referenceLinks** | 配列 | いちおしサイト一覧。各要素: `{ url, title?, siteName, thumbnailUrl, order }`（OGP 流用で URL から取得。表示は縦並び・タイトル・サイト名） |
-| **latestArticles** | 配列 | 最新記事一覧。各要素: `{ url, title, lead, source, thumbnailUrl, order }`（見出し・リード・出所・サムネイル） |
+| **latestVideos** | 配列 | お気に入り動画一覧（表示名）。各要素: `{ url, title, thumbnailUrl, order, author_name?, author_url? }` |
+| **referenceLinks** | 配列 | 使えるサイト一覧。各要素: `{ url, title?, siteName, thumbnailUrl, order }` |
+| **latestArticles** | 配列 | 参考にしたい記事一覧。各要素: `{ url, title, lead, source, thumbnailUrl, order }` |
 | **ad** | map または string | 広告エリアの内容（項目は後で定義） |
 | **updatedAt** | Timestamp | 最終更新日時（管理者が保存したとき） |
 
-- 上記は **登録が必要となる DB の案**。セキュリティルールに `site_content/home` 用の read（全員可）・write（isAdminUser()）を追加済み。
-- **実装**: `src/lib/firestore.ts` に `HomeContent`・`HomeLatestVideoEntry`・`HomeLatestArticleEntry`・`HomeReferenceLinkEntry` 型、`getHomeContent()`・`updateHomeLatestVideos()`・`updateHomeLatestArticles()`・`updateHomeReferenceLinks()` を実装。ホームは `getHomeContent()` で取得。おすすめ動画は `/api/youtube-oembed`、注目記事・いちおしサイトは `/api/article-ogp` を流用して編集モーダルから保存。広告（ad）の編集 UI は未実装。
+- セキュリティルール: `site_content/home` 用の read（全員可）・write（isAdminUser()）。
+- **実装**: `getHomeContent()`・`updateHomeLatestVideos()` 等。各配列は保存時に最大 **25** 件に切り詰め。
+
+### 2.9.1 users / {uid} / home_content / lists（ホーム個人リスト）
+
+| 項目 | 内容 |
+|------|------|
+| **パス** | `users/{uid}/home_content/lists` |
+| **対象** | Aiコース／プレミアム（`plan=standard|premium` の有効期間、または free のお試し中）。判定は UI 側 `shouldUseHomePersonalLists`、write ルールは `journalWriteAllowedForOwner` と同条件 |
+| **フィールド** | `latestVideos` / `latestArticles` / `referenceLinks` / `updatedAt`（§2.9 と同スキーマ。各最大 25 件） |
+| **権限** | read/write: 本人のみ（write は上記サブスク条件あり） |
+| **実装** | `getUserHomeContent` / `updateUserHomeLatestVideos` / `updateUserHomeLatestArticles` / `updateUserHomeReferenceLinks` |
+| **移行** | 既存の `site_content/home` はゲスト／フリー用に残す。個人への自動コピーはしない（初期空） |
 
 ---
 
@@ -714,6 +727,7 @@ Phase A（決済なし）で型・Firestore と揃える。**正本**は `users/
 | users/{userId}                      | 本人／担当コーチ（クライアント配下 read）／割当クライアント（コーチ表示名 read） | 本人のみ  |
 | users/{userId}/smart-goals/{goalId} | 本人のみ          | 本人のみ  |
 | users/{userId}/affirmation_drafts/{profileId} | 本人のみ | 本人のみ |
+| users/{userId}/home_content/{docId} | 本人のみ | 本人のみ（サブスク条件あり・journal と同型） |
 | users/{userId}/affirmations/{affirmationId}  | 本人のみ | 本人のみ |
 | users/{userId}/affirmations/{affirmationId}/published/{docId} | 本人のみ | 本人のみ |
 | users/{userId}/affirmations/{affirmationId}/history/{historyId} | **本人のみ**（履歴もコーチ不可。共有時ルールは A-11 以降） | 本人のみ |

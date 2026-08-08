@@ -32,35 +32,39 @@
 
 ## 1. ホーム画面 コース別区分一覧（2026-07 確定）
 
-ホームの各セクションは **サブスクコース列**で出し分ける。**編集（◎）は `role === 'admin'` かつ管理者モード**で別軸（コース列とは無関係）。**コーチ（ホスト）**のホームは本人の `subscription.plan` に従う（ロールモードはノート・コミュニケーションのみ影響。コーチは原則 `premium`）。
+ホームの各セクションは **サブスクコース列**で出し分ける。**管理者モード**は共通コンテンツ編集の別軸。**コーチ（ホスト）**のホームは本人の `subscription.plan` に従う（ロールモードはノート・コミュニケーションのみ影響。コーチは原則 `premium`）。
 
-- **凡例**: `-` = 非表示 / `〇` = 表示 / `◎` = 管理者のみ編集可
+- **凡例**: `-` = 非表示 / `〇` = 表示 / `◎` = 編集可
 - **ログイン前**は **ゲスト**列
 - **フリー**: `plan === 'free'` かつ 28日お試し外（7日間スタートのみ等）
 - **Aiコース**: `plan === 'standard'`、または `free` かつ `trialEndsAt` が未来（28日お試し中）
 - **プレミアム**: `plan === 'premium'`
-- 判定の正本: `src/lib/homeSectionVisibility.ts`（`resolveHomeCourseTier`）
+- 判定の正本: `src/lib/homeSectionVisibility.ts`（`resolveHomeCourseTier` / `shouldUseHomePersonalLists`）
 
 | 部位 ID | ゲスト | フリー | Aiコース | プレミアム | 項目表記 |
 | ------------------------------ | --- | --- | --- | --- | --- |
 | `home-banner` | 〇 | 〇 | 〇 | 〇 | バナー（CTA 文言は §1.1 でコース別） |
 | `home-section-whats-new-dojo` | 〇 | 〇 | 〇 | 〇 | 道場からの新着 |
 | `home-section-dashboard-management` | - | - | 〇 | 〇 | マネジメント情報（右欄: コーチ新着は**プレミアム列のみ**・§0） |
-| `home-section-latest-videos` | 〇 | 〇 | 〇 | 〇 | おすすめ動画 |
-| `home-section-latest-articles` | 〇 | 〇 | 〇 | 〇 | 注目記事 |
-| `home-section-reference-links` | 〇 | 〇 | 〇 | 〇 | いちおしサイト |
+| `home-section-latest-videos` | 〇※ | 〇※ | 〇個人◎ | 〇個人◎ | お気に入り動画 |
+| `home-section-latest-articles` | 〇※ | 〇※ | 〇個人◎ | 〇個人◎ | 参考にしたい記事 |
+| `home-section-reference-links` | 〇※ | 〇※ | 〇個人◎ | 〇個人◎ | 使えるサイト |
 | `home-section-sns` | - | - | - | - | SNS（運用方針決定まで非表示） |
 | `home-section-ad` | - | - | - | - | 広告（運用方針決定まで非表示） |
+
+- **※ゲスト／フリー**: `site_content/home` の**サイト共通リスト**を表示（編集不可）。既存の管理者登録データを継続利用。
+- **〇個人◎（Ai／プレミアム・お試し含む）**: `users/{uid}/home_content/lists` の**個人リストのみ**（初期は空。共通は出さない）。本人ホームでのみ編集可。各リスト最大 **25件**。見出し文言のユーザー変更は不可。
 
 **管理者（別軸）**
 
 | 部位 ID | 管理者（admin モード） |
 | ------------------------------ | --- |
-| `home-section-latest-videos` | ◎ |
-| `home-section-latest-articles` | ◎ |
-| `home-section-reference-links` | ◎ |
+| `home-section-latest-videos` | ◎（サイト共通 `site_content/home`） |
+| `home-section-latest-articles` | ◎（同上） |
+| `home-section-reference-links` | ◎（同上） |
 | `home-section-ad` | ◎（表示は運用方針までオフ） |
 
+- 管理者が **クライアントモード**かつ Standard 以上のときは、他ユーザーと同様に**個人リスト**を表示・編集する（共通は出さない）。
 - **フッター**: 利用規約・プライバシーポリシー・コピーライトを実装済み。`ProtoFooter`（全コース共通）。
 
 ### 旧ロール別表（廃止）
@@ -160,10 +164,11 @@ sequenceDiagram
 | `/start-program` | `consents` 済みなら7日間ダミー本体 |
 | `/trial_4w` | `consents` 済みなら気づきノート本体 |
 
-## 2. 管理者モード時の編集 UI
+## 2. 編集 UI（サイト共通／個人）
 
-- **編集できるのは管理者のみ**。管理者モードのときだけ、編集対象セクションに編集用 UI を出す。
-- **編集対象セクション**: 最新動画・最新記事・参考リンク・広告エリア（◎の4つ）。
+- **サイト共通**（`site_content/home`）: **管理者モード**時のみ編集。ゲスト／フリー向けの表示データ。
+- **個人リスト**（`users/{uid}/home_content/lists`）: **Aiコース／プレミアム**（お試し含む）が本人ホームで編集。共通リストは表示しない。
+- **編集対象セクション**: お気に入り動画・参考にしたい記事・使えるサイト（広告エリアは運用方針後）。各最大 25 件。
 
 ### 2.1 カード上の操作
 
@@ -176,9 +181,9 @@ sequenceDiagram
 
 - 各セクションの内容に応じた編集フォームをモーダル内に表示する。
 - **実装済み**:
-  - **おすすめ動画**（旧・最新動画）: `LatestVideosEditModal`。URL・タイトル・サムネイル・並び・作成者（author_name, author_url）。「URLから情報を取得」で `/api/youtube-oembed`（YouTube / Shorts 対応）。保存で `updateHomeLatestVideos`。表示は 4:3 カード（213×160）で横スクロール。
-  - **注目記事**（旧・最新記事）: `LatestArticlesEditModal`。URL・見出し・リード・出所・サムネイルURL・並び。「URLから情報を取得」で `/api/article-ogp`。保存で `updateHomeLatestArticles`。表示は動画と同様のカードスタイルで横スクロール。
-  - **いちおしサイト**（旧・参考リンク）: `ReferenceLinksEditModal`。URL・タイトル・サイト名・サムネイルURL・並び。「URLから情報を取得」で `/api/article-ogp` を流用。保存で `updateHomeReferenceLinks`。表示は縦並び・高さ 60px・左 16:9 サムネ・右にタイトル・サイト名。`content-right` 幅 328px。
+  - **お気に入り動画**: `LatestVideosEditModal`。`saveTarget` が `site` / `personal`。保存は `updateHomeLatestVideos` または `updateUserHomeLatestVideos`。YouTube oEmbed 対応。
+  - **参考にしたい記事**: `LatestArticlesEditModal`。OGP（`/api/article-ogp`）。`updateHomeLatestArticles` / `updateUserHomeLatestArticles`。
+  - **使えるサイト**: `ReferenceLinksEditModal`。OGP 流用。`updateHomeReferenceLinks` / `updateUserHomeReferenceLinks`。
 - **未実装**:
   - **広告エリア**: 項目・フォームは運用方針決定後に設計。
 

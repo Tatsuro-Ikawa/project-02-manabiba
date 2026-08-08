@@ -33,9 +33,14 @@ export function shouldShowHomeManagement(tier: HomeCourseTier): boolean {
   return tier === 'ai_course' || tier === 'premium';
 }
 
-/** バナー・道場新着・動画・記事・リンク（全コース＋ゲストで表示） */
+/** バナー・道場新着（全コース＋ゲストで表示） */
 export function shouldShowHomeSharedSections(_tier: HomeCourseTier): boolean {
   return true;
+}
+
+/** Standard 以上（お試し含む）は個人の動画・記事・サイトを使う */
+export function shouldUseHomePersonalLists(tier: HomeCourseTier): boolean {
+  return tier === 'ai_course' || tier === 'premium';
 }
 
 /** SNS（運用方針確定まで非表示） */

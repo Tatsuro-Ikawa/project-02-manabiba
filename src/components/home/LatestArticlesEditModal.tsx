@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { updateHomeLatestArticles, type HomeLatestArticleEntry } from '@/lib/firestore';
+import {
+  updateHomeLatestArticles,
+  updateUserHomeLatestArticles,
+  type HomeLatestArticleEntry,
+} from '@/lib/firestore';
+import { HOME_LIST_MAX_ITEMS, HOME_SECTION_TITLES, type HomeListSaveTarget } from '@/lib/homeContentConstants';
 
 export interface LatestArticleItem {
   id: string;
@@ -18,6 +23,8 @@ interface LatestArticlesEditModalProps {
   onClose: () => void;
   initialItems?: LatestArticleItem[];
   onSaved?: () => void;
+  saveTarget?: HomeListSaveTarget;
+  uid?: string | null;
 }
 
 export default function LatestArticlesEditModal({
@@ -25,6 +32,8 @@ export default function LatestArticlesEditModal({
   onClose,
   initialItems = [],
   onSaved,
+  saveTarget = 'site',
+  uid = null,
 }: LatestArticlesEditModalProps) {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchingId, setFetchingId] = useState<string | null>(null);
@@ -51,18 +60,25 @@ export default function LatestArticlesEditModal({
   }, [isOpen]);
 
   const handleAddRow = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        url: '',
-        title: '',
-        lead: '',
-        source: '',
-        thumbnailUrl: '',
-        order: prev.length + 1,
-      },
-    ]);
+    setItems((prev) => {
+      if (prev.length >= HOME_LIST_MAX_ITEMS) {
+        setSaveError(`登録できるのは最大 ${HOME_LIST_MAX_ITEMS} 件までです。`);
+        return prev;
+      }
+      setSaveError(null);
+      return [
+        ...prev,
+        {
+          id: String(Date.now()),
+          url: '',
+          title: '',
+          lead: '',
+          source: '',
+          thumbnailUrl: '',
+          order: prev.length + 1,
+        },
+      ];
+    });
   };
 
   const handleRemove = (id: string) => {
@@ -119,6 +135,14 @@ export default function LatestArticlesEditModal({
 
   const handleSave = async () => {
     setSaveError(null);
+    if (items.length > HOME_LIST_MAX_ITEMS) {
+      setSaveError(`登録できるのは最大 ${HOME_LIST_MAX_ITEMS} 件までです。`);
+      return;
+    }
+    if (saveTarget === 'personal' && !uid) {
+      setSaveError('ログイン状態を確認してから再度お試しください。');
+      return;
+    }
     setSaving(true);
     try {
       const payload: HomeLatestArticleEntry[] = items.map(({ id: _id, ...rest }) => ({
@@ -129,7 +153,11 @@ export default function LatestArticlesEditModal({
         thumbnailUrl: rest.thumbnailUrl,
         order: rest.order,
       }));
-      await updateHomeLatestArticles(payload);
+      if (saveTarget === 'personal' && uid) {
+        await updateUserHomeLatestArticles(uid, payload);
+      } else {
+        await updateHomeLatestArticles(payload);
+      }
       onSaved?.();
       onClose();
     } catch (e) {
@@ -155,7 +183,7 @@ export default function LatestArticlesEditModal({
       <div className="home-edit-modal-content">
         <div className="home-edit-modal-header">
           <h2 id="latest-articles-modal-title" className="home-edit-modal-title">
-            最新記事の編集
+            {HOME_SECTION_TITLES.articles}の編集
           </h2>
           <button
             type="button"
@@ -168,7 +196,8 @@ export default function LatestArticlesEditModal({
         </div>
         <div className="home-edit-modal-body">
           <p className="text-sm text-gray-600 mb-4">
-            記事のURLを入力し「URLから情報を取得」で見出し・リード・出所・サムネイルを自動入力できます（note・Yahoo!ニュースなど OGP 対応サイト）。
+            記事のURLを入力し「URLから情報を取得」で見出し・リード・出所・サムネイルを自動入力できます（note・Yahoo!ニュースなど OGP 対応サイト）。最大{' '}
+            {HOME_LIST_MAX_ITEMS} 件まで登録できます。
           </p>
           {saveError && (
             <p className="text-sm text-red-600 mb-2" role="alert">
@@ -280,9 +309,11 @@ export default function LatestArticlesEditModal({
           <button
             type="button"
             onClick={handleAddRow}
-            className="mt-2 text-sm text-blue-600 hover:underline"
+            className="mt-2 text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+            disabled={items.length >= HOME_LIST_MAX_ITEMS}
           >
             + 行を追加
+            {items.length >= HOME_LIST_MAX_ITEMS ? `（上限 ${HOME_LIST_MAX_ITEMS} 件）` : ''}
           </button>
         </div>
         <div className="home-edit-modal-footer">

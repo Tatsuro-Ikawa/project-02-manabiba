@@ -235,7 +235,8 @@ firebase deploy --only firestore:rules
 - `goals/{goalId}` - 目標
 - `ai_analyses/{analysisId}` - AI分析
 - `coaching_settings/{userId}` - コーチング設定
-- `site_content/home` - ホーム用共通コンテンツ（おすすめ動画・注目記事・いちおしサイト・広告等）。read: 全員、create/update: 管理者（isAdminUser()）のみ。ルールは `firestore.rules` を参照。
+- `site_content/home` - ホーム用共通コンテンツ（ゲスト／フリー向け。お気に入り動画・参考記事・使えるサイト・広告等）。read: 全員、create/update: 管理者（isAdminUser()）のみ。
+- `users/{userId}/home_content/{docId}` - Standard 以上の個人ホーム一覧。read/write: 本人（write は journal と同サブスク条件）。
 
 ## 🔍 トラブルシューティング
 

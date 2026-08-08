@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { updateHomeReferenceLinks, type HomeReferenceLinkEntry } from '@/lib/firestore';
+import {
+  updateHomeReferenceLinks,
+  updateUserHomeReferenceLinks,
+  type HomeReferenceLinkEntry,
+} from '@/lib/firestore';
+import { HOME_LIST_MAX_ITEMS, HOME_SECTION_TITLES, type HomeListSaveTarget } from '@/lib/homeContentConstants';
 
 export interface ReferenceLinkItem {
   id: string;
@@ -17,6 +22,8 @@ interface ReferenceLinksEditModalProps {
   onClose: () => void;
   initialItems?: ReferenceLinkItem[];
   onSaved?: () => void;
+  saveTarget?: HomeListSaveTarget;
+  uid?: string | null;
 }
 
 export default function ReferenceLinksEditModal({
@@ -24,6 +31,8 @@ export default function ReferenceLinksEditModal({
   onClose,
   initialItems = [],
   onSaved,
+  saveTarget = 'site',
+  uid = null,
 }: ReferenceLinksEditModalProps) {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchingId, setFetchingId] = useState<string | null>(null);
@@ -48,17 +57,24 @@ export default function ReferenceLinksEditModal({
   }, [isOpen]);
 
   const handleAddRow = () => {
-    setItems((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        url: '',
-        title: '',
-        siteName: '',
-        thumbnailUrl: '',
-        order: prev.length + 1,
-      },
-    ]);
+    setItems((prev) => {
+      if (prev.length >= HOME_LIST_MAX_ITEMS) {
+        setSaveError(`登録できるのは最大 ${HOME_LIST_MAX_ITEMS} 件までです。`);
+        return prev;
+      }
+      setSaveError(null);
+      return [
+        ...prev,
+        {
+          id: String(Date.now()),
+          url: '',
+          title: '',
+          siteName: '',
+          thumbnailUrl: '',
+          order: prev.length + 1,
+        },
+      ];
+    });
   };
 
   const handleRemove = (id: string) => {
@@ -114,18 +130,29 @@ export default function ReferenceLinksEditModal({
 
   const handleSave = async () => {
     setSaveError(null);
+    const filtered = items.filter((it) => (it.url || '').trim() !== '');
+    if (filtered.length > HOME_LIST_MAX_ITEMS) {
+      setSaveError(`登録できるのは最大 ${HOME_LIST_MAX_ITEMS} 件までです。`);
+      return;
+    }
+    if (saveTarget === 'personal' && !uid) {
+      setSaveError('ログイン状態を確認してから再度お試しください。');
+      return;
+    }
     setSaving(true);
     try {
-      const payload: HomeReferenceLinkEntry[] = items
-        .filter((it) => (it.url || '').trim() !== '')
-        .map(({ id: _id, ...rest }, idx) => ({
-          url: rest.url.trim(),
-          title: (rest.title || '').trim() || undefined,
-          siteName: (rest.siteName || '').trim(),
-          thumbnailUrl: (rest.thumbnailUrl || '').trim(),
-          order: idx + 1,
-        }));
-      await updateHomeReferenceLinks(payload);
+      const payload: HomeReferenceLinkEntry[] = filtered.map(({ id: _id, ...rest }, idx) => ({
+        url: rest.url.trim(),
+        title: (rest.title || '').trim() || undefined,
+        siteName: (rest.siteName || '').trim(),
+        thumbnailUrl: (rest.thumbnailUrl || '').trim(),
+        order: idx + 1,
+      }));
+      if (saveTarget === 'personal' && uid) {
+        await updateUserHomeReferenceLinks(uid, payload);
+      } else {
+        await updateHomeReferenceLinks(payload);
+      }
       onSaved?.();
       onClose();
     } catch (e) {
@@ -151,7 +178,7 @@ export default function ReferenceLinksEditModal({
       <div className="home-edit-modal-content">
         <div className="home-edit-modal-header">
           <h2 id="reference-links-modal-title" className="home-edit-modal-title">
-            いちおしサイトの編集
+            {HOME_SECTION_TITLES.sites}の編集
           </h2>
           <button
             type="button"
@@ -164,7 +191,8 @@ export default function ReferenceLinksEditModal({
         </div>
         <div className="home-edit-modal-body">
           <p className="text-sm text-gray-600 mb-4">
-            URL を入力し「URLから情報を取得」でタイトル・サイト名・サムネイルを自動入力できます（OGP 対応サイト）。
+            URL を入力し「URLから情報を取得」でタイトル・サイト名・サムネイルを自動入力できます（OGP 対応サイト）。最大{' '}
+            {HOME_LIST_MAX_ITEMS} 件まで登録できます。
           </p>
           {saveError && (
             <p className="text-sm text-red-600 mb-2" role="alert">
@@ -266,9 +294,11 @@ export default function ReferenceLinksEditModal({
           <button
             type="button"
             onClick={handleAddRow}
-            className="mt-2 text-sm text-blue-600 hover:underline"
+            className="mt-2 text-sm text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline"
+            disabled={items.length >= HOME_LIST_MAX_ITEMS}
           >
             + 行を追加
+            {items.length >= HOME_LIST_MAX_ITEMS ? `（上限 ${HOME_LIST_MAX_ITEMS} 件）` : ''}
           </button>
         </div>
         <div className="home-edit-modal-footer">

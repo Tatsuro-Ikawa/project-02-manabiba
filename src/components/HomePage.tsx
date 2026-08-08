@@ -17,16 +17,18 @@ import {
   shouldShowHomeAd,
   shouldShowHomeManagement,
   shouldShowHomeSns,
+  shouldUseHomePersonalLists,
 } from '@/lib/homeSectionVisibility';
-
-/** 再ログイン（ログアウト後）: login が post-login にラップするため next は最終行先 `/` のみ */
-const RETURNING_LOGIN_HREF = `/login?next=${encodeURIComponent('/')}`;
+import { HOME_SECTION_TITLES } from '@/lib/homeContentConstants';
 import { useViewMode } from '@/context/ViewModeContext';
-import { getHomeContent } from '@/lib/firestore';
+import { getHomeContent, getUserHomeContent } from '@/lib/firestore';
 import type { HomeLatestVideoEntry, HomeLatestArticleEntry, HomeReferenceLinkEntry } from '@/lib/firestore';
 import type { LatestVideoItem } from '@/components/home/LatestVideosEditModal';
 import type { LatestArticleItem } from '@/components/home/LatestArticlesEditModal';
 import type { ReferenceLinkItem } from '@/components/home/ReferenceLinksEditModal';
+
+/** 再ログイン（ログアウト後）: login が post-login にラップするため next は最終行先 `/` のみ */
+const RETURNING_LOGIN_HREF = `/login?next=${encodeURIComponent('/')}`;
 
 export default function HomePage() {
   const { user, loading, userProfile } = useAuth();
@@ -45,12 +47,17 @@ export default function HomePage() {
   const [latestArticles, setLatestArticles] = useState<HomeLatestArticleEntry[]>([]);
   const [referenceLinks, setReferenceLinks] = useState<HomeReferenceLinkEntry[]>([]);
   const [homeContentLoading, setHomeContentLoading] = useState(true);
-  const showEditUi = loggedIn && userProfile?.role === 'admin' && mode === 'admin';
 
+  const isAdminMode = loggedIn && userProfile?.role === 'admin' && mode === 'admin';
   const homeCourseTier = useMemo(
     () => resolveHomeCourseTier(loggedIn, userProfile),
     [loggedIn, userProfile]
   );
+  /** 管理者モード時はサイト共通を編集。それ以外で Standard 以上は個人リスト */
+  const usePersonalLists =
+    !isAdminMode && loggedIn && shouldUseHomePersonalLists(homeCourseTier);
+  const showEditUi = isAdminMode || usePersonalLists;
+  const listSaveTarget = usePersonalLists ? 'personal' : 'site';
   const showManagement = shouldShowHomeManagement(homeCourseTier);
   const showSns = shouldShowHomeSns();
   const showAd = shouldShowHomeAd();
@@ -58,23 +65,33 @@ export default function HomePage() {
   const loadHomeContent = useCallback(async () => {
     setHomeContentLoading(true);
     try {
-      const content = await getHomeContent();
-      setLatestVideos(content?.latestVideos ?? []);
-      setLatestArticles(content?.latestArticles ?? []);
-      setReferenceLinks(content?.referenceLinks ?? []);
+      if (usePersonalLists && user?.uid) {
+        const content = await getUserHomeContent(user.uid);
+        setLatestVideos(content.latestVideos ?? []);
+        setLatestArticles(content.latestArticles ?? []);
+        setReferenceLinks(content.referenceLinks ?? []);
+      } else {
+        const content = await getHomeContent();
+        setLatestVideos(content?.latestVideos ?? []);
+        setLatestArticles(content?.latestArticles ?? []);
+        setReferenceLinks(content?.referenceLinks ?? []);
+      }
     } catch (e) {
-      console.error('getHomeContent error:', e);
+      console.error('loadHomeContent error:', e);
       setLatestVideos([]);
       setLatestArticles([]);
       setReferenceLinks([]);
     } finally {
       setHomeContentLoading(false);
     }
-  }, []);
+  }, [usePersonalLists, user?.uid]);
 
   useEffect(() => {
+    if (loading) return;
+    // ログイン中はプロファイル確定まで待つ（tier が変わるため）
+    if (user && !userProfile) return;
     loadHomeContent();
-  }, [loadHomeContent]);
+  }, [loading, user, userProfile, loadHomeContent]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -83,6 +100,8 @@ export default function HomePage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  const emptyHintPersonal = 'まだ登録がありません。編集から追加できます。';
 
   return (
     <div style={{ fontFamily: 'var(--font-family-jp)' }}>
@@ -169,7 +188,7 @@ export default function HomePage() {
                         type="button"
                         className="home-edit-btn"
                         onClick={() => setLatestVideosModalOpen(true)}
-                        aria-label="おすすめ動画を編集"
+                        aria-label={`${HOME_SECTION_TITLES.videos}を編集`}
                       >
                         <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18 }}>
                           edit
@@ -178,13 +197,15 @@ export default function HomePage() {
                       </button>
                     </div>
                   )}
-                  <h2 className="section-title">おすすめ動画</h2>
+                  <h2 className="section-title">{HOME_SECTION_TITLES.videos}</h2>
                   <div className="video-carousel">
                     <div className="video-carousel-container">
                       {homeContentLoading ? (
                         <p className="text-sm text-gray-500">読み込み中...</p>
                       ) : latestVideos.length === 0 ? (
-                        <p className="text-sm text-gray-500">登録された動画はありません。</p>
+                        <p className="text-sm text-gray-500">
+                          {usePersonalLists ? emptyHintPersonal : '登録された動画はありません。'}
+                        </p>
                       ) : (
                         latestVideos
                           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -234,7 +255,7 @@ export default function HomePage() {
                         type="button"
                         className="home-edit-btn"
                         onClick={() => setLatestArticlesModalOpen(true)}
-                        aria-label="注目記事を編集"
+                        aria-label={`${HOME_SECTION_TITLES.articles}を編集`}
                       >
                         <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18 }}>
                           edit
@@ -243,13 +264,15 @@ export default function HomePage() {
                       </button>
                     </div>
                   )}
-                  <h2 className="section-title">注目記事</h2>
+                  <h2 className="section-title">{HOME_SECTION_TITLES.articles}</h2>
                   <div className="video-carousel">
                     <div className="video-carousel-container">
                       {homeContentLoading ? (
                         <p className="text-sm text-gray-500">読み込み中...</p>
                       ) : latestArticles.length === 0 ? (
-                        <p className="text-sm text-gray-500">登録された記事はありません。</p>
+                        <p className="text-sm text-gray-500">
+                          {usePersonalLists ? emptyHintPersonal : '登録された記事はありません。'}
+                        </p>
                       ) : (
                         latestArticles
                           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -308,7 +331,7 @@ export default function HomePage() {
                         type="button"
                         className="home-edit-btn"
                         onClick={() => setReferenceLinksModalOpen(true)}
-                        aria-label="いちおしサイトを編集"
+                        aria-label={`${HOME_SECTION_TITLES.sites}を編集`}
                       >
                         <span className="material-symbols-outlined" aria-hidden style={{ fontSize: 18 }}>
                           edit
@@ -317,12 +340,14 @@ export default function HomePage() {
                       </button>
                     </div>
                   )}
-                  <h2 className="section-title">いちおしサイト</h2>
+                  <h2 className="section-title">{HOME_SECTION_TITLES.sites}</h2>
                   <div className="reference-links-list">
                     {homeContentLoading ? (
                       <p className="text-sm text-gray-500">読み込み中...</p>
                     ) : referenceLinks.length === 0 ? (
-                      <p className="text-sm text-gray-500">登録されたサイトはありません。</p>
+                      <p className="text-sm text-gray-500">
+                        {usePersonalLists ? emptyHintPersonal : '登録されたサイトはありません。'}
+                      </p>
                     ) : (
                       referenceLinks
                         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
@@ -371,6 +396,8 @@ export default function HomePage() {
           id: `v-${i}`,
         })) as LatestVideoItem[]}
         onSaved={loadHomeContent}
+        saveTarget={listSaveTarget}
+        uid={user?.uid}
       />
       <LatestArticlesEditModal
         isOpen={latestArticlesModalOpen}
@@ -380,6 +407,8 @@ export default function HomePage() {
           id: `a-${i}`,
         })) as LatestArticleItem[]}
         onSaved={loadHomeContent}
+        saveTarget={listSaveTarget}
+        uid={user?.uid}
       />
       <ReferenceLinksEditModal
         isOpen={referenceLinksModalOpen}
@@ -390,6 +419,8 @@ export default function HomePage() {
           id: `r-${i}`,
         })) as ReferenceLinkItem[]}
         onSaved={loadHomeContent}
+        saveTarget={listSaveTarget}
+        uid={user?.uid}
       />
     </div>
   );

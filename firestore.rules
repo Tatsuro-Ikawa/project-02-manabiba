@@ -191,6 +191,13 @@ service cloud.firestore {
         allow read, create, update, delete: if isOwner(userId);
       }
 
+      // 個人ホーム一覧（Standard 以上・お試し含む。ゲスト／フリーは site_content/home）
+      match /home_content/{docId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && journalWriteAllowedForOwner(userId);
+        allow delete: if isOwner(userId) && journalWriteAllowedForOwner(userId);
+      }
+
       // マネジメント日誌（学び帳）— 日次: 朝・晩
       // パス: users/{uid}/journal_daily/{dateKey}
       // 本人: read/write。担当コーチ: active 割当 + プレミアム(coachComments) + 当該日 sharedWithCoach
@@ -429,13 +436,12 @@ service cloud.firestore {
       allow delete: if isOwner(userId);
     }
     
-    // サイト共通コンテンツ（ホーム画面: 最新動画・参考リンク等）
+    // サイト共通コンテンツ（ホーム画面: ゲスト／フリー向け 動画・記事・サイト）
     match /site_content/home {
       // 読み取り: 未認証含む全員
       allow read: if true;
-      // 作成・更新: 管理者（users/{uid}.role == 'admin'）のみ
-      // ※ users ドキュメントが存在し、role フィールドが 'admin' のユーザーのみ書き込み可
-      allow create, update: if isAuthenticated() && 
+      // 作成・更新: 管理者のみ
+      allow create, update: if isAuthenticated() &&
         isAdminUser();
       allow delete: if false;
     }
