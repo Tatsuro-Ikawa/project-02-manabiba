@@ -3888,9 +3888,20 @@
   padding: 0.35rem 0.25rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  background: #ffffff;
+  color: var(--color-text-primary, #1a1a1a);
   font-size: var(--font-size-body);
   font-weight: 600;
   box-sizing: border-box;
+}
+.morning-evening-container .satisfaction-input--compact .trial-satisfaction-score:disabled {
+  background: var(--color-background-secondary, #f5f5f5);
+  color: var(--color-text-secondary, #666);
+  cursor: not-allowed;
+}
+.morning-evening-container .satisfaction-input--compact .trial-satisfaction-score:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
 }
 .morning-evening-container .satisfaction-input--compact .trial-satisfaction-suffix {
   font-size: var(--font-size-body-small);

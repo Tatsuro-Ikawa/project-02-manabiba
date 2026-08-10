@@ -667,13 +667,14 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
                 />
               )}
             <div className="form-row">
-                <span className="trial-l3-label">行動の満足度を10点のうちどのくらいでしたか？</span>
-              <div className="satisfaction-input">
+              <span className="trial-l3-label">行動の満足度を10点のうちどのくらいでしたか？</span>
+              <div className="satisfaction-input satisfaction-input--compact">
                 <input
                   type="number"
                   min={0}
                   max={10}
                   step={1}
+                  className="trial-satisfaction-score"
                   value={data.eveningSatisfaction ?? ''}
                   disabled={inputDisabled}
                   onChange={(e) =>
@@ -686,7 +687,7 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
                   onBlur={() => void savePatch({ eveningSatisfaction: data.eveningSatisfaction })}
                   aria-label="満足度"
                 />
-                <span>点/10点</span>
+                <span className="trial-satisfaction-suffix">点/10点</span>
               </div>
             </div>
           </div>
