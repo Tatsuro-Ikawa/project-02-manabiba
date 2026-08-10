@@ -156,8 +156,6 @@ export default function CommunicationPageClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const chatRegionRef = useRef<HTMLDivElement>(null);
-  const bottomSentinelRef = useRef<HTMLDivElement>(null);
   const markReadInFlight = useRef(false);
   const lastMarkedPeerRef = useRef<string | null>(null);
   const coachAutoPickerOnce = useRef(false);
@@ -433,24 +431,10 @@ export default function CommunicationPageClient() {
     clientBoardUnread.refresh,
   ]);
 
-  // 最下部（最終メッセージ）が見えたら既読にする
+  // メッセージボード表示時に既読にする（新しい順のため最下部到達は使わない）
   useEffect(() => {
     if (currentTab !== 'board' || !canShowBoardMessages || !boardPeerUid) return;
-    lastMarkedPeerRef.current = null;
-    const sentinel = bottomSentinelRef.current;
-    const root = chatRegionRef.current;
-    if (!sentinel) return;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          void markBoardRead();
-        }
-      },
-      { root: root ?? null, threshold: 0.1 }
-    );
-    io.observe(sentinel);
-    return () => io.disconnect();
+    void markBoardRead();
   }, [currentTab, canShowBoardMessages, boardPeerUid, messages.length, markBoardRead]);
 
   const openEdit = (m: CommMsg) => {
@@ -796,7 +780,6 @@ export default function CommunicationPageClient() {
                 )}
 
                 <div
-                  ref={chatRegionRef}
                   className="communication-chat-region"
                   role="region"
                   aria-label="コーチとのメッセージ"
@@ -832,9 +815,6 @@ export default function CommunicationPageClient() {
                           </article>
                         </li>
                       ))}
-                      <li aria-hidden className="communication-msg-bottom-sentinel">
-                        <div ref={bottomSentinelRef} />
-                      </li>
                     </ul>
                   ) : (
                     <div className="communication-chat-placeholder" aria-hidden />

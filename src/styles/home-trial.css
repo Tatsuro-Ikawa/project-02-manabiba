@@ -957,13 +957,6 @@
   overflow-y: auto;
 }
 
-.communication-msg-bottom-sentinel {
-  list-style: none;
-  height: 1px;
-  margin: 0;
-  padding: 0;
-}
-
 .board-unread-new {
   display: inline-flex;
   align-items: center;

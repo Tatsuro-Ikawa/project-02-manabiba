@@ -69,8 +69,8 @@
 | lastMessageAt | Timestamp | 最新メッセージ時刻 |
 | lastMessageAuthorUid | string | 最新送信者 |
 | lastMessageId | string | 最新メッセージ ID |
-| coachLastReadAt | Timestamp（任意） | コーチ既読（最下部到達） |
-| clientLastReadAt | Timestamp（任意） | クライアント既読（最下部到達） |
+| coachLastReadAt | Timestamp（任意） | コーチ既読（ボード表示時） |
+| clientLastReadAt | Timestamp（任意） | クライアント既読（ボード表示時） |
 
 **メッセージフィールド**
 
@@ -109,7 +109,8 @@
 | 送信中は送る無効 | 実装済み |
 | 送信後は入力クリア＋フォーカス維持 | 実装済み（一覧は `onSnapshot` で反映） |
 | クライアント送信上限 | `COMMUNICATION_CLIENT_MESSAGE_SEND_LIMIT`（50件／スレッド内・クライアント発）。API と UI で同一判定 |
-| 既読（スレッド親＋メッセージ） | **実装済み**。チャット最下部が見えたら `POST /api/communication/board/read`。親の `*LastReadAt` と相手メッセージの `readAt` を更新。送信側に「既読」表示 |
+| 既読（スレッド親＋メッセージ） | **実装済み**。メッセージボード表示時に `POST /api/communication/board/read`。親の `*LastReadAt` と相手メッセージの `readAt` を更新。送信側に「既読」表示 |
+| メッセージ並び | **新しい順**（`createdAt` desc。最新が最上段） |
 | 未読 `New` | コーチ: クライアント選択行・共有ボタン付近・メッセージボードタブ。クライアント: サイドバー「コミュニケーション」・メッセージボードタブ。取得は表示時（ライブ監視なし）。ボード専用（アファメ要対応とは別） |
 | プレミアムのみ（クライアント） | `communication.message_board` |
 | プレミアム→スタンダード後 | **即時**に送信・編集不可。**履歴閲覧は可**（`dataRetentionEndsAt` まで） |
@@ -127,7 +128,7 @@
 |----------|------|------|
 | POST | `/api/communication/board/message` | 送信（Firestore 永続化・スレッド親の lastMessage* 更新） |
 | PATCH | `/api/communication/board/message/{id}` | 編集（本人のメッセージのみ） |
-| POST | `/api/communication/board/read` | 既読（最下部到達時。親 LastReadAt ＋相手メッセージ readAt） |
+| POST | `/api/communication/board/read` | 既読（ボード表示時。親 LastReadAt ＋相手メッセージ readAt） |
 
 **ガード（共通）**: Bearer → クライアントは `communication.message_board`、コーチは role 判定 → `coach_client_assignments/{coachUid}_{clientUid}` が `active`。
 
@@ -179,6 +180,7 @@
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-10 | メッセージ並びを新しい順（上）に変更。既読はボード表示時。 |
 | 2026-08-04 | 未読 New（案C）・既読 API（最下部到達）・共有ボタン／ピッカー／サイドバー表示。ボード専用。 |
 | 2026-05-12 | 初版: コミュニケーション UI・定数・プレミアム暫定フラグ・サブスク差し込みメモ。 |
 | 2026-05-12 | Zoom 別アプリ・運用再検討・スコープ外ドキュメントへの参照を追記。 |

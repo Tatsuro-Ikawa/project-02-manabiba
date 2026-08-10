@@ -45,7 +45,7 @@ export function subscribeCommunicationBoardMessages(
   const threadId = communicationBoardThreadId(coachUid, clientUid);
   const q = query(
     collection(db, COMMUNICATION_BOARD_THREADS, threadId, COMMUNICATION_BOARD_MESSAGES),
-    orderBy('createdAt', 'asc')
+    orderBy('createdAt', 'desc')
   );
 
   return onSnapshot(
