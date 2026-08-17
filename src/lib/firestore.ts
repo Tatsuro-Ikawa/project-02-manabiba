@@ -213,6 +213,8 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
           data.weeklyAiReportWriteMode === 'skip_if_nonempty'
             ? data.weeklyAiReportWriteMode
             : undefined,
+        journalCoachShareDefaultOn: data.journalCoachShareDefaultOn === true,
+        affirmationCoachShareDefaultOn: data.affirmationCoachShareDefaultOn === true,
         createdAt: data.createdAt?.toDate(),
         updatedAt: data.updatedAt?.toDate(),
         lastLoginAt: data.lastLoginAt?.toDate(),
@@ -286,6 +288,27 @@ export const updateWeeklyAiReportWriteMode = async (
     });
   } catch (error) {
     console.error('weeklyAiReportWriteMode 更新エラー:', error);
+    throw error;
+  }
+};
+
+/** コーチと共有チェックの初期値（日・週・月／アファメーションの2系統） */
+export const updateCoachShareDefaults = async (
+  uid: string,
+  params: {
+    journalCoachShareDefaultOn: boolean;
+    affirmationCoachShareDefaultOn: boolean;
+  }
+): Promise<void> => {
+  try {
+    const now = serverTimestamp() as Timestamp;
+    await updateDoc(doc(db, 'users', uid), {
+      journalCoachShareDefaultOn: params.journalCoachShareDefaultOn === true,
+      affirmationCoachShareDefaultOn: params.affirmationCoachShareDefaultOn === true,
+      updatedAt: now,
+    });
+  } catch (error) {
+    console.error('coach share defaults 更新エラー:', error);
     throw error;
   }
 };
@@ -664,7 +687,7 @@ function normalizeText(x: unknown): string | null {
   return t ? t : null;
 }
 
-function emptyTrial4wDailyPlain(dk: string): Trial4wDailyPlain {
+function emptyTrial4wDailyPlain(dk: string, sharedWithCoachDefault = false): Trial4wDailyPlain {
   return {
     dateKey: dk,
     tz: 'Asia/Tokyo',
@@ -697,19 +720,20 @@ function emptyTrial4wDailyPlain(dk: string): Trial4wDailyPlain {
     eveningTomorrowGoalText: null,
     eveningTomorrowActionContentText: null,
     eveningTomorrowImagingDone: null,
-    sharedWithCoach: false,
+    sharedWithCoach: sharedWithCoachDefault === true,
   };
 }
 
 export async function getTrial4wDailyPlain(
   uid: string,
-  dateKey?: string | null
+  dateKey?: string | null,
+  options?: { sharedWithCoachDefault?: boolean }
 ): Promise<Trial4wDailyPlain> {
   const dk = dateKey ?? toDateKeyTokyo(new Date());
   const ref = doc(db, 'users', uid, JOURNAL_DAILY_SUBCOLLECTION, dk);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    return emptyTrial4wDailyPlain(dk);
+    return emptyTrial4wDailyPlain(dk, options?.sharedWithCoachDefault === true);
   }
   const data = snap.data() as Trial4wDailyEncrypted;
   const decryptOrNull = async (enc: unknown): Promise<string | null> => {
@@ -1107,7 +1131,7 @@ export type JournalWeeklyPlain = {
   nextWeekImprovementText: string | null;
   /** Ai改善提案（任意。生成ロジックは別途） */
   aiImprovementSuggestionText: string | null;
-  /** 来週の行動：目標（一文で） */
+  /** 来週の行動：目標 */
   nextWeekGoalText: string | null;
   /** 来週の行動：行動内容（具体的に） */
   nextWeekActionContentText: string | null;
@@ -1171,7 +1195,10 @@ export type JournalWeeklyEncrypted = {
   updatedAt?: Timestamp | FieldValue;
 };
 
-export function journalWeeklyPlainEmpty(weekStartKey: string): JournalWeeklyPlain {
+export function journalWeeklyPlainEmpty(
+  weekStartKey: string,
+  sharedWithCoachDefault = false
+): JournalWeeklyPlain {
   return {
     weekStartKey,
     tz: 'Asia/Tokyo',
@@ -1192,19 +1219,20 @@ export function journalWeeklyPlainEmpty(weekStartKey: string): JournalWeeklyPlai
     weeklyAiReportRunDateKey: null,
     weeklyAiImprovementRunCount: null,
     weeklyAiImprovementRunDateKey: null,
-    sharedWithCoach: false,
+    sharedWithCoach: sharedWithCoachDefault === true,
   };
 }
 
 export async function getJournalWeeklyPlain(
   uid: string,
-  weekStartKey: string
+  weekStartKey: string,
+  options?: { sharedWithCoachDefault?: boolean }
 ): Promise<JournalWeeklyPlain> {
   if (!weekStartKey) return journalWeeklyPlainEmpty('');
   const ref = doc(db, 'users', uid, JOURNAL_WEEKLY_SUBCOLLECTION, weekStartKey);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    return journalWeeklyPlainEmpty(weekStartKey);
+    return journalWeeklyPlainEmpty(weekStartKey, options?.sharedWithCoachDefault === true);
   }
   const data = snap.data() as JournalWeeklyEncrypted;
   const decryptOrNull = async (enc: unknown): Promise<string | null> => {
@@ -1470,7 +1498,7 @@ const JOURNAL_MONTHLY_SUBCOLLECTION = 'journal_monthly';
 export type JournalMonthlyPlain = {
   monthKey: string;
   tz: 'Asia/Tokyo';
-  /** 今月の行動 — 行動目標（一文で何を実行するか） */
+  /** 今月の行動 — 行動目標 */
   thisMonthActionGoalText: string | null;
   /** 今月の行動 — 行動内容（どのように） */
   thisMonthActionContentText: string | null;
@@ -1490,7 +1518,7 @@ export type JournalMonthlyPlain = {
   nextMonthImprovementText: string | null;
   /** Ai改善提案（任意） */
   aiImprovementSuggestionText: string | null;
-  /** 来月の行動 — 目標（一文で） */
+  /** 来月の行動 — 目標 */
   nextMonthGoalText: string | null;
   /** 来月の行動 — 行動内容（具体的に） */
   nextMonthActionContentText: string | null;
@@ -1537,7 +1565,10 @@ export type JournalMonthlyEncrypted = {
   updatedAt?: Timestamp | FieldValue;
 };
 
-export function journalMonthlyPlainEmpty(monthKey: string): JournalMonthlyPlain {
+export function journalMonthlyPlainEmpty(
+  monthKey: string,
+  sharedWithCoachDefault = false
+): JournalMonthlyPlain {
   return {
     monthKey,
     tz: 'Asia/Tokyo',
@@ -1558,16 +1589,20 @@ export function journalMonthlyPlainEmpty(monthKey: string): JournalMonthlyPlain 
     monthlyAiReportRunDateKey: null,
     monthlyAiImprovementRunCount: null,
     monthlyAiImprovementRunDateKey: null,
-    sharedWithCoach: false,
+    sharedWithCoach: sharedWithCoachDefault === true,
   };
 }
 
-export async function getJournalMonthlyPlain(uid: string, monthKey: string): Promise<JournalMonthlyPlain> {
+export async function getJournalMonthlyPlain(
+  uid: string,
+  monthKey: string,
+  options?: { sharedWithCoachDefault?: boolean }
+): Promise<JournalMonthlyPlain> {
   if (!monthKey) return journalMonthlyPlainEmpty('');
   const ref = doc(db, 'users', uid, JOURNAL_MONTHLY_SUBCOLLECTION, monthKey);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    return journalMonthlyPlainEmpty(monthKey);
+    return journalMonthlyPlainEmpty(monthKey, options?.sharedWithCoachDefault === true);
   }
   const data = snap.data() as JournalMonthlyEncrypted;
   const decryptOrNull = async (enc: unknown): Promise<string | null> => {
@@ -1764,6 +1799,8 @@ export const publishAffirmation = async (
     profileId: string;
     /** 発行する本文（プレビューと同じ生成結果を渡す） */
     markdownBody: string;
+    /** 未指定時は false（製品デフォルト） */
+    sharedWithCoachDefault?: boolean;
   }
 ): Promise<{ affirmationId: string }> => {
   try {
@@ -1776,12 +1813,13 @@ export const publishAffirmation = async (
     const affirmationId = affirmationRef.id;
     const encryptedBody = await encrypt(params.markdownBody.trim(), uid);
     const now = serverTimestamp();
+    const shareOn = params.sharedWithCoachDefault === true;
 
     await setDoc(affirmationRef, {
       title: params.title,
       status: 'published',
       profileId: params.profileId,
-      sharedWithCoach: false,
+      sharedWithCoach: shareOn,
       createdAt: now,
       updatedAt: now,
     });
@@ -1790,7 +1828,7 @@ export const publishAffirmation = async (
       encryptedBody,
       publishedAt: now,
       updatedAt: now,
-      coachCanReadPublished: false,
+      coachCanReadPublished: shareOn,
     });
 
     return { affirmationId };

@@ -7,7 +7,7 @@ import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import { useAuth } from '@/hooks/useAuth';
-import { updateTrialAffirmationUiMetaFields, updateWeeklyAiReportWriteMode } from '@/lib/firestore';
+import { updateCoachShareDefaults, updateTrialAffirmationUiMetaFields, updateWeeklyAiReportWriteMode } from '@/lib/firestore';
 import {
   JOURNAL_DETAIL_LEVEL_LABELS,
   type JournalDetailLevel,
@@ -27,6 +27,8 @@ export default function TrialJournalSettingsPage() {
   const [aiWriteMode, setAiWriteMode] = useState<WeeklyAiReportWriteMode>('append');
   /** 未設定時は表示する（true） */
   const [showAffirmationEditPreview, setShowAffirmationEditPreview] = useState(true);
+  const [journalShareDefaultOn, setJournalShareDefaultOn] = useState(false);
+  const [affirmationShareDefaultOn, setAffirmationShareDefaultOn] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -41,6 +43,11 @@ export default function TrialJournalSettingsPage() {
   useEffect(() => {
     setShowAffirmationEditPreview(userProfile?.trialAffirmationMeta?.showEditPreview !== false);
   }, [userProfile?.trialAffirmationMeta?.showEditPreview]);
+
+  useEffect(() => {
+    setJournalShareDefaultOn(userProfile?.journalCoachShareDefaultOn === true);
+    setAffirmationShareDefaultOn(userProfile?.affirmationCoachShareDefaultOn === true);
+  }, [userProfile?.journalCoachShareDefaultOn, userProfile?.affirmationCoachShareDefaultOn]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -72,6 +79,10 @@ export default function TrialJournalSettingsPage() {
         await updateTrialAffirmationUiMetaFields(user.uid, {
           showEditPreview: showAffirmationEditPreview,
         });
+        await updateCoachShareDefaults(user.uid, {
+          journalCoachShareDefaultOn: journalShareDefaultOn,
+          affirmationCoachShareDefaultOn: affirmationShareDefaultOn,
+        });
         await refreshUserProfile();
       }
       setSavedMsg('設定を保存しました。');
@@ -82,8 +93,10 @@ export default function TrialJournalSettingsPage() {
       setTimeout(() => setSavedMsg(null), 2500);
     }
   }, [
+    affirmationShareDefaultOn,
     aiWriteMode,
     draft,
+    journalShareDefaultOn,
     refreshUserProfile,
     setDefaultLevel,
     showAffirmationEditPreview,
@@ -94,7 +107,7 @@ export default function TrialJournalSettingsPage() {
     <div className="action-sub-section" data-section="journal-settings-actions">
       <h3>設定の保存</h3>
       <p className="text-sm text-gray-600 mb-2">
-        このページのすべての項目（入力表示・アファメーション編集プレビュー・Aiレポート反映方式）をまとめて保存します。
+        このページのすべての項目（入力表示・アファメーション編集プレビュー・コーチ共有の初期値・Aiレポート反映方式）をまとめて保存します。
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <button
@@ -195,6 +208,67 @@ export default function TrialJournalSettingsPage() {
                       onChange={() => setShowAffirmationEditPreview(false)}
                     />{' '}
                     表示しない
+                  </label>
+                </div>
+              </div>
+
+              <div className="action-sub-section" data-section="coach-share-defaults">
+                <h3>「コーチと共有」の初期値</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  新しい日・週・月を開いたとき、またはアファメーションを新規発行したときのチェック初期値です。製品の既定は「なし」です。すでに保存済みのデータは変更されません。画面上でいつでも外せます。
+                </p>
+                <p className="text-sm font-medium text-gray-800 mb-1">日・週・月（気づきノート）</p>
+                <div
+                  className="radio-group mb-3"
+                  role="radiogroup"
+                  aria-label="日・週・月のコーチと共有の初期値"
+                >
+                  <label>
+                    <input
+                      type="radio"
+                      name="journal-coach-share-default"
+                      value="off"
+                      checked={!journalShareDefaultOn}
+                      onChange={() => setJournalShareDefaultOn(false)}
+                    />{' '}
+                    なし（既定）
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="journal-coach-share-default"
+                      value="on"
+                      checked={journalShareDefaultOn}
+                      onChange={() => setJournalShareDefaultOn(true)}
+                    />{' '}
+                    あり
+                  </label>
+                </div>
+                <p className="text-sm font-medium text-gray-800 mb-1">アファメーション（発行時）</p>
+                <div
+                  className="radio-group"
+                  role="radiogroup"
+                  aria-label="アファメーションのコーチと共有の初期値"
+                >
+                  <label>
+                    <input
+                      type="radio"
+                      name="affirmation-coach-share-default"
+                      value="off"
+                      checked={!affirmationShareDefaultOn}
+                      onChange={() => setAffirmationShareDefaultOn(false)}
+                    />{' '}
+                    なし（既定）
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="affirmation-coach-share-default"
+                      value="on"
+                      checked={affirmationShareDefaultOn}
+                      onChange={() => setAffirmationShareDefaultOn(true)}
+                    />{' '}
+                    あり
                   </label>
                 </div>
               </div>

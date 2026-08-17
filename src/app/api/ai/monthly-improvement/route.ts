@@ -5,7 +5,7 @@ import {
   countMonthlyImprovementInputChars,
   extractMonthlyImprovementSectionBody,
   MONTHLY_IMPROVEMENT_INPUT_SECTIONS,
-  MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
+  MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS,
 } from '@/lib/monthlyImprovementAi';
 
 type MonthlyImprovementRequestBody = {
@@ -123,19 +123,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'monthlyImprovementInputText を指定してください。' }, { status: 400 });
   }
 
-  const shortSections: string[] = [];
+  let totalChars = 0;
   for (const sec of MONTHLY_IMPROVEMENT_INPUT_SECTIONS) {
-    const min = sec.minChars ?? MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD;
-    if (min <= 0) continue;
     const sectionBody = extractMonthlyImprovementSectionBody(input, sec.promptLabel);
-    if (countMonthlyImprovementInputChars(sectionBody) < min) {
-      shortSections.push(sec.labelShort);
-    }
+    totalChars += countMonthlyImprovementInputChars(sectionBody);
   }
-  if (shortSections.length > 0) {
+  if (totalChars < MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS) {
     return NextResponse.json(
       {
-        error: `次の項目をそれぞれ${MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD}文字以上入力してください: ${shortSections.join('、')}`,
+        error: `参照入力の合計が${MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS}文字以上必要です（現在 ${totalChars} 文字）。空欄のままの項目があっても構いません（特記事項は任意）。`,
       },
       { status: 400 }
     );
@@ -156,7 +152,7 @@ export async function POST(request: NextRequest) {
     'あなたは行動改善を支援する日本語コーチです。',
     '以下の【今月の振り返り入力】は、クライアントの月報からの項目欄を改行区切りで連結したものです。',
     '',
-    '【含まれる項目】特記事項以外はクライアント入力済みで各10文字以上。特記事項は任意。',
+    '【含まれる項目】クライアント入力の合計が一定以上（空欄は省略可）。特記事項は任意。',
     '「行動目標」「行動内容」「行動の振り返り」「成果の振り返り」',
     '「心理面　行動時の思考・感情の変化」「気づき・学び・成長」',
     '「課題と原因の深掘り」「来月への改善点」「特記事項（その他自由欄）」',

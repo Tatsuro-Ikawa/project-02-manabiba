@@ -65,7 +65,7 @@ export function buildWeeklyAiReportInputFromDailies(
     lines.push(`- 今日の学びをどう明日に活かしますか？: ${nz(d?.eveningImprovementText)}`);
 
     lines.push('【明日の行動】');
-    lines.push(`- 明日の行動目標（1文）: ${eveningTomorrowGoal(d)}`);
+    lines.push(`- 明日の行動目標: ${eveningTomorrowGoal(d)}`);
     lines.push(`- 明日の行動内容: ${nz(d?.eveningTomorrowActionContentText)}`);
 
     blocks.push(lines.join('\n'));

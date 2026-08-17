@@ -5,7 +5,7 @@ import {
   countWeeklyImprovementInputChars,
   extractWeeklyImprovementSectionBody,
   WEEKLY_IMPROVEMENT_INPUT_SECTIONS,
-  WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
+  WEEKLY_IMPROVEMENT_MIN_TOTAL_CHARS,
 } from '@/lib/weeklyImprovementAi';
 
 type WeeklyImprovementRequestBody = {
@@ -123,17 +123,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'weeklyImprovementInputText を指定してください。' }, { status: 400 });
   }
 
-  const shortSections: string[] = [];
+  let totalChars = 0;
   for (const sec of WEEKLY_IMPROVEMENT_INPUT_SECTIONS) {
-    const body = extractWeeklyImprovementSectionBody(input, sec.promptLabel);
-    if (countWeeklyImprovementInputChars(body) < WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD) {
-      shortSections.push(sec.labelShort);
-    }
+    const sectionBody = extractWeeklyImprovementSectionBody(input, sec.promptLabel);
+    totalChars += countWeeklyImprovementInputChars(sectionBody);
   }
-  if (shortSections.length > 0) {
+  if (totalChars < WEEKLY_IMPROVEMENT_MIN_TOTAL_CHARS) {
     return NextResponse.json(
       {
-        error: `次の項目をそれぞれ${WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD}文字以上入力してください: ${shortSections.join('、')}`,
+        error: `参照入力の合計が${WEEKLY_IMPROVEMENT_MIN_TOTAL_CHARS}文字以上必要です（現在 ${totalChars} 文字）。空欄のままの項目があっても構いません。`,
       },
       { status: 400 }
     );
@@ -154,7 +152,7 @@ export async function POST(request: NextRequest) {
     'あなたは行動改善を支援する日本語コーチです。',
     '以下の【今週の振り返り入力】は、クライアントの週報からの項目欄を改行区切りで連結したものです。',
     '',
-    '【含まれる項目（いずれもクライアント入力済み・各10文字以上）】',
+    '【含まれる項目（クライアント入力の合計が一定以上。空欄は省略可）】',
     '「行動目標」「行動内容」「行動の振り返り」「成果の振り返り」',
     '「心理面　行動時の思考・感情の変化」「気づき・学び・成長」',
     '「課題と原因の深掘り」「来週への改善点」',

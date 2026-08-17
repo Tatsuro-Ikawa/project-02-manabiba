@@ -169,8 +169,11 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
   const load = useCallback(async () => {
     if (!contentUid) return;
     const dk = resolvedDateKey;
+    const shareDefault = !isCoachView && journalProfile?.journalCoachShareDefaultOn === true;
     try {
-      const doc = await getTrial4wDailyPlain(contentUid, dk);
+      const doc = await getTrial4wDailyPlain(contentUid, dk, {
+        sharedWithCoachDefault: shareDefault,
+      });
       setData(doc);
       setDateKey(doc.dateKey || dk);
       setMsg(null);
@@ -218,13 +221,13 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
           eveningTomorrowGoalText: null,
           eveningTomorrowActionContentText: null,
           eveningTomorrowImagingDone: null,
-          sharedWithCoach: false,
+          sharedWithCoach: shareDefault,
         });
       } else {
         setData(null);
       }
     }
-  }, [contentUid, resolvedDateKey, isCoachView]);
+  }, [contentUid, resolvedDateKey, isCoachView, journalProfile?.journalCoachShareDefaultOn]);
 
   useEffect(() => {
     if (loading) return;
@@ -246,7 +249,11 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
       setSaving(true);
       setMsg(null);
       try {
-        await saveTrial4wDailyPlain({ uid: contentUid, dateKey: data.dateKey, patch });
+        await saveTrial4wDailyPlain({
+          uid: contentUid,
+          dateKey: data.dateKey,
+          patch: { sharedWithCoach: !!data.sharedWithCoach, ...patch },
+        });
         await load();
         setMsg('保存しました。');
         setTimeout(() => setMsg(null), 2500);
@@ -572,7 +579,7 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
               />
             ) : null}
             <div className="form-row">
-              <span className="trial-l3-label">行動目標：何を実行する（1文で）</span>
+              <span className="trial-l3-label">行動目標：何を実行する</span>
               <AutosizeTextarea
                 className="w-full text-sm border border-gray-300 rounded p-2"
                 value={data.morningTodayActionText ?? ''}
@@ -840,12 +847,12 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
           </h4>
           {level === 'simple' ? (
             <p className="text-xs text-gray-600 mb-2 -mt-1">
-              簡易表示では目標を一文で十分です。「普通」表示にするとAiコーチを利用できます。
+              簡易表示では目標を一文で十分です。気づき・学びを入力すると Aiコーチも利用できます。
             </p>
           ) : null}
           <div className="trial-form-block-l3">
             <EveningQuestionField
-              label="明日の行動目標（1文）"
+              label="明日の行動目標"
               value={data.eveningTomorrowActionSeedText ?? ''}
               saving={inputDisabled}
               placeholder="入力してください（保存すると翌日の朝「今日の行動内容（目標）」に反映されます）"

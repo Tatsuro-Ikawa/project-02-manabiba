@@ -36,6 +36,8 @@ export function mapUserDocToProfile(uid: string, data: DocumentData): UserProfil
       data.weeklyAiReportWriteMode === 'skip_if_nonempty'
         ? (data.weeklyAiReportWriteMode as WeeklyAiReportWriteMode)
         : undefined,
+    journalCoachShareDefaultOn: data.journalCoachShareDefaultOn === true,
+    affirmationCoachShareDefaultOn: data.affirmationCoachShareDefaultOn === true,
     createdAt: data.createdAt?.toDate?.() ?? new Date(),
     updatedAt: data.updatedAt?.toDate?.() ?? new Date(),
     lastLoginAt: data.lastLoginAt?.toDate?.() ?? new Date(),

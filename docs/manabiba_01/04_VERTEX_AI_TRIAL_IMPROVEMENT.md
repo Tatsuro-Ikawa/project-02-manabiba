@@ -266,7 +266,7 @@ LAN（例: `http://192.168.11.10:3000`）からブラウザで開いていても
 
 ### 9.3 `POST /api/ai/weekly-improvement`
 
-- **Body**: `{ "weeklyImprovementInputText": string }` — 週報の参照 **8 項目**を `【ラベル】` 固定順で連結（`src/lib/weeklyImprovementAi.ts`）。**各ブロック本文は Unicode 10 文字以上**（API でも再検証）。
+- **Body**: `{ "weeklyImprovementInputText": string }` — 週報の参照項目を `【ラベル】` 固定順で連結（空欄は省略。`src/lib/weeklyImprovementAi.ts`）。**本文合計 Unicode 50 文字以上**（API でも再検証）。
 - **成功レスポンス**: `{ suggestion: string, charCount, usageTotalTokenCount? }` — `suggestion` はプレーン1本（見出し＋改行＋本文。**100〜500 文字**を目安にサーバ側で句点付近までトリム。上限 `MAX_SUGGESTION_CHARS = 500`）。**トークンは本文に含めない**。
 - **UI**: プレビュー表示時のみ `suggestion` と `usageTotalTokenCount` を結合し、文末に `（使用トークン合計: N）` を付ける。**Firestore の本文**はユーザーが「Ai改善提案に保存」したときのみ `aiImprovementSuggestionText` に書く（プレビュー破棄なら本文は未保存のまま）。**当日カウンタ**は API 成功直後に更新する（プレビュー保存の有無とは無関係）。来週への改善点への自動転記はしない。
 - **プロンプトログ**: `ENABLE_AI_PROMPT_LOG = false`（`route.ts`）。
@@ -308,7 +308,7 @@ LAN（例: `http://192.168.11.10:3000`）からブラウザで開いていても
 
 ### 10.3 `POST /api/ai/monthly-improvement`
 
-- **Body**: `{ "monthlyImprovementInputText": string }` — 月報の参照項目を `【ラベル】` 固定順で連結（`src/lib/monthlyImprovementAi.ts` の `MONTHLY_IMPROVEMENT_INPUT_SECTIONS`）。**8 項目は各 10 文字以上**。**「特記事項（その他自由欄）」は任意**（`minChars: 0` のため API の短欄検証から除外）。
+- **Body**: `{ "monthlyImprovementInputText": string }` — 月報の参照項目を `【ラベル】` 固定順で連結（空欄は省略。`src/lib/monthlyImprovementAi.ts`）。**本文合計 50 文字以上**（特記事項は任意だが入力があれば合計に含む）。
 - **成功レスポンス**: 週次改善提案と同型。**100〜500 文字**目安・上限 500。**トークンは本文に含めない**。
 - **UI・カウンタ・保存**: 週次改善提案（§9.3）と同様の考え方。保存先は `journal_monthly` の `aiImprovementSuggestionText`。
 - **プロンプトログ**: `ENABLE_AI_PROMPT_LOG = false`（`route.ts`）。
@@ -434,7 +434,7 @@ UI・表示レベルの正本: [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TR
 
 ```
 【明日の行動】
-- 明日の行動目標（1文）: …
+- 明日の行動目標: …
 - 明日の行動内容: …
 ```
 
@@ -492,7 +492,7 @@ g.Aiコーチに聞きたい事はありますか？
 
 | 見出し | ソースフィールド |
 |--------|------------------|
-| 【朝・今日の行動目標（1文）】 | `morningTodayActionText` |
+| 【朝・今日の行動目標】 | `morningTodayActionText` |
 | 【行動の実行状況】 | `eveningExecution`（ラベル化） |
 | 【具体的な行動内容】 | `eveningSpecificActionsText` |
 | 【行動の結果】 | 満足度・補足・結果・目標進捗をサブ行で連結 |
@@ -587,7 +587,7 @@ g.Aiコーチに聞きたい事はありますか？
 あなたは行動改善を支援する日本語コーチです。
 以下の【今週の振り返り入力】は、クライアントの週報からの項目欄を改行区切りで連結したものです。
 
-【含まれる項目（いずれもクライアント入力済み・各10文字以上）】
+【含まれる項目（クライアント入力の合計が一定以上。空欄は省略可）】
 「行動目標」「行動内容」「行動の振り返り」「成果の振り返り」
 「心理面　行動時の思考・感情の変化」「気づき・学び・成長」
 「課題と原因の深掘り」「来週への改善点」
@@ -659,7 +659,7 @@ g.Aiコーチに聞きたい事はありますか？
 あなたは行動改善を支援する日本語コーチです。
 以下の【今月の振り返り入力】は、クライアントの月報からの項目欄を改行区切りで連結したものです。
 
-【含まれる項目】特記事項以外はクライアント入力済みで各10文字以上。特記事項は任意。
+【含まれる項目】クライアント入力の合計が一定以上（空欄は省略可）。特記事項は任意。
 「行動目標」「行動内容」「行動の振り返り」「成果の振り返り」
 「心理面　行動時の思考・感情の変化」「気づき・学び・成長」
 「課題と原因の深掘り」「来月への改善点」「特記事項（その他自由欄）」
@@ -692,6 +692,7 @@ g.Aiコーチに聞きたい事はありますか？
 
 | 日付 | 内容 |
 |------|------|
+| 2026-08-17 | 週・月の改善提案入力を **合計 50 文字以上・空欄可** に変更。晩 Aiコーチは簡易でも表示。行動目標の「1文」表記を削除 |
 | 2026-07-31 | §11.0: `actionReferenceText`（行動目標・行動内容・満足度）を参照情報として復活。g あり出力は質問回答 1 ブロックのみの分岐を反映 |
 | 2026-07-03 | §11.0 確定: 晩 AI プロンプト（400〜500字）・`reflectionText`/`userQuestion` API・`MAX_SUGGESTION_CHARS=500`。実装: `eveningAiImprovementInput.ts` |
 | 2026-06-24 | §11.0 追加（§4.z 改訂予定の見出し・データ・API 入力対照）。§11.1〜 を現行（旧 UI）と明記 |

@@ -40,7 +40,7 @@ import {
 import {
   buildWeeklyImprovementInputText,
   validateWeeklyImprovementInput,
-  WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
+  WEEKLY_IMPROVEMENT_MIN_TOTAL_CHARS,
 } from '@/lib/weeklyImprovementAi';
 import { AI_REPORT_INPUT_MIN_TOTAL_CHARS, applyAiReportWriteMode } from '@/lib/journalAiReportWriteMode';
 import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
@@ -194,7 +194,8 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
   useEffect(() => {
     if (!contentUid || !displayWeekStartKey || !coachContextReady) return;
     let cancelled = false;
-    setData(journalWeeklyPlainEmpty(displayWeekStartKey));
+    const shareDefault = !isCoachView && journalProfile?.journalCoachShareDefaultOn === true;
+    setData(journalWeeklyPlainEmpty(displayWeekStartKey, shareDefault));
     setMsg(null);
     setWeeklyAiUsageTotalTokens(null);
     setWeeklyImprovementPreview(null);
@@ -202,7 +203,9 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
     setWeeklyImprovementError(null);
     void (async () => {
       try {
-        const doc = await getJournalWeeklyPlain(contentUid, displayWeekStartKey);
+        const doc = await getJournalWeeklyPlain(contentUid, displayWeekStartKey, {
+          sharedWithCoachDefault: shareDefault,
+        });
         if (!cancelled) setData(doc);
       } catch (e) {
         console.error(e);
@@ -219,14 +222,21 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
               '読み込みに失敗しました。Firestore ルールのデプロイ（journal_weekly）とログイン状態を確認してください。'
             );
           }
-          setData(journalWeeklyPlainEmpty(displayWeekStartKey));
+          setData(journalWeeklyPlainEmpty(displayWeekStartKey, shareDefault));
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [contentUid, displayWeekStartKey, coachContextReady, isCoachView, coachCommentsEnabled]);
+  }, [
+    contentUid,
+    displayWeekStartKey,
+    coachContextReady,
+    isCoachView,
+    coachCommentsEnabled,
+    journalProfile?.journalCoachShareDefaultOn,
+  ]);
 
   useEffect(() => {
     if (isCoachView || !user?.uid || !displayWeekStartKey || !weekEndKey) return;
@@ -258,7 +268,7 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
         await saveJournalWeeklyPlain({
           uid: contentUid,
           weekStartKey: data.weekStartKey,
-          patch,
+          patch: { sharedWithCoach: !!data.sharedWithCoach, ...patch },
         });
         const fresh = await getJournalWeeklyPlain(contentUid, data.weekStartKey);
         setData(fresh);
@@ -361,7 +371,7 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
     const v = validateWeeklyImprovementInput(data);
     if (!v.ok) {
       setWeeklyImprovementError(
-        `次の項目をそれぞれ${WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD}文字以上入力してください: ${v.shortLabels.join('、')}`
+        `参照入力の合計が${WEEKLY_IMPROVEMENT_MIN_TOTAL_CHARS}文字以上必要です（現在 ${v.totalChars} 文字）。空欄のままの項目があっても構いません。`
       );
       return;
     }
@@ -650,7 +660,7 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
         <div className="action-sub-section" data-section="weekly-action">
           <h3>今週の行動</h3>
           <WeeklyTextRow
-            label="◇行動目標：何を実行する（1文で）"
+            label="◇行動目標：何を実行する"
             value={data.thisWeekActionGoalText ?? ''}
             disabled={saving}
             onChange={(v) => setData((prev) => (prev ? { ...prev, thisWeekActionGoalText: v } : prev))}
@@ -887,8 +897,8 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
                     </div>
                     <p className="text-xs text-gray-600 mb-2">
                       行動目標・行動内容・行動の振り返り・成果の振り返り・心理面・気づき・学び・成長・課題と原因の深掘り・来週への改善点の
-                      <strong>各欄を{WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD}文字以上</strong>
-                      入力すると実行できます（薄い入力のまま生成しません）。未満の欄があるとき実行すると、その旨をメッセージ表示します。実行後は下にプレビューが表示され、「Ai改善提案に保存」でこの欄に反映されます（来週への改善点には転記しません）。
+                      <strong>参照入力の合計が{WEEKLY_IMPROVEMENT_MIN_TOTAL_CHARS}文字以上</strong>
+                      あれば実行できます（空欄可。薄い入力のまま生成しません）。不足のとき実行すると、その旨をメッセージ表示します。実行後は下にプレビューが表示され、「Ai改善提案に保存」でこの欄に反映されます（来週への改善点には転記しません）。
                       同一内容でも再実行できますが、
                       <strong>成功した生成は1日あたり最大{WEEKLY_AI_DAILY_LIMIT}回まで</strong>
                       （失敗・エラーは回数に含めません）。
@@ -947,7 +957,7 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
           <div className="action-sub-section" data-section="weekly-next-week-action">
             <h4>◇来週の行動</h4>
             <WeeklyTextRow
-              label="・目標（一文で）"
+              label="・目標"
               value={data.nextWeekGoalText ?? ''}
               disabled={saving}
               onChange={(v) => setData((prev) => (prev ? { ...prev, nextWeekGoalText: v } : prev))}

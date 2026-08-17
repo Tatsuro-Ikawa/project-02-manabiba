@@ -44,7 +44,7 @@ import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import {
   buildMonthlyImprovementInputText,
-  MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD,
+  MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS,
   validateMonthlyImprovementInput,
 } from '@/lib/monthlyImprovementAi';
 import { useTrialJournalCoachContext } from '@/hooks/useTrialJournalCoachContext';
@@ -190,15 +190,18 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
   const load = useCallback(async () => {
     if (!contentUid || !coachContextReady) return;
     if (!displayMonthKey) return;
+    const shareDefault = !isCoachView && journalProfile?.journalCoachShareDefaultOn === true;
     try {
-      const d = await getJournalMonthlyPlain(contentUid, displayMonthKey);
+      const d = await getJournalMonthlyPlain(contentUid, displayMonthKey, {
+        sharedWithCoachDefault: shareDefault,
+      });
       setData(d);
       setMsg(null);
     } catch (e) {
       const code = typeof e === 'object' && e !== null && 'code' in e ? (e as { code?: string }).code : null;
       if (isCoachView && code === 'permission-denied') {
         console.warn('getJournalMonthlyPlain permission-denied', e);
-        setData(journalMonthlyPlainEmpty(displayMonthKey));
+        setData(journalMonthlyPlainEmpty(displayMonthKey, shareDefault));
         setMsg(
           coachCommentsEnabled
             ? 'この月はクライアントが「コーチと共有」を ON にしていないか、閲覧権限がありません。'
@@ -207,10 +210,17 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
         return;
       }
       console.error('getJournalMonthlyPlain error:', e);
-      setData(journalMonthlyPlainEmpty(displayMonthKey));
+      setData(journalMonthlyPlainEmpty(displayMonthKey, shareDefault));
       setMsg('読み込みに失敗しました。時間をおいて再度お試しください。');
     }
-  }, [contentUid, displayMonthKey, coachContextReady, isCoachView, coachCommentsEnabled]);
+  }, [
+    contentUid,
+    displayMonthKey,
+    coachContextReady,
+    isCoachView,
+    coachCommentsEnabled,
+    journalProfile?.journalCoachShareDefaultOn,
+  ]);
 
   const loadDaily = useCallback(async () => {
     if (isCoachView || !user) return;
@@ -293,7 +303,11 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
       setSaving(true);
       setMsg(null);
       try {
-        await saveJournalMonthlyPlain({ uid: contentUid, monthKey: data.monthKey, patch });
+        await saveJournalMonthlyPlain({
+          uid: contentUid,
+          monthKey: data.monthKey,
+          patch: { sharedWithCoach: !!data.sharedWithCoach, ...patch },
+        });
         const fresh = await getJournalMonthlyPlain(contentUid, data.monthKey);
         setData(fresh);
         setMsg('保存しました。');
@@ -416,7 +430,7 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
     const v = validateMonthlyImprovementInput(data);
     if (!v.ok) {
       setMonthlyImprovementError(
-        `次の項目をそれぞれ${MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD}文字以上入力してください: ${v.shortLabels.join('、')}`
+        `参照入力の合計が${MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS}文字以上必要です（現在 ${v.totalChars} 文字）。空欄のままの項目があっても構いません（特記事項は任意）。`
       );
       return;
     }
@@ -651,12 +665,12 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
         <div className="action-sub-section" data-section="monthly-this-month-action">
           <h3>今月の行動</h3>
           <MonthlyTextRow
-            label="◇行動目標：何を実行する（1文で）"
+            label="◇行動目標：何を実行する"
             value={data.thisMonthActionGoalText ?? ''}
             disabled={!canEdit || saving}
             onChange={(v) => setData((prev) => (prev ? { ...prev, thisMonthActionGoalText: v } : prev))}
             onBlur={() => void savePatch({ thisMonthActionGoalText: data.thisMonthActionGoalText })}
-            placeholder="今月注力する行動を一文で設定します。"
+            placeholder="今月注力する行動を設定します。"
           />
           {journalShowMonthlyThisMonthActionContent(level) ? (
             <MonthlyTextRow
@@ -879,8 +893,8 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
                     </div>
                     <p className="text-xs text-gray-600 mb-2">
                       行動目標・行動内容・行動の振り返り・成果の振り返り・心理面・気づき・学び・成長・課題と原因の深掘り・来月への改善点・特記事項の
-                      <strong>各欄を{MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD}文字以上</strong>
-                      入力すると実行できます（特記事項は未入力でも可）。成功した生成は1日あたり最大{MONTHLY_AI_DAILY_LIMIT}回までです。
+                      <strong>参照入力の合計が{MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS}文字以上</strong>
+                      あれば実行できます（空欄可。特記事項は任意）。成功した生成は1日あたり最大{MONTHLY_AI_DAILY_LIMIT}回までです。
                     </p>
                     <p className="text-xs text-gray-600 mb-2">
                       本日の成功実行回数: {improvementAiRunCountToday}/{MONTHLY_AI_DAILY_LIMIT}（失敗はカウントしません）
@@ -924,12 +938,12 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
           <div className="action-sub-section" data-section="monthly-next-month-action">
             <h3>来月の行動</h3>
             <MonthlyTextRow
-              label="・目標（一文で）"
+              label="・目標"
               value={data.nextMonthGoalText ?? ''}
               disabled={!canEdit || saving}
               onChange={(v) => setData((prev) => (prev ? { ...prev, nextMonthGoalText: v } : prev))}
               onBlur={() => void savePatch({ nextMonthGoalText: data.nextMonthGoalText })}
-              placeholder="来月の目標を一文で記載してください。"
+              placeholder="来月の目標を記載してください。"
             />
             {journalShowMonthlyNextMonthActionContent(level) ? (
               <MonthlyTextRow

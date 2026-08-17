@@ -16,7 +16,7 @@ export function buildMonthlyAiReportInputFromWeeklies(weeks: JournalWeeklyPlain[
     const lines: string[] = [
       `【週の範囲】${w.weekStartKey}（${rangeLabel}）`,
       '今週の行動',
-      '　◇行動目標：何を実行する（1文で）',
+      '　◇行動目標：何を実行する',
       `　　${nz(w.thisWeekActionGoalText)}`,
       '　◇行動内容：どのように',
       `　　${nz(w.thisWeekActionContentText)}`,

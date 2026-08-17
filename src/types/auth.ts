@@ -52,6 +52,16 @@ export interface UserProfile {
    * Firestore キー名は `weeklyAiReportWriteMode` のまま（月次 UI からも同値を参照）。
    */
   weeklyAiReportWriteMode?: WeeklyAiReportWriteMode;
+  /**
+   * 日・週・月の「コーチと共有」チェックの初期値（未作成ドキュメントを開いたとき）。
+   * 未設定・false = なし（製品デフォルト）。既存ドキュメントは変更しない。
+   */
+  journalCoachShareDefaultOn?: boolean;
+  /**
+   * アファメーション発行時の「コーチと共有」初期値。
+   * 未設定・false = なし。既存テーマは変更しない。
+   */
+  affirmationCoachShareDefaultOn?: boolean;
   /** デモ申込フォームで登録したお客様情報（コース復帰時に表示・更新） */
   applyBilling?: ApplyBillingInfo;
   createdAt: Date;

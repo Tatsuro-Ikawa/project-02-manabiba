@@ -1,7 +1,11 @@
 import type { JournalMonthlyPlain } from '@/lib/firestore';
+import { WEEKLY_IMPROVEMENT_MIN_TOTAL_CHARS } from '@/lib/weeklyImprovementAi';
 
-/** 週次 {@link WEEKLY_IMPROVEMENT_MIN_CHARS_PER_FIELD} と同値（各欄の最小文字数。特記事項は別） */
-export const MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD = 10;
+/** 週次と同値（参照本文の合計最小。特記事項は任意だが入力があれば合計に含む） */
+export const MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS = WEEKLY_IMPROVEMENT_MIN_TOTAL_CHARS;
+
+/** @deprecated 互換エイリアス。合計下限 {@link MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS} を使うこと */
+export const MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD = MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS;
 
 export type MonthlyImprovementInputSectionDef = {
   promptLabel: string;
@@ -9,8 +13,8 @@ export type MonthlyImprovementInputSectionDef = {
   getValue: (d: JournalMonthlyPlain) => string | null;
   firestorePlain: string;
   firestoreEncrypted: string;
-  /** 0 のとき API の「各欄 N 文字以上」検証をスキップ（特記事項は任意） */
-  minChars?: number;
+  /** true のとき任意欄（空でも合計検証の必須にはしないが、入力があれば合計に含む） */
+  optional?: boolean;
 };
 
 /** プロンプト連結・API 検証で使う参照ブロック定義（順序固定） */
@@ -77,7 +81,7 @@ export const MONTHLY_IMPROVEMENT_INPUT_SECTIONS: readonly MonthlyImprovementInpu
     getValue: (d: JournalMonthlyPlain) => d.monthlySpecialNotesText,
     firestorePlain: 'monthlySpecialNotesText',
     firestoreEncrypted: 'monthlySpecialNotesTextEncrypted',
-    minChars: 0,
+    optional: true,
   },
 ];
 
@@ -85,26 +89,33 @@ export function countMonthlyImprovementInputChars(text: string): number {
   return [...text].length;
 }
 
-export function validateMonthlyImprovementInput(data: JournalMonthlyPlain): {
-  ok: boolean;
-  shortLabels: string[];
-} {
-  const shortLabels: string[] = [];
+export function countMonthlyImprovementInputTotalChars(data: JournalMonthlyPlain): number {
+  let total = 0;
   for (const sec of MONTHLY_IMPROVEMENT_INPUT_SECTIONS) {
-    const min = sec.minChars ?? MONTHLY_IMPROVEMENT_MIN_CHARS_PER_FIELD;
-    if (min <= 0) continue;
-    const v = (sec.getValue(data) ?? '').trim();
-    if (countMonthlyImprovementInputChars(v) < min) {
-      shortLabels.push(sec.labelShort);
-    }
+    total += countMonthlyImprovementInputChars((sec.getValue(data) ?? '').trim());
   }
-  return { ok: shortLabels.length === 0, shortLabels };
+  return total;
 }
 
+export function validateMonthlyImprovementInput(data: JournalMonthlyPlain): {
+  ok: boolean;
+  totalChars: number;
+  shortLabels: string[];
+} {
+  const totalChars = countMonthlyImprovementInputTotalChars(data);
+  return {
+    ok: totalChars >= MONTHLY_IMPROVEMENT_MIN_TOTAL_CHARS,
+    totalChars,
+    shortLabels: [],
+  };
+}
+
+/** 非空の参照項目のみ連結（特記事項も入力があれば含む） */
 export function buildMonthlyImprovementInputText(data: JournalMonthlyPlain): string {
   const lines: string[] = [];
   for (const sec of MONTHLY_IMPROVEMENT_INPUT_SECTIONS) {
     const t = (sec.getValue(data) ?? '').trim();
+    if (!t) continue;
     lines.push(`【${sec.promptLabel}】`, t);
   }
   return lines.join('\n');

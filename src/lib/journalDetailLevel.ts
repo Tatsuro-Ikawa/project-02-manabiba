@@ -85,9 +85,9 @@ export function journalShowEveningImprovement(_level: JournalDetailLevel): boole
   return true;
 }
 
-/** 晩：9〜10 Aiコーチ（質問・応答）（§4.z — 普通以上） */
-export function journalShowEveningAiCoach(level: JournalDetailLevel): boolean {
-  return level !== 'simple';
+/** 晩：9〜10 Aiコーチ（質問・応答）（§4.z — 簡易・普通・詳細） */
+export function journalShowEveningAiCoach(_level: JournalDetailLevel): boolean {
+  return true;
 }
 
 /** 晩：13 明日の行動内容（§4.z — 詳細のみ） */
@@ -210,7 +210,7 @@ export function journalShowMonthlyAiImprovementSuggestion(level: JournalDetailLe
   return level === 'detailed';
 }
 
-/** 月：来月の行動「目標（一文で）」（全レベル） */
+/** 月：来月の行動「目標」（全レベル） */
 export function journalShowMonthlyNextMonthGoal(_level: JournalDetailLevel): boolean {
   return true;
 }

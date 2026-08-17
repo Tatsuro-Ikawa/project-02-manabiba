@@ -807,6 +807,7 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
         title,
         profileId: profile.id,
         markdownBody: body,
+        sharedWithCoachDefault: userProfile?.affirmationCoachShareDefaultOn === true,
       });
       await deleteAffirmationDraft(user.uid, profile.id);
       setHasDraftInProgress(false);
