@@ -159,6 +159,7 @@ export default function ProtoHeader({
                       </span>
                       <span>コース変更</span>
                     </Link>
+                    {/* アカウント設定は /mypage への仮リンクのため、専用画面ができるまで非表示
                     <Link
                       href="/mypage"
                       className="flex items-center gap-1 text-left text-blue-600 hover:underline"
@@ -169,6 +170,7 @@ export default function ProtoHeader({
                       </span>
                       <span>アカウント設定</span>
                     </Link>
+                    */}
                     <Link
                       href="/terms"
                       className="flex items-center gap-1 text-left text-blue-600 hover:underline"

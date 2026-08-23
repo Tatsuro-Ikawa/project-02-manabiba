@@ -267,6 +267,11 @@ export function CourseChangePanel({ userProfile }: CourseChangePanelProps) {
             </button>
             ）から行えます。フリーにする場合は「サブスクリプションをキャンセル」を選んでください。
           </p>
+          <p>
+            クレジットカードの有効期限を更新する場合も、Customer Portal の「支払い方法」から行います。有効期限だけを書き換えることはできないため、
+            <strong>新しいカード情報を追加して既定の支払い方法にし、不要になった旧カードを削除する</strong>
+            （差し替える）手順になります。
+          </p>
           <p>手続き後、反映まで数十秒かかることがあります。</p>
         </div>
       ) : null}
