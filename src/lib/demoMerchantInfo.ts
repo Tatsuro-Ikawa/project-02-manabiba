@@ -12,7 +12,6 @@ export const DEMO_PLAN_PRICING = {
   standard: {
     label: '気づきノート　スタンダードコース（AIコーチ）',
     openPriceMonthly: 1320,
-    openPriceYearly: 11760,
     openPriceNote: 'オープン期間限定（2026年12月31日まで）',
     trialDays: 28,
   },

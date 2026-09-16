@@ -182,9 +182,6 @@ export function ApplyFormPanel() {
           <li>
             月額（税込）：<strong>{pricing.openPriceMonthly.toLocaleString()}円</strong>
           </li>
-          {'openPriceYearly' in pricing && pricing.openPriceYearly ? (
-            <li>年払い（税込）：{pricing.openPriceYearly.toLocaleString()}円／年</li>
-          ) : null}
           <li>{pricing.openPriceNote}</li>
           {isReturning ? (
             <li>28日間無料お試し：再付与はありません（初回申込時のみ）</li>

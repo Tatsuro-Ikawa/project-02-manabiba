@@ -58,8 +58,6 @@ export function featureMarkToDisplay(mark: FeatureMark): string {
 export const COURSE_LIST_PRICING = {
   standard: {
     listMonthly: 1650,
-    listYearly: 15840,
-    listYearlyPerMonth: 1320,
   },
   premium: {
     listMonthly: 6600,

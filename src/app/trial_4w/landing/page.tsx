@@ -227,11 +227,7 @@ function Trial4wLandingContent() {
                     <div className="trial-landing-col-header">AIコーチ</div>
                     <div className="trial-landing-price-box">
                       <div className="trial-landing-price strike">¥1,650/月</div>
-                      <div className="trial-landing-price strike">¥1,320/月*</div>
-                      <div className="trial-landing-note small strike">* 年払い　15,840/年</div>
                       <div className="trial-landing-price">¥1,320/月</div>
-                      <div className="trial-landing-price">¥980/月*</div>
-                      <div className="trial-landing-note small">年払い　11,760/年</div>
                       <div className="trial-landing-note small">(オープン期間(2026年末)限定価格)</div>
                       <div className="trial-landing-badge">28日間フリー</div>
                     </div>
@@ -243,6 +239,7 @@ function Trial4wLandingContent() {
                       <div className="trial-landing-price strike">¥6,600/月</div>
                       <div className="trial-landing-price">¥3,300/月</div>
                       <div className="trial-landing-note small">(オープン期間(2026年末)限定価格)</div>
+                      <div className="trial-landing-badge">28日間フリー</div>
                       <div className="trial-landing-badge">60分セッション/月*</div>
                       <div className="trial-landing-note small">* 追加対応　6,600円/60分</div>
                     </div>

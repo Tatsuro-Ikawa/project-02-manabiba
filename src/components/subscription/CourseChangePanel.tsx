@@ -41,13 +41,7 @@ function StandardPricingBox() {
   return (
     <div className="trial-landing-price-box">
       <div className="trial-landing-price strike">¥{list.listMonthly.toLocaleString()}/月</div>
-      <div className="trial-landing-price strike">¥{list.listYearlyPerMonth.toLocaleString()}/月*</div>
-      <div className="trial-landing-note small strike">* 年払い　{list.listYearly.toLocaleString()}/年</div>
       <div className="trial-landing-price">¥{open.openPriceMonthly.toLocaleString()}/月</div>
-      <div className="trial-landing-price">
-        ¥{Math.round(open.openPriceYearly / 12).toLocaleString()}/月*
-      </div>
-      <div className="trial-landing-note small">年払い　{open.openPriceYearly.toLocaleString()}/年</div>
       <div className="trial-landing-note small">{OPEN_PERIOD_PRICE_NOTE}</div>
       <div className="trial-landing-badge">28日間フリー</div>
     </div>
@@ -62,6 +56,7 @@ function PremiumPricingBox() {
       <div className="trial-landing-price strike">¥{list.listMonthly.toLocaleString()}/月</div>
       <div className="trial-landing-price">¥{open.openPriceMonthly.toLocaleString()}/月</div>
       <div className="trial-landing-note small">{OPEN_PERIOD_PRICE_NOTE}</div>
+      <div className="trial-landing-badge">28日間フリー</div>
       <div className="trial-landing-badge">60分セッション/月*</div>
       <div className="trial-landing-note small">* 追加対応　6,600円/60分</div>
     </div>
