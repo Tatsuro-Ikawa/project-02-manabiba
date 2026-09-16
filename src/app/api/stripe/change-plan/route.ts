@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { getAdminUserProfile } from '@/lib/server/adminUserProfile';
 import { requireBearerUid } from '@/lib/server/bearerAuth';
 import { getStripeClient, isStripeConfigured } from '@/lib/server/stripeClient';
+import { readSubscriptionCurrentPeriodEnd } from '@/lib/server/stripeSubscriptionFields';
 import { syncUserSubscriptionFromStripeObject } from '@/lib/server/stripeSubscriptionSync';
 import {
   isCheckoutPlan,
@@ -16,12 +17,6 @@ export const runtime = 'nodejs';
 type ChangePlanBody = {
   plan?: unknown;
 };
-
-function readCurrentPeriodEndUnix(subscription: Stripe.Subscription): number | null {
-  const raw = subscription as unknown as Record<string, unknown>;
-  const value = raw.current_period_end ?? raw.currentPeriodEnd;
-  return typeof value === 'number' ? value : null;
-}
 
 function subscriptionItemId(subscription: Stripe.Subscription): string | null {
   return subscription.items.data[0]?.id ?? null;
@@ -124,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ダウングレード: 期間末まで PRE 維持 → 翌フェーズで STD + オープン Coupon
-    const periodEnd = readCurrentPeriodEndUnix(subscription);
+    const periodEnd = readSubscriptionCurrentPeriodEnd(subscription);
     if (!periodEnd) {
       return NextResponse.json(
         { error: '請求期間の終了日を取得できませんでした。' },
