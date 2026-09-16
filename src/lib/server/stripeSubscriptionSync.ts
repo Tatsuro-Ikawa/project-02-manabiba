@@ -4,20 +4,15 @@ import { getFirebaseAdminApp } from '@/lib/firebaseAdmin';
 import { featuresForPlan } from '@/lib/subscription/planDefaults';
 import type { CheckoutPlan } from '@/lib/stripe/planPrices';
 import { planFromPriceId } from '@/lib/stripe/planPrices';
+import {
+  readSubscriptionCurrentPeriodEnd,
+  readSubscriptionTrialEnd,
+} from '@/lib/server/stripeSubscriptionFields';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const KIZUKI_TRIAL_DAYS = 28;
 /** 04_SUBSCRIPTION_PRODUCT_SCOPE §3.2 */
 const SUBSCRIPTION_DATA_RETENTION_DAYS = 90;
-
-function readSubscriptionUnix(
-  subscription: Stripe.Subscription,
-  field: 'current_period_end' | 'trial_end'
-): number | undefined {
-  const raw = subscription as unknown as Record<string, unknown>;
-  const value = raw[field] ?? raw[field.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())];
-  return typeof value === 'number' ? value : undefined;
-}
 
 function readCancelAtPeriodEnd(subscription: Stripe.Subscription): boolean {
   const raw = subscription as unknown as Record<string, unknown>;
@@ -90,8 +85,8 @@ export async function syncUserSubscriptionFromStripe(
   const existingUsage = (existingSub?.usage as Record<string, unknown> | undefined) ?? {};
 
   const status = mapStripeStatus(subscription.status, readCancelAtPeriodEnd(subscription));
-  const currentPeriodEnd = unixToDate(readSubscriptionUnix(subscription, 'current_period_end'));
-  const trialEnd = unixToDate(readSubscriptionUnix(subscription, 'trial_end'));
+  const currentPeriodEnd = unixToDate(readSubscriptionCurrentPeriodEnd(subscription));
+  const trialEnd = unixToDate(readSubscriptionTrialEnd(subscription));
 
   const subscriptionPayload: Record<string, unknown> = {
     plan: plan as SubscriptionPlan,
@@ -131,7 +126,7 @@ export async function syncUserSubscriptionFromStripe(
     subscriptionPayload.trialEndsAt = FieldValue.delete();
   }
 
-  if (!hadTrialConsumed && (subscription.status === 'trialing' || readSubscriptionUnix(subscription, 'trial_end'))) {
+  if (!hadTrialConsumed && (subscription.status === 'trialing' || readSubscriptionTrialEnd(subscription))) {
     subscriptionPayload.trialConsumedAt = FieldValue.serverTimestamp();
   }
 
