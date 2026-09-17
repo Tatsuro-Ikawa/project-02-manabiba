@@ -34,3 +34,24 @@ export function readSubscriptionTrialEnd(
   const raw = subscription as unknown as Record<string, unknown>;
   return asStripeUnixSeconds(raw.trial_end ?? raw.trialEnd);
 }
+
+/** お試し中（status=trialing、または trial_end が未来） */
+export function isSubscriptionTrialing(subscription: Stripe.Subscription): boolean {
+  if (subscription.status === 'trialing') return true;
+  const trialEnd = readSubscriptionTrialEnd(subscription);
+  if (trialEnd == null) return false;
+  return trialEnd > Math.floor(Date.now() / 1000);
+}
+
+/**
+ * ダウングレード切替日時（unix 秒）。
+ * お試し中は trial_end を優先（通常は current_period_end と同値だが、権威は trial_end）。
+ */
+export function readDowngradeSwitchAtUnix(
+  subscription: Stripe.Subscription
+): number | null {
+  const periodEnd = readSubscriptionCurrentPeriodEnd(subscription);
+  const trialEnd = readSubscriptionTrialEnd(subscription);
+  if (isSubscriptionTrialing(subscription) && trialEnd != null) return trialEnd;
+  return periodEnd;
+}
