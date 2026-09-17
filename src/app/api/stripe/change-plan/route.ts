@@ -3,7 +3,10 @@ import type Stripe from 'stripe';
 import { getAdminUserProfile } from '@/lib/server/adminUserProfile';
 import { requireBearerUid } from '@/lib/server/bearerAuth';
 import { getStripeClient, isStripeConfigured } from '@/lib/server/stripeClient';
-import { readSubscriptionCurrentPeriodEnd } from '@/lib/server/stripeSubscriptionFields';
+import {
+  isSubscriptionTrialing,
+  readDowngradeSwitchAtUnix,
+} from '@/lib/server/stripeSubscriptionFields';
 import { syncUserSubscriptionFromStripeObject } from '@/lib/server/stripeSubscriptionSync';
 import {
   isCheckoutPlan,
@@ -30,6 +33,7 @@ function currentPriceId(subscription: Stripe.Subscription): string | null {
  * STD ↔ PRE のプラン変更（B-4）。
  * - アップグレード: 即時・日割り請求（always_invoice）
  * - ダウングレード: 期間末から切替（Subscription Schedule）
+ * - お試し中のダウングレード: phase に trial_end を明示し、お試し終了まで課金しない
  * - オープン期間中: 対象プランの Coupon を適用
  */
 export async function POST(request: NextRequest) {
@@ -118,9 +122,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // ダウングレード: 期間末まで PRE 維持 → 翌フェーズで STD + オープン Coupon
-    const periodEnd = readSubscriptionCurrentPeriodEnd(subscription);
-    if (!periodEnd) {
+    // ダウングレード: 期間末（お試し中は trial_end）まで PRE 維持 → 翌フェーズで STD + Coupon
+    // Schedule 更新時に trial_end を省略するとお試しが打ち切られ PRE が即時請求されるため、明示する。
+    const switchAt = readDowngradeSwitchAtUnix(subscription);
+    if (!switchAt) {
       return NextResponse.json(
         { error: '請求期間の終了日を取得できませんでした。' },
         { status: 502 }
@@ -131,6 +136,8 @@ export async function POST(request: NextRequest) {
     if (!fromPrice) {
       return NextResponse.json({ error: '現在の Price を取得できませんでした。' }, { status: 502 });
     }
+
+    const trialing = isSubscriptionTrialing(subscription);
 
     let scheduleId = typeof subscription.schedule === 'string' ? subscription.schedule : subscription.schedule?.id;
     if (!scheduleId) {
@@ -146,16 +153,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Subscription Schedule の作成に失敗しました。' }, { status: 502 });
     }
 
+    const phase0Params: Stripe.SubscriptionScheduleUpdateParams.Phase = {
+      items: [{ price: fromPrice, quantity: 1 }],
+      start_date: phase0.start_date,
+      end_date: switchAt,
+      proration_behavior: 'none',
+    };
+    if (trialing) {
+      // フェーズ全体をお試しのままにする（end_date と同一）
+      phase0Params.trial_end = switchAt;
+    }
+
     await stripe.subscriptionSchedules.update(scheduleId, {
       end_behavior: 'release',
       phases: [
-        {
-          items: [{ price: fromPrice, quantity: 1 }],
-          start_date: phase0.start_date,
-          end_date: periodEnd,
-        },
+        phase0Params,
         {
           items: [{ price: newPriceId, quantity: 1 }],
+          proration_behavior: 'none',
           ...(openCouponId ? { discounts: [{ coupon: openCouponId }] } : {}),
           metadata: {
             firebaseUid: auth.uid,
@@ -165,7 +180,7 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    // 期間末まで PRE のまま。Firestore は Webhook（updated）で schedule 反映時に追随。
+    // 期間末／お試し終了まで PRE のまま。Firestore は Webhook で追随。
     const refreshed = await stripe.subscriptions.retrieve(subId);
     await syncUserSubscriptionFromStripeObject(auth.uid, refreshed);
 
@@ -173,8 +188,9 @@ export async function POST(request: NextRequest) {
       ok: true,
       mode: 'downgrade_at_period_end',
       plan: targetPlan,
-      effectiveAt: new Date(periodEnd * 1000).toISOString(),
+      effectiveAt: new Date(switchAt * 1000).toISOString(),
       openPricing: !!openCouponId,
+      trialPreserved: trialing,
     });
   } catch (e) {
     console.error('stripe change-plan error:', e);

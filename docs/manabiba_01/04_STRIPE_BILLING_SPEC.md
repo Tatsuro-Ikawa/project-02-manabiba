@@ -39,7 +39,7 @@
 | 操作 | 経路 |
 |------|------|
 | 初回・再申し込み | `POST /api/stripe/checkout-session`（期間内なら `discounts: [{ coupon }]`。トライアルは初回のみ） |
-| STD↔PRE | `POST /api/stripe/change-plan`（アップ: `proration_behavior=always_invoice`、ダウン: Subscription Schedule で期間末切替＋Coupon） |
+| STD↔PRE | `POST /api/stripe/change-plan`（アップ: `proration_behavior=always_invoice`、ダウン: Subscription Schedule で期間末切替＋Coupon。**お試し中は `trial_end` を phase に保持**） |
 | 解約・支払い方法 | Stripe Customer Portal（「サブスクリプションをキャンセル」） |
 | 契約反映 | Webhook → `syncUserSubscriptionFromStripe` → `users/{uid}.subscription` ＋ `enrollment.primaryCourse=kizuki` |
 | 反映フォールバック | `/apply/complete` が `POST /api/stripe/sync-checkout-session`（`session_id`）を呼び、Webhook 未達でも同期 |
@@ -618,12 +618,13 @@ Coupon がすでに失効している場合は新しい Coupon を作り、`STRI
 - 初回 Standard: 28日 trial ＋ Standard Coupon。
 - 初回 Premium: 28日 trial ＋ Premium Coupon。
 - STD→PRE: trial なし、即時日割り、Premium Coupon。
-- PRE→STD: 期間末切替予約、Standard Coupon。
+- PRE→STD: 期間末切替予約、Standard Coupon。**お試し中は Schedule の phase0 に `trial_end` を明示**し、お試し終了まで課金しない（未指定だとお試しが打ち切られ PRE が即時請求される）。切替フェーズは `proration_behavior=none`。
 - 解約: 期間末まで利用可、その後 free / expired。
 - 再申込: trial なし、期間内なら Coupon、期間外なら通常価格。
 - 支払い失敗: `past_due` 猶予、再請求、回収不能時の停止。
 - Webhook 再送: 重複イベントでも二重処理しない。
 - Firestore: `plan` / `status` / `currentPeriodEnd` / Stripe IDs が同期される。
+- **PRE お試し中 → STD**: お試し継続 → trial 終了後に STD 初回課金（PRE 満額は発生しない）。
 
 ### 4.11 本番公開チェックリスト
 
