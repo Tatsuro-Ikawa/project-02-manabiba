@@ -144,24 +144,121 @@ firebase deploy --only firestore:rules
 
 ---
 
-## 3. 今後の更新フロー
+## 3. ブランチとデプロイ環境の使い分け
 
-コードを変更したら、次の流れで反映できます。
+| ブランチ | 用途 | Vercel 環境 |
+|----------|------|-------------|
+| **`main`** | 機能改善・バグ修正（本番に載せる変更） | **Production** |
+| **`inspect`** | 新機能の開発・Preview 確認 | **Preview** |
+
+ローカルの開発環境は **1つで十分** です。ブランチは checkout で切り替え、**デプロイ先**（Production / Preview）を分けます。
+
+### 3.1 本番反映（`main`）
 
 ```bash
-git add .
-git commit -m "変更内容のメッセージ"
+git checkout main
+git pull origin main
+# … 変更・コミット …
 git push origin main
 ```
 
-Vercel は GitHub と連携しているため、`main` に push すると自動で再デプロイされます（**Production** 環境）。
+### 3.2 新機能の Preview 確認（`inspect`）
+
+```bash
+git checkout inspect
+git pull origin inspect
+# … 変更・コミット …
+git push origin inspect
+```
+
+Vercel の **Deployments** でブランチ `inspect` の **Visit** から Preview URL を開きます。
+
+### 3.3 急ぎ修正と新機能を並行するとき
+
+1. 修正は **`main`** で commit → push（本番反映）
+2. **`inspect`** に戻り `git merge main` で修正を取り込む
+3. 新機能開発を続行
+
+### 3.4 新機能を本番公開
+
+完成後、`inspect` を `main` にマージして push します。Feature Flag を使っている場合は §3.5 のとおり Production の Flag を ON にします。
 
 ---
 
-## 4. トラブルシューティング
+## 3.5 Feature Flag（リリース前機能の ON/OFF）
+
+**同じコードを `main` に載せたまま**、本番では非表示・Preview では表示できます。環境変数（方式 A）で切り替えます。
+
+定義は **`src/lib/featureFlags.ts`** に集約してください。
+
+### 初回セットアップ（Vercel）
+
+[Project Settings → Environment Variables](https://vercel.com/docs/projects/environment-variables) で次を追加します。
+
+| 名前 | Production | Preview | Development |
+|------|------------|---------|-------------|
+| `NEXT_PUBLIC_FF_START_PROGRAM_REFRESH` | `false` | `true` | 任意（未設定で OFF） |
+
+- **Production**（`https://www.jinsei-manabiba.com` 等）: Flag OFF → 現行 UI
+- **Preview**（`inspect` push 後の URL）: Flag ON → 刷新 UI
+
+環境変数を追加・変更したあとは、対象環境で **Redeploy** が必要な場合があります。
+
+### ローカルで刷新 UI を確認
+
+プロジェクトルートに `.env.local`（git 管理外）を作成:
+
+```bash
+NEXT_PUBLIC_FF_START_PROGRAM_REFRESH=true
+```
+
+`npm run dev` を再起動して `/start-program` を開きます。
+
+### 対象画面: `/start-program`（7日間スタートプログラム全面刷新）
+
+| Flag | 表示 |
+|------|------|
+| OFF（本番デフォルト） | `StartProgramLegacyView` — 現行 PDF 案内 |
+| ON（Preview） | `StartProgramRefreshView` — 刷新 UI（`src/components/start-program/`） |
+
+刷新の実装は **`StartProgramRefreshView.tsx`** に追加します。認証・同意・サイドバーは `page.tsx` 共通のままです。
+
+### 本番公開の手順
+
+1. Preview で刷新 UI を確認
+2. `main` にマージ（必要なら `inspect` 経由）
+3. Vercel で **`NEXT_PUBLIC_FF_START_PROGRAM_REFRESH` を Production も `true`** に変更
+4. Production を Redeploy（または `main` を push して再デプロイ）
+
+公開後、安定したら Flag 分岐を削除し刷新 UI を常時表示にリファクタリングしても構いません。
+
+### 新しい Flag を足すとき
+
+1. `src/lib/featureFlags.ts` に `isXxxEnabled()` と `FEATURE_FLAG_ENV_KEYS` を追加（`process.env.NEXT_PUBLIC_FF_*` は **リテラル参照**。`process.env[key]` はクライアントで効かない）
+2. UI / API を Flag でガード（ページ直リンク対策も忘れずに）
+3. Vercel に Production=`false` / Preview=`true` で環境変数を登録
+4. 本ドキュメントの表に1行追記
+
+**注意**: Preview も本番と **同じ Firebase** に接続している場合、Preview テストのデータは本番 DB に書き込まれます。
+
+---
+
+## 4. 今後の更新フロー（クイックリファレンス）
+
+| やりたいこと | 操作 |
+|--------------|------|
+| 本番に載せる修正 | `main` に commit → `git push origin main` |
+| 新機能を Preview で見る | `inspect` に commit → push。Flag は Preview=ON |
+| 刷新を本番公開 | Production の Flag を `true` にして redeploy |
+
+---
+
+## 5. トラブルシューティング
 
 | 現象 | 確認すること |
 |------|----------------|
 | ビルドが失敗する | Vercel の **Deployments** のログでエラー行を確認。`npm run build` をローカルで実行して再現する。 |
-| ログインできない | Firebase の **Authorized domains** に Vercel のドメインが入っているか確認する。 |
+| ログインできない | Firebase の **Authorized domains** に Vercel のドメインが入っているか確認する。Preview URL も追加。 |
 | 画面が真っ白 | ブラウザのコンソールでエラーを確認。Firebase の設定や環境変数が本番で正しいか確認する。 |
+| Preview で刷新 UI が出ない | Vercel の `NEXT_PUBLIC_FF_START_PROGRAM_REFRESH` が Preview=`true` か。Redeploy 済みか。 |
+| 本番で刷新 UI が見える | Production の Flag が `false` か。誤って `true` になっていないか。 |

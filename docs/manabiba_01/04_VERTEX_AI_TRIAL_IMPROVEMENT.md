@@ -251,7 +251,7 @@ LAN（例: `http://192.168.11.10:3000`）からブラウザで開いていても
   - **Aiレポート作成**: `weeklyAiReportRunCount` / `weeklyAiReportRunDateKey`
   - **Ai改善提案**: `weeklyAiImprovementRunCount` / `weeklyAiImprovementRunDateKey`
 - **上限**: いずれも **1 日あたり 3 回まで**（`TrialWeekly.tsx` の `WEEKLY_AI_DAILY_LIMIT`。朝・晩の 3 回とは独立）。
-- **Aiレポートの反映モード**（週・月で共通）: `users/{uid}.weeklyAiReportWriteMode` を参照（`append`／`overwrite`／`skip_if_nonempty`＝既存入力がある欄は変更しない）。未設定時は UI では `append` 相当。設定 UI: `/trial_4w/settings`。
+- **Aiレポートの反映モード**（週・月で共通）: `users/{uid}.weeklyAiReportWriteMode` を参照（`append`／`overwrite`／`skip_if_nonempty`＝既存入力がある欄は変更しない）。未設定時は UI では `append` 相当。設定 UI: `/settings`（旧 `/trial_4w/settings` はリダイレクト）。
 - スキーマ・入力対照の正本: [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x-2（週次）および §2.x-2-0 / §2.x-2-1。
 
 ### 9.2 `POST /api/ai/weekly-report`

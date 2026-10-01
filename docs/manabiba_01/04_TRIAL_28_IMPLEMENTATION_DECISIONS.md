@@ -212,7 +212,7 @@
 | **区分** | **簡易**（`simple`）／**普通**（`normal`）／**詳細**（`detailed`） |
 | **初期値** | **普通**（未設定・不正値も `normal` にフォールバック） |
 | **切替 UI** | `/trial_4w` メニューバー右のラジオ（`JournalDetailLevelSwitch`） |
-| **デフォルト設定** | `/trial_4w/settings` でデフォルトを保存。画面上部ラジオと同期 |
+| **デフォルト設定** | `/settings` でデフォルトを保存（旧 `/trial_4w/settings` はリダイレクト）。画面上部ラジオと同期 |
 | **永続化（現行）** | ブラウザ `localStorage`（`manabiba:journal-detail-level` / `…-default`）。**Firestore には未保存** |
 | **実装** | 表示判定: `src/lib/journalDetailLevel.ts`。状態: `JournalDetailLevelContext` |
 
@@ -345,7 +345,7 @@
 | 週 UI | `src/components/trial/TrialWeekly.tsx` |
 | 月 UI | `src/components/trial/TrialMonthly.tsx` |
 | ラジオ切替 | `src/components/trial/JournalDetailLevelSwitch.tsx` |
-| 設定画面 | `src/app/trial_4w/settings/page.tsx` |
+| 設定画面 | `src/app/settings/page.tsx`（旧 `src/app/trial_4w/settings/page.tsx` は `/settings` へリダイレクト） |
 
 仕様変更時は **本節の表を先に更新**し、続けて `journalDetailLevel.ts` と各 `Trial*.tsx` を揃える。
 

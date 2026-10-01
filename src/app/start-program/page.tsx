@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
@@ -9,10 +8,11 @@ import ProtoFooter from '@/components/proto/ProtoFooter';
 import { useAuth } from '@/hooks/useAuth';
 import { useLegalDocuments } from '@/hooks/useLegalDocuments';
 import { hasAcceptedCurrentConsents } from '@/lib/consent';
-import { DATA_RETENTION_MSG } from '@/lib/courseSelectionCatalog';
-import { DataRetentionBanner } from '@/components/subscription/DataRetentionBanner';
 import { shouldRedirectUnauthenticatedToLogin } from '@/lib/intentionalSignOut';
 import { ensureUserEnrollmentPrimaryCourse } from '@/lib/firestore';
+import { isStartProgramRefreshEnabled } from '@/lib/featureFlags';
+import StartProgramLegacyView from '@/components/start-program/StartProgramLegacyView';
+import StartProgramRefreshView from '@/components/start-program/StartProgramRefreshView';
 
 /**
  * 7日間スタートプログラム（PDF版提供）。
@@ -28,6 +28,7 @@ function StartProgramContent() {
 
   const showDowngradeNotice = searchParams.get('downgraded') === 'free';
   const hadTrial = searchParams.get('hadTrial') === '1';
+  const startProgramRefresh = isStartProgramRefreshEnabled();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -100,57 +101,15 @@ function StartProgramContent() {
 
       <div className="home-main-wrapper">
         <main className="legal-page-main">
-          <div className="legal-page-content">
-            <DataRetentionBanner userProfile={userProfile} />
-            {showDowngradeNotice ? (
-              <p className="start-program-downgrade-notice" role="status">
-                フリーコースへ変更しました。
-                {hadTrial ? ' 28日お試し期間は終了しました。' : null}
-                気づきノート（有料機能）はご利用いただけません。{DATA_RETENTION_MSG}
-              </p>
-            ) : null}
-            <h1 className="legal-page-title">7日間スタートプログラム（pdf版提供）</h1>
-            <p className="legal-page-lead">
-              セルフコーチングによる「自分を変える7日間プログラム」のpdf版を準備しました。<br/>ドキュメントをクリックして表示後、ダウンロードしてお使いください。
-            </p>
-            <p className="legal-page-lead">
-              会員登録時の利用規約・プライバシーポリシーに従って、ご利用ください。
-              <br />
-              なお、ご自身による再配布はご遠慮願います。
-            </p>
-            <p className="start-program-pdf-actions">
-              <a
-                href="/contents/Pub-260805_v1.0.pdf"
-                className="start-program-pdf-cover-link"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="7日間スタートプログラム PDFを別タブで開く"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/img/Pub-260805_v1.0.png"
-                  alt="7日間スタートプログラム PDF版の表紙"
-                  className="start-program-pdf-cover"
-                  width={720}
-                  height={1040}
-                />
-              </a>
-            </p>
-            <p className="legal-page-back">
-              <Link href="/">ホームへ戻る</Link>
-            </p>
-
-            {userProfile?.enrollment?.primaryCourse === 'start7d' ? (
-              <section className="start-program-upgrade" aria-label="気づきノートへのアップグレード">
-                <p className="start-program-upgrade-lead">
-                  自分を変える気づきノートにトライをしてみる →
-                </p>
-                <Link href="/trial_4w/landing" className="start-program-upgrade-cta">
-                  気づきノートへアップグレード
-                </Link>
-              </section>
-            ) : null}
-          </div>
+          {startProgramRefresh ? (
+            <StartProgramRefreshView />
+          ) : (
+            <StartProgramLegacyView
+              userProfile={userProfile}
+              showDowngradeNotice={showDowngradeNotice}
+              hadTrial={hadTrial}
+            />
+          )}
         </main>
       </div>
 

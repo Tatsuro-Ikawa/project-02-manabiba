@@ -1,0 +1,279 @@
+{
+  "persona": {
+    "name": "康太さん",
+    "note": "35歳・既婚・子ども二人／中間管理職。趣味はアウトドアと自転車。制約を外した願望サンプル（約12件）。"
+  },
+  "centerGoal": "家族との時間も自分の挑戦も大切にしながら、信頼される働き方で充実した日々を送りたい",
+  "wishes": [
+    {
+      "id": "kota-career-1",
+      "domainId": "career",
+      "text": "部下が安心して相談できる上司でありたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "話を最後まで聴く力",
+        "安心感を与える関わり",
+        "状況を整理して返す力",
+        "公平な判断",
+        "頼られる落ち着き"
+      ]
+    },
+    {
+      "id": "kota-career-2",
+      "domainId": "career",
+      "text": "仕事と家庭のバランスを、自分で決められる働き方をしたい",
+      "motivation": "values",
+      "valueOptions": [
+        "自律",
+        "バランス",
+        "家族との時間",
+        "選択できること",
+        "誠実"
+      ]
+    },
+    {
+      "id": "kota-money-1",
+      "domainId": "money",
+      "text": "家族の将来のために、焦らず積み上げられるお金の仕組みをつくりたい",
+      "motivation": "values",
+      "valueOptions": [
+        "安心",
+        "責任",
+        "将来への思いやり",
+        "計画性",
+        "安定"
+      ]
+    },
+    {
+      "id": "kota-health-1",
+      "domainId": "health",
+      "text": "週末は自転車で長く走って、体も頭もスッキリさせたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "風を切って走る爽快感",
+        "長い距離を走り切る達成感",
+        "景色が変わるワクワク",
+        "汗をかいたあとのすっきり感",
+        "自分のペースで進む感覚"
+      ]
+    },
+    {
+      "id": "kota-health-2",
+      "domainId": "health",
+      "text": "体力を維持して、子どもと全力で遊び回れる自分でいたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "体力・持久力",
+        "体を動かす習慣",
+        "子どもに合わせた切り替え",
+        "元気を伝染させる力",
+        "継続力"
+      ]
+    },
+    {
+      "id": "kota-learning-1",
+      "domainId": "learning",
+      "text": "マネジメントを、現場で活かせる形で学び続けたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "実践にすぐつながる学び",
+        "人の動かし方・関わり方を知る好奇心",
+        "うまくいった事例を試す楽しさ",
+        "自分のやり方を磨く感覚",
+        "チームが前に進む手応え"
+      ]
+    },
+    {
+      "id": "kota-hobbies-1",
+      "domainId": "hobbies",
+      "text": "家族でキャンプや登山など、アウトドアの時間を増やしたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "自然の中での開放感",
+        "家族で同じ体験を共有する楽しさ",
+        "火起こしや設営のワクワク",
+        "日常から離れる非日常感",
+        "季節の空気を肌で感じること"
+      ]
+    },
+    {
+      "id": "kota-hobbies-2",
+      "domainId": "hobbies",
+      "text": "自転車のメンテやルート計画を、自分でサッと整えられるようになりたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "段取り力",
+        "道具の手入れ・調整",
+        "計画を立てる力",
+        "トラブル対応の落ち着き",
+        "実務センス"
+      ]
+    },
+    {
+      "id": "kota-relationships-1",
+      "domainId": "relationships",
+      "text": "妻や子どもとの会話を、忙しさの言い訳にせず大切にしたい",
+      "motivation": "values",
+      "valueOptions": [
+        "家族愛",
+        "つながり",
+        "傾聴",
+        "尊重",
+        "いまを大切にする"
+      ]
+    },
+    {
+      "id": "kota-relationships-2",
+      "domainId": "relationships",
+      "text": "仲間とロングライドやアウトドアに出かけて、つながりを深めたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "一緒に走る一体感",
+        "途中の会話・笑い",
+        "共通の趣味でつながる安心",
+        "新しいコースを開拓するワクワク",
+        "「また行こう」と言える関係"
+      ]
+    },
+    {
+      "id": "kota-spirituality-1",
+      "domainId": "spirituality",
+      "text": "仕事の評価に振り回されず、「自分はこれでいい」と感じられる軸を持ちたい",
+      "motivation": "values",
+      "valueOptions": [
+        "自己信頼",
+        "軸",
+        "平静",
+        "自分らしさ",
+        "誠実"
+      ]
+    },
+    {
+      "id": "kota-social-1",
+      "domainId": "social_contribution",
+      "text": "これまでの経験を、地域や後輩に自然な形で伝えたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "経験を分かりやすく伝える力",
+        "後輩を育てる関わり",
+        "現場知の共有",
+        "聞きやすい話し方",
+        "貢献する姿勢"
+      ]
+    }
+  ],
+  "movingEpisodes": [
+    {
+      "id": "kota-ep-1",
+      "episode": "子どもが初めて長い距離のハイキングを歩き切って、笑顔で「また行きたい」と言った",
+      "emotion": "誇らしい、嬉しい、つながっている感じ",
+      "valueOptions": [
+        "家族との時間",
+        "挑戦",
+        "成長",
+        "共有",
+        "喜び"
+      ]
+    },
+    {
+      "id": "kota-ep-2",
+      "episode": "部下のトラブル対応で、自分の判断がチームを落ち着かせたと感じた夜",
+      "emotion": "責任感、安心、役に立てた実感",
+      "valueOptions": [
+        "信頼",
+        "責任",
+        "安定",
+        "誠実",
+        "貢献"
+      ]
+    },
+    {
+      "id": "kota-ep-3",
+      "episode": "妻が「今日はゆっくりしてね」と先に言ってくれた休日の朝",
+      "emotion": "ありがたい、ほっとする、大切にされている感じ",
+      "valueOptions": [
+        "思いやり",
+        "尊重",
+        "バランス",
+        "感謝",
+        "安心"
+      ]
+    }
+  ],
+  "defaultValueOptions": [
+    "家族との時間",
+    "信頼",
+    "自律",
+    "安心",
+    "誠実",
+    "挑戦",
+    "つながり",
+    "バランス",
+    "責任",
+    "自分らしさ"
+  ],
+  "praiseEpisodes": [
+    {
+      "id": "kota-praise-1",
+      "episode": "部下に「相談しやすいです」と言われた1on1のあと",
+      "emotion": "嬉しい、誇らしい、役に立てた実感",
+      "strengthOptions": [
+        "聞き上手",
+        "安心感を与える",
+        "整理して返す力",
+        "公平さ",
+        "落ち着き"
+      ]
+    },
+    {
+      "id": "kota-praise-2",
+      "episode": "ライド仲間に「ルート決めとペース配分が上手い」と言われた",
+      "emotion": "認められる感じ、すっと動けた満足",
+      "strengthOptions": [
+        "段取り力",
+        "先読み",
+        "調整力",
+        "計画力",
+        "実務センス"
+      ]
+    }
+  ],
+  "naturalEpisodes": [
+    {
+      "id": "kota-natural-1",
+      "episode": "週末のキャンプ設営を、家族のペースに合わせて無理なく回せた",
+      "emotion": "スムーズ、達成感、自然体",
+      "strengthOptions": [
+        "段取り力",
+        "優先順位づけ",
+        "柔軟な切り替え",
+        "家族を回す力",
+        "落ち着いて進める力"
+      ]
+    },
+    {
+      "id": "kota-natural-2",
+      "episode": "朝の通勤前に自転車を少し整備して、そのまま気持ちよく出勤できた",
+      "emotion": "心地よい集中、すっきり、準備が整った安心",
+      "strengthOptions": [
+        "手入れ・調整の丁寧さ",
+        "短時間で整える力",
+        "習慣化",
+        "実務センス",
+        "自分のペース管理"
+      ]
+    }
+  ],
+  "defaultStrengthOptions": [
+    "聞き上手",
+    "段取り力",
+    "安心感を与える",
+    "調整力",
+    "継続力",
+    "計画力",
+    "落ち着き",
+    "先読み",
+    "伝える力",
+    "体力"
+  ]
+}

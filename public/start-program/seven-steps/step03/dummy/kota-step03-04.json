@@ -1,0 +1,73 @@
+{
+  "persona": {
+    "name": "康太さん",
+    "note": "35歳・既婚・子ども二人／中間管理職。全体的に満足度が低め（パターンB）。取組領域は精神・内面。"
+  },
+  "step01Source": "/start-program/seven-steps/step02/dummy/kota-persona.json",
+  "step03": {
+    "scores": {
+      "social_contribution": 6,
+      "career": 5,
+      "money": 6,
+      "health": 4,
+      "spirituality": 3,
+      "learning": 6,
+      "hobbies": 4,
+      "relationships": 5
+    },
+    "radarNotes": {
+      "bulge": "全体的に小さくまとまっている。精神・内面、健康、趣味が特に凹んでいる。",
+      "imbalance": "精神・内面。仕事の評価が気になって、休日も気持ちが休まらない。",
+      "lighten": "自分の軸が持てれば、家族との時間や自転車も心から楽しめそう。"
+    },
+    "candidateDomainIds": ["spirituality", "health", "hobbies", "relationships"],
+    "criteriaByDomain": {
+      "spirituality": { "importance": 9, "excitement": 7, "feasibility": 7 },
+      "health": { "importance": 8, "excitement": 8, "feasibility": 6 },
+      "hobbies": { "importance": 6, "excitement": 9, "feasibility": 5 },
+      "relationships": { "importance": 9, "excitement": 7, "feasibility": 5 }
+    },
+    "focusDomainId": "spirituality"
+  },
+  "step04": {
+    "reasons": [
+      {
+        "text": "上司からの評価が気になって、夜や休日も仕事のことを考えてしまう",
+        "changeability": "can_change",
+        "tags": {
+          "have": ["have_vitality"],
+          "do": ["do_habit"],
+          "be": ["be_compare"]
+        }
+      },
+      {
+        "text": "部下の失敗を自分の責任だと感じて、ひとりで抱え込んでしまう",
+        "changeability": "can_change",
+        "tags": {
+          "have": [],
+          "do": ["do_relate", "do_decide"],
+          "be": ["be_outcome", "be_should"]
+        }
+      },
+      {
+        "text": "平日は忙しく、自分の気持ちを振り返る時間がない",
+        "changeability": "can_influence",
+        "tags": {
+          "have": ["have_resource"],
+          "do": ["do_plan"],
+          "be": []
+        }
+      },
+      {
+        "text": "会社の評価制度が数字中心で、自分が大事にしたいことと合っていない",
+        "changeability": "hard_now",
+        "tags": { "have": [], "do": [], "be": [] }
+      },
+      {
+        "text": "自分が本当は何を大事にしたいのか、まだ言葉にできていない",
+        "changeability": "unsure",
+        "tags": { "have": [], "do": [], "be": [] }
+      }
+    ]
+  }
+}

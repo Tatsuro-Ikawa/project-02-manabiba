@@ -235,7 +235,7 @@ sequenceDiagram
 | **気づきノート・AIコーチ（スタンダード）** | 有効 | 同上 → `/trial_4w`（28日お試し／将来は申込フォームへ差し替え） |
 | **気づきノート・プライベートコーチ（プレミアム）** | 表示（CTA は申込実装まで無効可） | 将来: プレミアム申込フロー |
 
-**グローバルナビ（左サイドバー・中央ヘッダー）**: 左「**スタート**」→ **`/start-program`**（7日間スタートプログラム）。左「**実行**」→ **`/trial_4w`**（気づきノート本編・`/trial_4w/settings` を含む。`/trial_4w/landing` はコース選択のため「実行」対象外）。中央ヘッダー表記は **`/`・`/trial_4w/landing`・利用規約等**: 「人生学び場　こころ道場」+®／**`/start-program`**: 「スタートプログラム」／**`/trial_4w`（`landing` 除く）**: 「気づきノート」。実装は `LeftSidebar`・`ProtoHeader`。詳細は [04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) §1.2。
+**グローバルナビ（左サイドバー・中央ヘッダー）**: 左「**スタート**」→ **`/start-program`**（7日間スタートプログラム）。左「**ノート**」→ **`/trial_4w`**（気づきノート本編。`/trial_4w/landing` はコース選択のため対象外）。左「**設定**」→ **`/settings`**（ログイン時。旧 `/trial_4w/settings` はリダイレクト）。中央ヘッダー表記は **`/`・`/trial_4w/landing`・利用規約等**: 「人生学び場　こころ道場」+®／**`/start-program`**: 「スタートプログラム」／**`/trial_4w`（`landing` 除く）**: 「気づきノート」／**`/settings`**: 「設定」。実装は `LeftSidebar`・`ProtoHeader`。詳細は [04_HOME_SCREEN_IMPLEMENTATION.md](./04_HOME_SCREEN_IMPLEMENTATION.md) §1.2。
 
 **特商法表記**: ランディングに**全文を載せるだけでは不十分**なことが多い。有料価格（月額等）を掲示する以上、**常時参照できる専用ページ**（例: `/legal/tokushoho`）をフッター等からリンクし、**申込・決済の直前**でも再確認できるようにする（§8・§1.5）。
 

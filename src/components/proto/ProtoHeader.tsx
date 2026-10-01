@@ -59,6 +59,9 @@ export default function ProtoHeader({
     if (pathname.startsWith('/start-program')) {
       return { text: '7日間スタートプログラム', showReg: false };
     }
+    if (pathname === '/settings' || pathname.startsWith('/settings/')) {
+      return { text: '設定', showReg: false };
+    }
     if (
       pathname === '/trial_4w' ||
       (pathname.startsWith('/trial_4w/') && !pathname.startsWith('/trial_4w/landing'))

@@ -1,0 +1,435 @@
+{
+  "persona": {
+    "name": "裕子さん",
+    "note": "中学生・小学生の母／夫は会社員。制約を外した願望サンプル。この JSON を編集して UI「ダミーを読み込む」で投入できます。"
+  },
+  "centerGoal": "家族も自分も大事にしながら、毎日が少しずつワクワクする人生を送りたい",
+  "wishes": [
+    {
+      "id": "dummy-career-1",
+      "domainId": "career",
+      "text": "自分の経験が誰かの役に立つ仕事をしてみたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "経験を分かりやすく伝える力",
+        "相手の状況に合わせたサポート",
+        "聞き上手",
+        "共感しながら整理する力",
+        "信頼される対応"
+      ]
+    },
+    {
+      "id": "dummy-career-2",
+      "domainId": "career",
+      "text": "「この人に頼みたい」と言われる働き方をしてみたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "任せられる安心感をつくる",
+        "約束を守る誠実さ",
+        "段取り力",
+        "丁寧な仕事",
+        "頼られる存在感"
+      ]
+    },
+    {
+      "id": "dummy-career-3",
+      "domainId": "career",
+      "text": "好きなパン作りで収入を得るようになりたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "レシピを試して「うまくいった！」と感じる瞬間",
+        "手作りの温かさ・香りを人に届けること",
+        "「また食べたい」と言ってもらえる喜び",
+        "好きなことを仕事にするというワクワク",
+        "自分のこだわり（生地・焼き加減）を形にすること"
+      ]
+    },
+    {
+      "id": "dummy-money-1",
+      "domainId": "money",
+      "text": "お金の心配をせず、やりたいことを選べる余裕がほしい",
+      "motivation": "values",
+      "valueOptions": [
+        "安心",
+        "自由",
+        "選択できること",
+        "ゆとり",
+        "自立"
+      ]
+    },
+    {
+      "id": "dummy-money-2",
+      "domainId": "money",
+      "text": "家族で「行きたいね」と言った場所に、気軽に行けるようになりたい",
+      "motivation": "values",
+      "valueOptions": [
+        "家族との時間",
+        "共有",
+        "楽しさ",
+        "つながり",
+        "豊かさ"
+      ]
+    },
+    {
+      "id": "dummy-money-3",
+      "domainId": "money",
+      "text": "将来の自分に「よくやってくれたね」と言える貯金の形をつくりたい",
+      "motivation": "values",
+      "valueOptions": [
+        "将来への思いやり",
+        "誠実",
+        "責任",
+        "安心",
+        "自分への敬意"
+      ]
+    },
+    {
+      "id": "dummy-health-1",
+      "domainId": "health",
+      "text": "朝、すっきり起きて「今日もいい日になりそう」と感じたい",
+      "motivation": "values",
+      "valueOptions": [
+        "心地よさ",
+        "希望",
+        "穏やかさ",
+        "リズム",
+        "前向きさ"
+      ]
+    },
+    {
+      "id": "dummy-health-2",
+      "domainId": "health",
+      "text": "ヨガやフィットネスで体を動かしたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "体を動かす習慣づくり",
+        "リズムを整える力",
+        "自分のペースを守る",
+        "継続力",
+        "体の声を聞く感覚"
+      ]
+    },
+    {
+      "id": "dummy-health-3",
+      "domainId": "health",
+      "text": "鏡を見たとき、昔のラインに戻ったと微笑める自分でいたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "軽やかに動ける体になる感覚",
+        "服を選ぶ楽しさが戻ること",
+        "「きれいになったね」と言われること",
+        "自分の体を好きでいられる感覚",
+        "年齢より若々しく見える自分"
+      ]
+    },
+    {
+      "id": "dummy-spirituality-1",
+      "domainId": "spirituality",
+      "text": "自分の気持ちを、素直にそのまま認めてあげられるようになりたい",
+      "motivation": "values",
+      "valueOptions": [
+        "自己受容",
+        "正直",
+        "優しさ",
+        "ありのまま",
+        "尊重"
+      ]
+    },
+    {
+      "id": "dummy-spirituality-2",
+      "domainId": "spirituality",
+      "text": "不安に飲み込まれず、「大丈夫、私ならできる」と感じられる自分でいたい",
+      "motivation": "values",
+      "valueOptions": [
+        "自己信頼",
+        "勇気",
+        "安定",
+        "強さ",
+        "安心"
+      ]
+    },
+    {
+      "id": "dummy-spirituality-3",
+      "domainId": "spirituality",
+      "text": "一日の終わりに、「今日も私らしくいられた」と思いたい",
+      "motivation": "values",
+      "valueOptions": [
+        "自分らしさ",
+        "誠実",
+        "調和",
+        "充実",
+        "誇り"
+      ]
+    },
+    {
+      "id": "dummy-learning-1",
+      "domainId": "learning",
+      "text": "英語力をさらに高めていきたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "コツコツ学ぶ力",
+        "言葉を覚えるセンス",
+        "会話への前向きさ",
+        "新しい表現を試す勇気",
+        "学習の段取り"
+      ]
+    },
+    {
+      "id": "dummy-learning-2",
+      "domainId": "learning",
+      "text": "行ってみたい海外に3か月くらい旅行してみたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "現地の空気・匂い・音を五感で味わうこと",
+        "日常から離れた「別の自分」になれる感覚",
+        "知らない土地で自由に過ごす時間",
+        "旅先で出会う人との会話・交流",
+        "「こんな世界があったんだ」と広がる感覚"
+      ]
+    },
+    {
+      "id": "dummy-learning-3",
+      "domainId": "learning",
+      "text": "違う文化・習慣。知らない町や景色をみてみたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "知らない町並み・建物・風景を見ること",
+        "現地の人の暮らし方・価値観に触れること",
+        "日本とは違う「当たり前」を知ること",
+        "写真や思い出に残せる体験",
+        "自分の視野が広がる感覚"
+      ]
+    },
+    {
+      "id": "dummy-hobbies-1",
+      "domainId": "hobbies",
+      "text": "アウトドアで、開放的な時間を持ちたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "自然の中での開放感",
+        "日常の喧騒から離れる静けさ",
+        "体を動かしてフレッシュする感覚",
+        "家族や仲間と外で過ごす時間",
+        "季節の移ろいを肌で感じること"
+      ]
+    },
+    {
+      "id": "dummy-hobbies-2",
+      "domainId": "hobbies",
+      "text": "オリジナルのパンをつくって、インスタで「素敵」と言ってもらいたい",
+      "motivation": "strength",
+      "strengthOptions": [
+        "手作業の丁寧さ",
+        "味の感覚・調整力",
+        "見た目を整えるセンス",
+        "創作の集中力",
+        "完成までやり切る力"
+      ]
+    },
+    {
+      "id": "dummy-hobbies-3",
+      "domainId": "hobbies",
+      "text": "子どもの頃「好き」だった釣りをまた始めたい",
+      "motivation": "interest",
+      "interestOptions": [
+        "水辺の静かな時間",
+        "魚が釣れたときのドキドキ・達成感",
+        "自然の中で一人の時間を持つこと",
+        "釣ったものを皆で食べる楽しさ",
+        "昔の自分を思い出す懐かしさ"
+      ]
+    },
+    {
+      "id": "dummy-relationships-1",
+      "domainId": "relationships",
+      "text": "家族と、笑い合う時間がもっとたくさんほしい",
+      "motivation": "values",
+      "valueOptions": [
+        "温かさ",
+        "つながり",
+        "楽しさ",
+        "家族愛",
+        "安心"
+      ]
+    },
+    {
+      "id": "dummy-relationships-2",
+      "domainId": "relationships",
+      "text": "お互いの夢を応援し合える夫婦でありたい",
+      "motivation": "values",
+      "valueOptions": [
+        "対等",
+        "応援",
+        "信頼",
+        "尊重",
+        "パートナーシップ"
+      ]
+    },
+    {
+      "id": "dummy-relationships-3",
+      "domainId": "relationships",
+      "text": "「会うと笑顔になる」人たちを過ごす時間を増やしたい",
+      "motivation": "values",
+      "valueOptions": [
+        "笑顔",
+        "友情",
+        "心地よさ",
+        "つながり",
+        "明るさ"
+      ]
+    },
+    {
+      "id": "dummy-social-1",
+      "domainId": "social_contribution",
+      "text": "自分の経験が、誰かの背中をそっと押せる存在になりたい",
+      "motivation": "values",
+      "valueOptions": [
+        "貢献",
+        "思いやり",
+        "伝えること",
+        "支え",
+        "影響力"
+      ]
+    },
+    {
+      "id": "dummy-social-2",
+      "domainId": "social_contribution",
+      "text": "「ありがとう」が自然と循環する場をつくりたい",
+      "motivation": "values",
+      "valueOptions": [
+        "循環",
+        "感謝",
+        "与えること",
+        "共同体",
+        "温かさ"
+      ]
+    },
+    {
+      "id": "dummy-social-3",
+      "domainId": "social_contribution",
+      "text": "子どもたちの未来が明るくなるようなことに関わりたい",
+      "motivation": "values",
+      "valueOptions": [
+        "次世代",
+        "希望",
+        "育てる",
+        "奉仕",
+        "未来"
+      ]
+    }
+  ],
+  "movingEpisodes": [
+    {
+      "id": "dummy-ep-1",
+      "episode": "子どもが失敗して落ち込むのを、兄弟で励まし合っているのを見た",
+      "emotion": "優しい気持ち、暖かさ、誇らしい",
+      "valueOptions": [
+        "思いやり",
+        "つながり",
+        "支え合い",
+        "家族愛",
+        "優しさ"
+      ]
+    },
+    {
+      "id": "dummy-ep-2",
+      "episode": "夫が私のやりたいことを「いいね、やってみよう」と応援してくれた",
+      "emotion": "嬉しい、安心、認められる感じ",
+      "valueOptions": [
+        "尊重",
+        "信頼",
+        "応援",
+        "対等",
+        "安心"
+      ]
+    },
+    {
+      "id": "dummy-ep-3",
+      "episode": "パンを焼いて近所の人に渡したら「嬉しい」と笑顔になった",
+      "emotion": "満たされる、嬉しい、役に立てた実感",
+      "valueOptions": [
+        "与える",
+        "喜び",
+        "つながり",
+        "貢献",
+        "温かさ"
+      ]
+    }
+  ],
+  "defaultValueOptions": [
+    "思いやり",
+    "つながり",
+    "成長",
+    "自由",
+    "安心",
+    "誠実",
+    "感謝",
+    "自分らしさ",
+    "尊重",
+    "調和"
+  ],
+  "praiseEpisodes": [
+    {
+      "id": "dummy-praise-1",
+      "episode": "ママ友に「裕子さんに相談すると落ち着く」と言われた",
+      "emotion": "嬉しい、誇らしい、役に立てた実感",
+      "strengthOptions": [
+        "聞き上手",
+        "安心感を与える",
+        "共感力",
+        "整理して返す力",
+        "信頼される話し方"
+      ]
+    },
+    {
+      "id": "dummy-praise-2",
+      "episode": "夫に「段取りがうまいね、助かった」と言われた",
+      "emotion": "認められる感じ、すっと動けた満足",
+      "strengthOptions": [
+        "段取り力",
+        "先読み",
+        "調整力",
+        "家族を回す力",
+        "実務センス"
+      ]
+    }
+  ],
+  "naturalEpisodes": [
+    {
+      "id": "dummy-natural-1",
+      "episode": "子どもの行事と家事の予定を無理なく組み替えて、一日を回せた",
+      "emotion": "スムーズ、達成感、自然体",
+      "strengthOptions": [
+        "マルチタスクの整理",
+        "優先順位づけ",
+        "柔軟な切り替え",
+        "生活設計力",
+        "落ち着いて進める力"
+      ]
+    },
+    {
+      "id": "dummy-natural-2",
+      "episode": "パン生地をこねているあいだ、時間を忘れて没頭できた",
+      "emotion": "心地よい集中、満たされる、楽しい",
+      "strengthOptions": [
+        "手仕事への集中",
+        "感覚で調整する力",
+        "没頭力",
+        "創作の粘り",
+        "丁寧さ"
+      ]
+    }
+  ],
+  "defaultStrengthOptions": [
+    "聞き上手",
+    "段取り力",
+    "共感力",
+    "継続力",
+    "丁寧さ",
+    "調整力",
+    "安心感を与える",
+    "集中力",
+    "先読み",
+    "やり切る力"
+  ]
+}

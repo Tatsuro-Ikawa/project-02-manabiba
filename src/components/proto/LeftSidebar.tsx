@@ -44,11 +44,13 @@ export default function LeftSidebar({
   const showCommNew = isCoachView ? coachUnread.anyUnread : clientUnread.hasUnread;
 
   const isHome = pathname === '/';
-  /** 気づきノート（旧トライアル本編）: `/trial_4w` および設定。コース選択ランディングは含めない */
+  /** 気づきノート（旧トライアル本編）: `/trial_4w`。コース選択ランディングは含めない */
   const isKizukiNote =
     pathname === '/trial_4w' ||
-    (pathname.startsWith('/trial_4w/') && !pathname.startsWith('/trial_4w/landing'));
-  const isTrialSettings = pathname === '/trial_4w/settings';
+    (pathname.startsWith('/trial_4w/') &&
+      !pathname.startsWith('/trial_4w/landing') &&
+      !pathname.startsWith('/trial_4w/settings'));
+  const isAppSettings = pathname === '/settings' || pathname.startsWith('/settings/');
   const isStartProgram = pathname.startsWith('/start-program');
   const isCommunication = pathname === '/communication';
   const isAdminAssignments = pathname.startsWith('/admin/assignments');
@@ -135,17 +137,17 @@ export default function LeftSidebar({
           <span>コーチ割当</span>
         </Link>
       ) : null}
-      {isKizukiNote && kizukiNoteEnabled && (
+      {loggedIn ? (
         <Link
-          href="/trial_4w/settings"
-          className={`sidebar-btn ${isTrialSettings ? 'active' : ''}`}
-          aria-label="気づきノートの表示設定"
+          href="/settings"
+          className={`sidebar-btn ${isAppSettings ? 'active' : ''}`}
+          aria-label="設定"
           onClick={handleNav}
         >
           <span className="material-symbols-outlined" aria-hidden>tune</span>
-          <span>気づきノート設定</span>
+          <span>設定</span>
         </Link>
-      )}
+      ) : null}
     </aside>
   );
 }

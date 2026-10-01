@@ -1,0 +1,69 @@
+{
+  "persona": {
+    "name": "裕子さん",
+    "note": "中学生・小学生の母。子育てで仕事から離れて10年。レーダーはパターンA（一部が高く、他が凹んでいる）。取組領域は仕事・キャリア。"
+  },
+  "step01Source": "/start-program/seven-steps/step02/dummy/yuko-persona.json",
+  "step03": {
+    "scores": {
+      "social_contribution": 5,
+      "career": 3,
+      "money": 4,
+      "health": 5,
+      "spirituality": 4,
+      "learning": 6,
+      "hobbies": 7,
+      "relationships": 8
+    },
+    "radarNotes": {
+      "bulge": "家族との関係と趣味（パン作り）は膨らんでいる。仕事とお金が大きく凹んでいる。",
+      "imbalance": "仕事・キャリア。家族のことを優先してきて、自分の役割が「母」だけになっている気がする。",
+      "lighten": "仕事で誰かの役に立てている実感があれば、お金の不安も自分への見方も軽くなりそう。"
+    },
+    "candidateDomainIds": ["career", "money", "spirituality", "health"],
+    "criteriaByDomain": {
+      "career": { "importance": 9, "excitement": 8, "feasibility": 6 },
+      "money": { "importance": 8, "excitement": 5, "feasibility": 5 },
+      "spirituality": { "importance": 8, "excitement": 6, "feasibility": 5 },
+      "health": { "importance": 7, "excitement": 6, "feasibility": 7 }
+    },
+    "focusDomainId": "career"
+  },
+  "step04": {
+    "reasons": [
+      {
+        "text": "子育てでブランクが10年あり、今の自分に何ができるのか自信がない",
+        "changeability": "can_change",
+        "tags": {
+          "have": ["have_skill"],
+          "do": ["do_improve"],
+          "be": ["be_self", "be_outcome"]
+        }
+      },
+      {
+        "text": "パン作りを仕事にしたい気持ちはあるが、何から始めればいいか分からない",
+        "changeability": "can_change",
+        "tags": {
+          "have": ["have_skill", "have_context"],
+          "do": ["do_plan", "do_other"],
+          "be": []
+        },
+        "otherText": { "do": "まずは小さなマルシェに出店してみる" }
+      },
+      {
+        "text": "家事と育児で、自分のための時間がほとんど取れない",
+        "changeability": "can_influence",
+        "tags": {
+          "have": ["have_resource", "have_support"],
+          "do": ["do_relate", "do_plan"],
+          "be": ["be_should"]
+        }
+      },
+      {
+        "text": "住んでいる地域には、希望する時間帯で働ける求人が少ない",
+        "changeability": "hard_now",
+        "tags": { "have": [], "do": [], "be": [] }
+      }
+    ]
+  }
+}
