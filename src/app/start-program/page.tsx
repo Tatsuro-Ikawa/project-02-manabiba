@@ -120,7 +120,7 @@ function StartProgramContent() {
             </p>
             <p className="start-program-pdf-actions">
               <a
-                href="/contents/Pub-260805_v1.0.pdf"
+                href="/contents/Pub-261001_v1.1.pdf"
                 className="start-program-pdf-cover-link"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -128,11 +128,11 @@ function StartProgramContent() {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/img/Pub-260805_v1.0.png"
+                  src="/img/Pub-261001_v1.1.png"
                   alt="7日間スタートプログラム PDF版の表紙"
                   className="start-program-pdf-cover"
-                  width={720}
-                  height={1040}
+                  width={708}
+                  height={1024}
                 />
               </a>
             </p>
