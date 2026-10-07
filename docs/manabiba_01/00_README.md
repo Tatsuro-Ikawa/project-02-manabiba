@@ -58,6 +58,7 @@
 7d. **[Step2 興味レーン仕様](./05_STEP02_INTEREST_LANE_SPEC.md)**（3カテゴリ入口・掘り下げ／まとめる／文にする・ダミー・localStorage）
 7e. **[Step3 満足度〜取組領域仕様](./08_STEP03_SATISFACTION_SPEC.md)**（採点→レーダー→取組領域。表で候補≤N（`/settings`・1〜8・既定4）・三点で1領域。理由・ブレーキはStep4。recharts）
 7f. **[Step4 こころのブレーキ探索（草案・AI前）](./09_STEP04_BRAKE_EXPLORATION_SPEC.md)**（理由→変えやすさ→Have/Do/Beタグ。AI動的質問は別紙。検討事項§9）
+7g. **[Step4 こころの深掘り（まとめ以降・草案）](./10_STEP04_DEEP_DIVE_SPEC.md)**（課題＋あり方 → 場面・行動 → 気持ち・こころの声・こころの抵抗 → こころの働き仮説 → 自分の言葉。AI 3回先読み・モーダル①〜③。検討事項§11）
 
 8. **[Phase B — API 内部仕様（決定）](./04_PHASE_B_API_INTERNAL_DECISIONS.md)**（B1〜B5・エラー形式・認証・rules 方針）
 
@@ -107,6 +108,8 @@
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-10-07 | 気づきノート朝・晩に「入力中の記入日ポップアップ」（`/settings` で入り切り・既定オフ）を追加。[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §日付ナビ |
+| 2026-10-06 | Step4「まとめ」を「こころの深掘り」に置き換え（モック）。[10_STEP04_DEEP_DIVE_SPEC.md](./10_STEP04_DEEP_DIVE_SPEC.md) 決定 D1〜D12・§11.1〜11.2、[09_STEP04_BRAKE_EXPLORATION_SPEC.md](./09_STEP04_BRAKE_EXPLORATION_SPEC.md) §11.1 |
 | 2026-07-23 | [04_STRIPE_BILLING_SPEC.md](./04_STRIPE_BILLING_SPEC.md) を更新（Webhook 購読イベント必須・www URL・ログと配信の違い・Firebase Admin・トラブルシュート・完了画面フォールバック）。索引に 7a を追加 |
 | 2026-07-03 | 晩 Aiコーチプロンプト確定・`improvement` API 改修（`reflectionText` 50字以上・出力500字上限）。[04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §11.0 |
 | 2026-06-24 | [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §11.0（§4.z 改訂予定の AI 入力対照）追加。[03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x 晩フィールド・§2.x-1 対照表を §4.z に合わせて更新 |

@@ -20,6 +20,18 @@ import {
   type Step04Store,
   type Step04Theme,
 } from '@/lib/startProgram/step04Constants';
+import {
+  WORKING_RATINGS,
+  emptyAiSlot,
+  emptyDeepDiveEntry,
+  type AiSlot,
+  type DeepDiveEntry,
+  type EntryOptions,
+  type Hypothesis,
+  type InnerOptions,
+  type PickAnswer,
+  type WorkingRating,
+} from '@/lib/startProgram/step04DeepDiveConstants';
 
 const CHANGEABILITIES: Changeability[] = ['can_change', 'can_influence', 'hard_now', 'unsure'];
 const LAYER_KEYS: LayerKey[] = ['have', 'do', 'be'];
@@ -65,17 +77,110 @@ function normalizeReason(raw: unknown): ReasonEntry | null {
   };
 }
 
+function strList(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+}
+
+function normalizePick(raw: unknown): PickAnswer {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  return { selected: strList(o.selected), custom: strList(o.custom) };
+}
+
+/** 生成中のまま保存された枠は、再訪時に作り直す */
+function normalizeSlot<T>(raw: unknown, normalizeData: (d: unknown) => T | null): AiSlot<T> {
+  const empty = emptyAiSlot<T>();
+  if (!raw || typeof raw !== 'object') return empty;
+  const o = raw as Record<string, unknown>;
+  const data = o.data == null ? null : normalizeData(o.data);
+  const status = o.status === 'ready' && data ? 'ready' : o.status === 'error' ? 'error' : 'idle';
+  return {
+    status,
+    data,
+    inputKey: status === 'idle' ? null : typeof o.inputKey === 'string' ? o.inputKey : null,
+    refreshCount: typeof o.refreshCount === 'number' ? o.refreshCount : 0,
+    refreshedNotice: o.refreshedNotice === true,
+  };
+}
+
+function savedAt(v: unknown): number | null {
+  return typeof v === 'number' ? v : null;
+}
+
+function normalizeDeepDive(reasonId: string, raw: unknown): DeepDiveEntry {
+  const base = emptyDeepDiveEntry(reasonId);
+  if (!raw || typeof raw !== 'object') return base;
+  const o = raw as Record<string, Record<string, unknown> | undefined>;
+  const e = o.entry ?? {};
+  const n = o.inner ?? {};
+  const w = o.working ?? {};
+  const ratingsRaw = (w.ratings && typeof w.ratings === 'object' ? w.ratings : {}) as Record<string, unknown>;
+  const ratings: Record<string, WorkingRating> = {};
+  for (const [k, v] of Object.entries(ratingsRaw)) {
+    if (WORKING_RATINGS.some((r) => r.id === v)) ratings[k] = v as WorkingRating;
+  }
+  return {
+    reasonId,
+    entry: {
+      options: normalizeSlot<EntryOptions>(e.options, (d) => {
+        const x = d as Record<string, unknown>;
+        return typeof x.sceneQuestion === 'string'
+          ? { sceneQuestion: x.sceneQuestion, scenes: strList(x.scenes), actions: strList(x.actions) }
+          : null;
+      }),
+      scene: normalizePick(e.scene),
+      action: normalizePick(e.action),
+      savedAt: savedAt(e.savedAt),
+    },
+    inner: {
+      options: normalizeSlot<InnerOptions>(n.options, (d) => {
+        const x = d as Record<string, unknown>;
+        return { feelings: strList(x.feelings), voices: strList(x.voices), protections: strList(x.protections) };
+      }),
+      feeling: normalizePick(n.feeling),
+      voice: normalizePick(n.voice),
+      voiceOwnWords: typeof n.voiceOwnWords === 'string' ? n.voiceOwnWords : '',
+      protection: normalizePick(n.protection),
+      savedAt: savedAt(n.savedAt),
+    },
+    working: {
+      hypotheses: normalizeSlot<Hypothesis[]>(w.hypotheses, (d) =>
+        Array.isArray(d)
+          ? d
+              .filter((h): h is Record<string, unknown> => !!h && typeof h === 'object')
+              .filter((h) => typeof h.id === 'string' && typeof h.title === 'string')
+              .map((h) => ({
+                id: h.id as string,
+                title: h.title as string,
+                body: typeof h.body === 'string' ? h.body : '',
+                links: strList(h.links),
+              }))
+          : null
+      ),
+      ratings,
+      ownWords: typeof w.ownWords === 'string' ? w.ownWords : '',
+      savedAt: savedAt(w.savedAt),
+    },
+    insightSavedAt: savedAt((o as Record<string, unknown>).insightSavedAt),
+  };
+}
+
 function normalizeTheme(domainId: MandalaDomainId, raw: unknown): Step04Theme | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
   const reasons = (Array.isArray(o.reasons) ? o.reasons : [])
     .map(normalizeReason)
     .filter((r): r is ReasonEntry => r != null);
+  const ddRaw = (o.deepDive && typeof o.deepDive === 'object' ? o.deepDive : {}) as Record<string, unknown>;
+  const deepDive: Record<string, DeepDiveEntry> = {};
+  for (const r of reasons) {
+    if (ddRaw[r.id]) deepDive[r.id] = normalizeDeepDive(r.id, ddRaw[r.id]);
+  }
   return {
     domainId,
     reasons,
     startedAt: typeof o.startedAt === 'number' ? o.startedAt : Date.now(),
     completedAt: typeof o.completedAt === 'number' ? o.completedAt : null,
+    deepDive,
   };
 }
 
@@ -172,7 +277,7 @@ export function useStep04BrakeExploreStore() {
             ? prev.themes
             : {
                 ...prev.themes,
-                [domainId]: { domainId, reasons: [], startedAt: Date.now(), completedAt: null },
+                [domainId]: { domainId, reasons: [], startedAt: Date.now(), completedAt: null, deepDive: {} },
               },
         };
       });
@@ -223,11 +328,11 @@ export function useStep04BrakeExploreStore() {
 
   const removeReason = useCallback(
     (id: string) => {
-      updateActiveTheme((t) => ({
-        ...t,
-        completedAt: null,
-        reasons: t.reasons.filter((r) => r.id !== id),
-      }));
+      updateActiveTheme((t) => {
+        const deepDive = { ...t.deepDive };
+        delete deepDive[id];
+        return { ...t, completedAt: null, reasons: t.reasons.filter((r) => r.id !== id), deepDive };
+      });
     },
     [updateActiveTheme]
   );
@@ -277,11 +382,22 @@ export function useStep04BrakeExploreStore() {
     [updateActiveTheme]
   );
 
-  const setCompleted = useCallback(
-    (done: boolean) => {
-      updateActiveTheme((t) => ({ ...t, completedAt: done ? Date.now() : null }));
+  /** AI の応答は非同期で戻るため、テーマを明示して更新する */
+  const patchDeepDive = useCallback(
+    (domainId: MandalaDomainId, reasonId: string, fn: (e: DeepDiveEntry) => DeepDiveEntry) => {
+      update((prev) => {
+        const theme = prev.themes[domainId];
+        if (!theme || !theme.reasons.some((r) => r.id === reasonId)) return prev;
+        const cur = theme.deepDive[reasonId] ?? emptyDeepDiveEntry(reasonId);
+        const next = fn(cur);
+        if (next === cur) return prev;
+        return {
+          ...prev,
+          themes: { ...prev.themes, [domainId]: { ...theme, deepDive: { ...theme.deepDive, [reasonId]: next } } },
+        };
+      });
     },
-    [updateActiveTheme]
+    [update]
   );
 
   const activeTheme = store.activeDomainId ? store.themes[store.activeDomainId] : undefined;
@@ -298,6 +414,6 @@ export function useStep04BrakeExploreStore() {
     setChangeability,
     toggleLayerTag,
     setLayerOtherText,
-    setCompleted,
+    patchDeepDive,
   };
 }

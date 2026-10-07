@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   STEP04_LAYERS,
   STEP04_OTHER_MAX_CHARS,
@@ -40,6 +40,19 @@ export default function Step04LayersPhase({
   const index = targets.findIndex((r) => r.id === selectedId);
   const reason = index >= 0 ? targets[index] : undefined;
   const doneCount = targets.filter(reasonLayersDone).length;
+  const needsBe = progress.layersFilled && !progress.hasAnyBe;
+  const beRef = useRef<HTMLFieldSetElement>(null);
+  const [beFocusTick, setBeFocusTick] = useState(0);
+
+  useEffect(() => {
+    if (beFocusTick === 0) return;
+    beRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [beFocusTick]);
+
+  const focusBe = (id: string) => {
+    setSelectedId(id);
+    setBeFocusTick((n) => n + 1);
+  };
 
   return (
     <div className="step04-layers">
@@ -82,7 +95,13 @@ export default function Step04LayersPhase({
             const selected = reason.tags[layer.key];
             const otherSelected = selected.some((t) => t.endsWith('_other'));
             return (
-              <fieldset key={layer.key} className={`step04-layer step04-layer--${layer.key}`}>
+              <fieldset
+                key={layer.key}
+                ref={layer.key === 'be' ? beRef : undefined}
+                className={`step04-layer step04-layer--${layer.key}${
+                  layer.key === 'be' && needsBe ? ' is-attention' : ''
+                }`}
+              >
                 <legend className="step04-layer-name">
                   {layer.name}：{layer.description}
                 </legend>
@@ -148,6 +167,28 @@ export default function Step04LayersPhase({
         <p className="step04-deferred-note">保留にした課題（③④）{deferredCount} 件は、後のステップで取り上げます。</p>
       ) : null}
 
+      {needsBe ? (
+        <section className="step04-be-guard" role="status" aria-label="あり方の選択のお願い">
+          <p className="step04-be-guard-title">「あり方」が、まだどの課題にも選ばれていません</p>
+          <p className="step04-be-guard-body">
+            次の「こころの深掘り」は、あり方を入口に進めます。ぴったり当てはまらなくても大丈夫です。
+            <strong>強いて言えば</strong>近いものを、どれか1つの課題で選んでみてください（あとで変更できます）。
+          </p>
+          <ul className="step04-be-guard-hints">
+            <li>その課題に取りかかる前、頭の中でどんな言葉がよぎりますか？</li>
+            <li>うまくいかなかった時、自分にどんな言葉をかけていますか？</li>
+            <li>親しい人が同じ状況なら、「〇〇と思い込んでいるのかも」と言えそうなことは？</li>
+          </ul>
+          <div className="step04-be-guard-actions">
+            {targets.map((r, i) => (
+              <button key={r.id} type="button" className="mandala-modal-btn" title={r.text} onClick={() => focusBe(r.id)}>
+                課題{i + 1}のあり方を選ぶ
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <div className="step03-phase-actions">
         <button
           type="button"
@@ -155,9 +196,11 @@ export default function Step04LayersPhase({
           disabled={!progress.layersReady}
           onClick={onNext}
         >
-          まとめへ
+          こころの深掘りへ
         </button>
-        {!progress.layersReady ? (
+        {needsBe ? (
+          <p className="step03-phase-actions-hint">どれか1つの課題で「あり方」を選ぶと進めます</p>
+        ) : !progress.layersReady ? (
           <p className="step03-phase-actions-hint">
             あと {targets.length - doneCount} 件の課題で、どれか1つ以上を選んでください
           </p>

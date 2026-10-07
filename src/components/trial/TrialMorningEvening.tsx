@@ -11,7 +11,8 @@ import {
   type Trial4wEveningExecution,
   type Trial4wDailyPlain,
 } from '@/lib/firestore';
-import { getTodayDateKeyTokyo } from '@/lib/journalWeek';
+import { formatDateKeySlashWeekdayJa, getTodayDateKeyTokyo } from '@/lib/journalWeek';
+import { useStartProgramAppSettings } from '@/hooks/useStartProgramAppSettings';
 import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import {
@@ -51,6 +52,11 @@ function formatDateLabelJa(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map((x) => Number(x));
   if (!y || !m || !d) return dateKey;
   return `${m}月${d}日`;
+}
+
+function isTextEntryTarget(el: EventTarget): boolean {
+  if (el instanceof HTMLTextAreaElement) return true;
+  return el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'number');
 }
 
 function EveningQuestionField({
@@ -149,6 +155,8 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const { settings: appSettings } = useStartProgramAppSettings();
+  const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const inputDisabled = saving || !canEdit;
 
@@ -493,7 +501,16 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
 
   return (
     <div className="trial-tab-content">
-      <div className="morning-evening-container">
+      <div
+        className="morning-evening-container"
+        onFocus={(e) => setTextFieldFocused(isTextEntryTarget(e.target))}
+        onBlur={() => setTextFieldFocused(false)}
+      >
+        {appSettings.journalDatePopup && textFieldFocused && canEdit ? (
+          <div className="journal-date-popup" role="status" aria-label="記入中の日付">
+            {formatDateKeySlashWeekdayJa(data.dateKey)}
+          </div>
+        ) : null}
         <div className="trial-tab-heading-row trial-tab-heading-row--journal">
           <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
           <JournalCoachShareHeader

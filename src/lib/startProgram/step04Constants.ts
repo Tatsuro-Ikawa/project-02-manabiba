@@ -1,6 +1,7 @@
 /** Step4 こころのブレーキ探索（選択式パート）— 定数・型 */
 
 import type { MandalaDomainId } from '@/lib/startProgram/mandalaConstants';
+import type { DeepDiveEntry } from '@/lib/startProgram/step04DeepDiveConstants';
 
 export const STEP04_STORAGE_KEY = 'startProgram.sevenSteps.step04.brakeExplore';
 
@@ -14,13 +15,13 @@ export const STEP04_REASON_LIMIT_FLOOR = 1;
 export const STEP04_REASON_LIMIT_CEIL = 20;
 
 /** 領域（テーマ）選択は「課題の明確化」内のモーダルで行う */
-export type Step04Phase = 'reasons' | 'changeability' | 'layers' | 'summary';
+export type Step04Phase = 'reasons' | 'changeability' | 'layers' | 'deepdive';
 
 export const STEP04_PHASES: { id: Step04Phase; label: string }[] = [
   { id: 'reasons', label: '課題の明確化' },
   { id: 'changeability', label: '変えられるか' },
   { id: 'layers', label: '何が変わればよい？' },
-  { id: 'summary', label: 'まとめ' },
+  { id: 'deepdive', label: 'こころの深掘り' },
 ];
 
 export type Changeability = 'can_change' | 'can_influence' | 'hard_now' | 'unsure';
@@ -141,8 +142,10 @@ export type Step04Theme = {
   domainId: MandalaDomainId;
   reasons: ReasonEntry[];
   startedAt: number;
-  /** 選択式パート（AI前）の完了日時 */
+  /** 旧「まとめ」の完了日時。完了判定は deepDive の insightSavedAt から導出する */
   completedAt: number | null;
+  /** こころの深掘り（reasonId ごと） */
+  deepDive: Record<string, DeepDiveEntry>;
 };
 
 export type Step04Store = {
@@ -176,6 +179,12 @@ export function isStep04Phase(v: unknown): v is Step04Phase {
   return STEP04_PHASES.some((p) => p.id === v);
 }
 
+/** 旧 URL（phase=summary）も読み替える */
+export function parseStep04Phase(raw: string | null): Step04Phase | null {
+  if (raw === 'summary') return 'deepdive';
+  return isStep04Phase(raw) ? raw : null;
+}
+
 export function getLayerOption(id: LayerTagId): { layer: LayerDef; option: LayerOption } | undefined {
   for (const layer of STEP04_LAYERS) {
     const option = layer.options.find((o) => o.id === id);
@@ -202,6 +211,15 @@ export function reasonLayersDone(reason: ReasonEntry): boolean {
   return (['have', 'do', 'be'] as LayerKey[]).some((k) => layerHasValidTag(reason, k));
 }
 
+export function reasonHasBe(reason: ReasonEntry): boolean {
+  return layerHasValidTag(reason, 'be');
+}
+
+/** こころの深掘りの対象：①② かつ「あり方」あり */
+export function deepDiveTargets(theme: Step04Theme | undefined): ReasonEntry[] {
+  return actionableReasons(theme).filter(reasonHasBe);
+}
+
 export function initialReasons(theme: Step04Theme | undefined): ReasonEntry[] {
   return theme?.reasons.filter((r) => r.origin === 'initial' && r.text.trim()) ?? [];
 }
@@ -226,7 +244,12 @@ export type Step04Progress = {
   /** 全理由が③④で、①②が1件もない */
   needsRescue: boolean;
   changeabilityReady: boolean;
+  /** ①②の全課題で Have/Do/Be のどれかに記入済み */
+  layersFilled: boolean;
+  /** ①②の課題のどれかに「あり方」がある（深掘りの対象がある） */
+  hasAnyBe: boolean;
   layersReady: boolean;
+  /** 深掘り対象のどれかで「この気づきを保存する」済み */
   completed: boolean;
 };
 
@@ -238,6 +261,9 @@ export function step04Progress(theme: Step04Theme | undefined, reasonMin: number
   const actionable = actionableReasons(theme);
   const hasActionable = actionable.length > 0;
   const changeabilityReady = reasonsReady && allClassified && hasActionable;
+  const layersFilled = changeabilityReady && actionable.every(reasonLayersDone);
+  const targets = deepDiveTargets(theme);
+  const hasAnyBe = targets.length > 0;
   return {
     reasonCount: initial.length,
     reasonsReady,
@@ -245,7 +271,9 @@ export function step04Progress(theme: Step04Theme | undefined, reasonMin: number
     hasActionable,
     needsRescue: reasonsReady && allClassified && !hasActionable,
     changeabilityReady,
-    layersReady: changeabilityReady && actionable.every(reasonLayersDone),
-    completed: theme?.completedAt != null,
+    layersFilled,
+    hasAnyBe,
+    layersReady: layersFilled && hasAnyBe,
+    completed: targets.some((r) => theme?.deepDive[r.id]?.insightSavedAt != null),
   };
 }

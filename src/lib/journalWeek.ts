@@ -79,6 +79,15 @@ export function getTodayDateKeyTokyo(now: Date = new Date()): string {
   return fmt.format(now);
 }
 
+const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
+/** 「yyyy/mm/dd(曜)」表記（例: 2026/10/07(水)） */
+export function formatDateKeySlashWeekdayJa(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-');
+  if (!y || !m || !d) return dateKey;
+  return `${y}/${m}/${d}(${WEEKDAY_JA[getJsWeekdayInTokyo(dateKey)]})`;
+}
+
 /** 今日を含む週の weekStartKey（フェーズ1: 初期フォーカス用） */
 export function getWeekStartDateKeyForToday(profile: UserProfile | null | undefined): string {
   const today = getTodayDateKeyTokyo();

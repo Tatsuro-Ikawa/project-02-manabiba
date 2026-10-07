@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Step04ChangeabilityPhase from '@/components/start-program/step04/Step04ChangeabilityPhase';
+import Step04DeepDivePhase from '@/components/start-program/step04/Step04DeepDivePhase';
 import Step04LayersPhase from '@/components/start-program/step04/Step04LayersPhase';
 import Step04PhaseNav from '@/components/start-program/step04/Step04PhaseNav';
 import Step04ReasonsPhase from '@/components/start-program/step04/Step04ReasonsPhase';
-import Step04SummaryPhase from '@/components/start-program/step04/Step04SummaryPhase';
 import Step04ThemeModal from '@/components/start-program/step04/Step04ThemeModal';
 import { useMandalaLocalStore } from '@/hooks/useMandalaLocalStore';
 import { useStartProgramAppSettings } from '@/hooks/useStartProgramAppSettings';
@@ -14,9 +14,9 @@ import { useStep03SatisfactionStore } from '@/hooks/useStep03SatisfactionStore';
 import { useStep04BrakeExploreStore } from '@/hooks/useStep04BrakeExploreStore';
 import { getMandalaDomain, type MandalaDomainId } from '@/lib/startProgram/mandalaConstants';
 import { isValidSatisfactionScore } from '@/lib/startProgram/step03Constants';
-import { isStep04Phase, step04Progress, type Step04Phase } from '@/lib/startProgram/step04Constants';
+import { parseStep04Phase, step04Progress, type Step04Phase } from '@/lib/startProgram/step04Constants';
 
-/** Step4：課題の明確化（領域選択＋理由） → 変えられるか → Have/Do/Be → まとめ（Ai 質問の手前まで） */
+/** Step4：課題の明確化（領域選択＋理由） → 変えられるか → 持ち方/なし方/あり方 → こころの深掘り */
 export default function Step04WorksheetPane() {
   const router = useRouter();
   const pathname = usePathname();
@@ -37,7 +37,7 @@ export default function Step04WorksheetPane() {
     setChangeability,
     toggleLayerTag,
     setLayerOtherText,
-    setCompleted,
+    patchDeepDive,
   } = useStep04BrakeExploreStore();
   const [themeModalOpen, setThemeModalOpen] = useState(false);
 
@@ -49,17 +49,17 @@ export default function Step04WorksheetPane() {
     reasons: true,
     changeability: progress.reasonsReady,
     layers: progress.changeabilityReady,
-    summary: progress.layersReady,
+    deepdive: progress.layersReady,
   };
   const done: Record<Step04Phase, boolean> = {
     reasons: progress.reasonsReady,
     changeability: progress.changeabilityReady,
     layers: progress.layersReady,
-    summary: progress.completed,
+    deepdive: progress.completed,
   };
 
-  const defaultPhase: Step04Phase = progress.completed ? 'summary' : 'reasons';
-  const phase: Step04Phase = isStep04Phase(rawPhase) ? rawPhase : defaultPhase;
+  const defaultPhase: Step04Phase = progress.completed ? 'deepdive' : 'reasons';
+  const phase: Step04Phase = parseStep04Phase(rawPhase) ?? defaultPhase;
 
   const setPhase = useCallback(
     (next: Step04Phase) => {
@@ -82,7 +82,7 @@ export default function Step04WorksheetPane() {
   // 復元前は全フェーズがロック扱いになるため、復元完了まで強制移動しない
   useEffect(() => {
     if (!ready || unlocked[phase]) return;
-    const fallback = (['summary', 'layers', 'changeability'] as Step04Phase[]).find((p) => unlocked[p]);
+    const fallback = (['deepdive', 'layers', 'changeability'] as Step04Phase[]).find((p) => unlocked[p]);
     setPhase(fallback ?? 'reasons');
   });
 
@@ -106,7 +106,7 @@ export default function Step04WorksheetPane() {
     if (id === store.activeDomainId) return;
     const existing = store.themes[id];
     startTheme(id);
-    setPhase(existing?.completedAt != null ? 'summary' : 'reasons');
+    setPhase(step04Progress(existing, reasonMin).completed ? 'deepdive' : 'reasons');
   };
 
   return (
@@ -170,16 +170,15 @@ export default function Step04WorksheetPane() {
           progress={progress}
           onToggle={toggleLayerTag}
           onOtherText={setLayerOtherText}
-          onNext={() => setPhase('summary')}
+          onNext={() => setPhase('deepdive')}
         />
       ) : null}
 
-      {phase === 'summary' && activeTheme && unlocked.summary ? (
-        <Step04SummaryPhase
+      {phase === 'deepdive' && activeTheme && unlocked.deepdive ? (
+        <Step04DeepDivePhase
           theme={activeTheme}
-          domainLabel={domainLabel}
-          onComplete={setCompleted}
-          onChooseNextTheme={() => setThemeModalOpen(true)}
+          patchDeepDive={patchDeepDive}
+          onBackToLayers={() => setPhase('layers')}
         />
       ) : null}
 

@@ -131,7 +131,7 @@ function buildStep04(src: Step03DummyFile['step04'], focusDomainId: MandalaDomai
     activeDomainId: focusDomainId,
     themeOrder: [focusDomainId],
     themes: {
-      [focusDomainId]: { domainId: focusDomainId, reasons, startedAt: Date.now(), completedAt: null },
+      [focusDomainId]: { domainId: focusDomainId, reasons, startedAt: Date.now(), completedAt: null, deepDive: {} },
     },
   };
 }

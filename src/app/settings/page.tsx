@@ -65,6 +65,7 @@ export default function AppSettingsPage() {
   } = useStartProgramAppSettings();
   const [draftReasonMin, setDraftReasonMin] = useState(startSettings.step04ReasonMin);
   const [draftReasonMax, setDraftReasonMax] = useState(startSettings.step04ReasonMax);
+  const [draftJournalDatePopup, setDraftJournalDatePopup] = useState(startSettings.journalDatePopup);
   const { user, userProfile, refreshUserProfile, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draft, setDraft] = useState<JournalDetailLevel>(level);
@@ -84,7 +85,13 @@ export default function AppSettingsPage() {
     if (!startSettingsHydrated) return;
     setDraftReasonMin(startSettings.step04ReasonMin);
     setDraftReasonMax(startSettings.step04ReasonMax);
-  }, [startSettingsHydrated, startSettings.step04ReasonMin, startSettings.step04ReasonMax]);
+    setDraftJournalDatePopup(startSettings.journalDatePopup);
+  }, [
+    startSettingsHydrated,
+    startSettings.step04ReasonMin,
+    startSettings.step04ReasonMax,
+    startSettings.journalDatePopup,
+  ]);
 
   useEffect(() => {
     if (journalHydrated) setDraft(level);
@@ -130,6 +137,7 @@ export default function AppSettingsPage() {
       const limits = normalizeStep04ReasonLimits(draftReasonMin, draftReasonMax);
       saveStartSettings({ step04ReasonMin: limits.min, step04ReasonMax: limits.max });
       if (showKizukiSettings) {
+        saveStartSettings({ journalDatePopup: draftJournalDatePopup });
         setDefaultLevel(draft);
         if (user) {
           await updateWeeklyAiReportWriteMode(user.uid, aiWriteMode);
@@ -155,6 +163,7 @@ export default function AppSettingsPage() {
     aiWriteMode,
     draft,
     draftCandidateMax,
+    draftJournalDatePopup,
     draftReasonMax,
     draftReasonMin,
     journalShareDefaultOn,
@@ -331,6 +340,38 @@ export default function AppSettingsPage() {
                           {JOURNAL_DETAIL_LEVEL_LABELS[k]}
                         </label>
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="action-sub-section" data-section="journal-date-popup">
+                    <h3>気づきノート：入力中の日付表示</h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      朝・晩の画面で入力欄に入力している間、記入している日付を画面右上に小さく表示します（例:
+                      2026/10/07(水)）。過去の日の記録を入力するときの確認用です。この端末のブラウザに保存されます。
+                    </p>
+                    <div className="radio-group" role="radiogroup" aria-label="入力中の日付表示">
+                      <label>
+                        <input
+                          type="radio"
+                          name="journal-date-popup"
+                          value="on"
+                          checked={draftJournalDatePopup}
+                          disabled={!startSettingsHydrated}
+                          onChange={() => setDraftJournalDatePopup(true)}
+                        />{' '}
+                        表示する
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="journal-date-popup"
+                          value="off"
+                          checked={!draftJournalDatePopup}
+                          disabled={!startSettingsHydrated}
+                          onChange={() => setDraftJournalDatePopup(false)}
+                        />{' '}
+                        表示しない（既定）
+                      </label>
                     </div>
                   </div>
 

@@ -12,7 +12,7 @@ type Step04PhaseNavProps = {
 const LOCK_HINT: Partial<Record<Step04Phase, string>> = {
   changeability: 'テーマ領域を選び、理由を下限数まで挙げてから進んでください',
   layers: '全ての課題に回答し、①②が1件以上必要です',
-  summary: '①②の各課題で、持ち方・なし方・あり方のどれか1つ以上を選んでください',
+  deepdive: '①②の各課題で1つ以上を選び、どれかの課題で「あり方」を選んでください',
 };
 
 export default function Step04PhaseNav({ phase, onChange, unlocked, done }: Step04PhaseNavProps) {

@@ -24,6 +24,8 @@ export type StartProgramAppSettings = {
   step04ReasonMin: number;
   /** Step4 満足度の理由の上限（1〜20、既定 10。下限以上） */
   step04ReasonMax: number;
+  /** 気づきノート朝・晩：入力中に記入日をポップアップ表示する（既定 false） */
+  journalDatePopup: boolean;
 };
 
 export function defaultStartProgramAppSettings(): StartProgramAppSettings {
@@ -31,6 +33,7 @@ export function defaultStartProgramAppSettings(): StartProgramAppSettings {
     step03CandidateMax: STEP03_CANDIDATE_MAX_DEFAULT,
     step04ReasonMin: STEP04_REASON_MIN_DEFAULT,
     step04ReasonMax: STEP04_REASON_MAX_DEFAULT,
+    journalDatePopup: false,
   };
 }
 
@@ -72,6 +75,8 @@ function normalizeSettings(raw: Partial<Record<keyof StartProgramAppSettings, un
         : d.step03CandidateMax,
     step04ReasonMin: limits.min,
     step04ReasonMax: limits.max,
+    journalDatePopup:
+      typeof raw.journalDatePopup === 'boolean' ? raw.journalDatePopup : d.journalDatePopup,
   };
 }
 

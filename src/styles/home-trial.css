@@ -3938,6 +3938,35 @@
   text-align: center;
 }
 
+/* 朝・晩：入力中の記入日ポップアップ */
+.journal-date-popup {
+  position: fixed;
+  top: calc(var(--header-height) + 0.5rem);
+  right: 0.75rem;
+  z-index: 900;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #c8d9c0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  pointer-events: none;
+  animation: journal-date-popup-in 0.15s ease-out;
+}
+
+@keyframes journal-date-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* 1024px以下: ホームは1カラム */
 @media (max-width: 1024px) {
   .home-content-grid {
@@ -6830,7 +6859,7 @@
 .seven-steps-worksheet--step04 .step04-reasons,
 .seven-steps-worksheet--step04 .step04-changeability,
 .seven-steps-worksheet--step04 .step04-layers,
-.seven-steps-worksheet--step04 .step04-summary {
+.seven-steps-worksheet--step04 .step04-deepdive {
   max-width: 880px;
 }
 
@@ -7300,34 +7329,6 @@
   color: #5a574f;
 }
 
-/* まとめ */
-.step04-summary-layers {
-  display: grid;
-  gap: 0.35rem;
-  margin: 0.6rem 0 0;
-}
-
-.step04-summary-layer {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  padding: 0.3rem 0.5rem;
-  border-left: 4px solid #8fbf9f;
-}
-
-.step04-summary-layer dt {
-  flex: 0 0 4rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.step04-summary-layer dd {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin: 0;
-}
-
 .step04-tag {
   display: inline-block;
   padding: 0.1rem 0.55rem;
@@ -7339,53 +7340,6 @@
 .step04-tag--be {
   background: #efeafa;
   color: #4a3a7a;
-}
-
-.step04-summary-empty {
-  color: #9a968c;
-}
-
-.step04-summary-deferred {
-  margin: 0 0 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
-  background: #f6f4ef;
-}
-
-.step04-summary-deferred ul {
-  margin: 0.4rem 0 0;
-  padding-left: 1.2rem;
-  line-height: 1.6;
-}
-
-.step04-summary-deferred-kind {
-  font-size: 0.8rem;
-  color: #6a665c;
-}
-
-.step04-ai-placeholder {
-  margin: 0 0 1rem;
-  padding: 0.9rem 1rem;
-  border: 1px dashed #9a86c9;
-  border-radius: 10px;
-  background: #faf8ff;
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.step04-ai-title {
-  margin: 0 0 0.35rem;
-  font-size: 1rem;
-  color: #4a3a7a;
-}
-
-.step04-ai-tags {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin: 0.4rem 0 0;
-  padding: 0;
 }
 
 .step04-complete-badge {
@@ -7471,4 +7425,514 @@ button.step04-theme-item:focus-visible {
 
 button.step04-theme-item.is-active {
   border-color: var(--color-primary, #1a5f4a);
+}
+
+/* Step4：あり方が1つもない時の案内 */
+.step04-layer.is-attention {
+  border-color: #9a86c9;
+  box-shadow: 0 0 0 3px rgba(154, 134, 201, 0.25);
+}
+
+.step04-be-guard {
+  margin: 1rem 0 0;
+  padding: 0.9rem 1rem;
+  border: 1px dashed #9a86c9;
+  border-radius: 10px;
+  background: #faf8ff;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.step04-be-guard-title {
+  margin: 0 0 0.35rem;
+  font-weight: 700;
+  color: #4a3a7a;
+}
+
+.step04-be-guard-body {
+  margin: 0;
+}
+
+.step04-be-guard-hints {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+  color: #5a574f;
+}
+
+.step04-be-guard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Step4：こころの深掘り — 課題カード */
+.step04-dd-complete {
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 8px;
+  background: rgba(26, 95, 74, 0.08);
+  font-weight: 700;
+  color: var(--color-primary, #1a5f4a);
+}
+
+.step04-dd-cards {
+  display: grid;
+  gap: 1rem;
+}
+
+.step04-dd-card {
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid #d5d1c8;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.step04-dd-card-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.35rem 0.6rem;
+  margin: 0 0 0.6rem;
+}
+
+.step04-dd-card-reason {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.step04-dd-card-be {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.step04-dd-card-be-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #4a3a7a;
+}
+
+.step04-dd-block {
+  position: relative;
+  margin: 0.5rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: #f8f7f3;
+}
+
+.step04-dd-block-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.9rem;
+  color: #3a3832;
+}
+
+.step04-dd-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0.2rem 0;
+  font-size: 0.88rem;
+}
+
+.step04-dd-row-label {
+  flex: 0 0 auto;
+  min-width: 5.5rem;
+  color: #5a574f;
+}
+
+.step04-dd-row-value {
+  flex: 1 1 auto;
+}
+
+.step04-dd-block-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0.4rem 0 0;
+}
+
+.step04-dd-explore {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 1.1rem;
+  border: 1px solid #c8c3b6;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.step04-dd-explore:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.step04-dd-explore.is-next {
+  border-color: var(--color-primary, #1a5f4a);
+  background: var(--color-primary, #1a5f4a);
+  color: #fff;
+}
+
+.step04-dd-explore.is-done {
+  color: var(--color-primary, #1a5f4a);
+}
+
+.step04-dd-spinner {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: step04-dd-spin 0.8s linear infinite;
+}
+
+@keyframes step04-dd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.step04-dd-pill-list {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.step04-dd-reflection {
+  margin: 0.75rem 0 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid #c9bde6;
+  border-radius: 10px;
+  background: #faf8ff;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.step04-dd-reflection-title {
+  margin: 0 0 0.4rem;
+  color: #4a3a7a;
+}
+
+.step04-dd-reflection dl {
+  margin: 0;
+}
+
+.step04-dd-reflection dt {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #5a574f;
+}
+
+.step04-dd-reflection dd {
+  margin: 0.1rem 0 0;
+}
+
+.step04-dd-reflection dd p {
+  margin: 0;
+}
+
+.step04-dd-flow {
+  margin: 0;
+  padding-left: 1.3rem;
+}
+
+.step04-dd-reflection-words {
+  font-weight: 700;
+}
+
+.step04-dd-reflection-close {
+  margin: 0.6rem 0 0;
+  color: #4a3a7a;
+}
+
+/* Step4：こころの深掘り — モーダル */
+.step04-dd-modal {
+  width: min(680px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.step04-dd-modal-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 0 0.1rem;
+}
+
+.step04-dd-modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0.75rem 0 0;
+  border-top: 1px solid #e6e2d8;
+}
+
+.step04-dd-footer-right {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.step04-dd-reason {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: #f8f7f3;
+}
+
+.step04-dd-reason-text {
+  margin: 0.2rem 0 0;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.step04-dd-context {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.6rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+.step04-dd-context dt {
+  color: #5a574f;
+}
+
+.step04-dd-context dd {
+  margin: 0;
+}
+
+.step04-dd-question {
+  margin: 0 0 1rem;
+}
+
+.step04-dd-question.is-emphasis {
+  padding: 0.7rem 0.8rem;
+  border-left: 4px solid #9a86c9;
+  border-radius: 6px;
+  background: #faf8ff;
+}
+
+.step04-dd-question-label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #5a574f;
+}
+
+.step04-dd-question-text {
+  margin: 0.2rem 0 0;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.step04-dd-question-hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: #6a665c;
+}
+
+.step04-dd-options-label {
+  margin: 0.5rem 0 0.3rem;
+  font-size: 0.78rem;
+  color: #6a665c;
+}
+
+.step04-dd-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.step04-dd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid #d5d1c8;
+  border-radius: 999px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+}
+
+.step04-dd-pill.is-selected {
+  border-color: var(--color-primary, #1a5f4a);
+  background: #eef5ef;
+  font-weight: 700;
+}
+
+.step04-dd-pill.is-other {
+  border-style: dashed;
+  color: #5a574f;
+}
+
+.step04-dd-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.step04-dd-pill-list .step04-dd-pill {
+  cursor: default;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.step04-dd-pill-remove {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: #6a665c;
+  cursor: pointer;
+}
+
+.step04-dd-custom-input {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.step04-dd-custom-input input,
+.step04-dd-own input,
+.step04-dd-own textarea,
+.step04-dd-own-words {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #d5d1c8;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.step04-dd-own {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+
+.step04-dd-own-words {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 4.5rem;
+  margin: 0.4rem 0 0;
+}
+
+.step04-dd-preparing {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: #6a665c;
+}
+
+.step04-dd-skeleton {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.step04-dd-skeleton-pill,
+.step04-dd-skeleton-card {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eeebe4 25%, #f7f5f0 50%, #eeebe4 75%);
+  background-size: 200% 100%;
+  animation: step04-dd-shimmer 1.2s ease-in-out infinite;
+}
+
+.step04-dd-skeleton-pill {
+  width: 7rem;
+  height: 1.9rem;
+}
+
+.step04-dd-skeleton-card {
+  width: 100%;
+  height: 5rem;
+  border-radius: 10px;
+}
+
+@keyframes step04-dd-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.step04-dd-notice {
+  margin: 0 0 0.75rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  background: #eef5ef;
+  font-size: 0.85rem;
+}
+
+.step04-dd-notice.is-error {
+  background: #fff4e5;
+  color: #7a5200;
+}
+
+.step04-dd-link {
+  margin-left: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--color-primary, #1a5f4a);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.step04-dd-working-lead {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.step04-dd-hypo {
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #c9bde6;
+  border-radius: 10px;
+  background: #faf8ff;
+}
+
+.step04-dd-hypo-mark {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #6a5a9a;
+}
+
+.step04-dd-hypo-title {
+  margin: 0.15rem 0 0;
+  font-size: 0.98rem;
+  color: #4a3a7a;
+}
+
+.step04-dd-hypo-body {
+  margin: 0.3rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.step04-dd-hypo-links {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem;
+  color: #5a574f;
+}
+
+.step04-dd-rating {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
 }
