@@ -108,7 +108,7 @@
 
 | 日付 | 変更内容 |
 |------|---------|
-| 2026-10-07 | 気づきノート朝・晩に「入力中の記入日ポップアップ」（`/settings` で入り切り・既定オフ）を追加。[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §日付ナビ |
+| 2026-10-07 | 気づきノート朝・晩に「入力中の記入日ポップアップ」（設定画面で入り切り・既定オフ）を追加。日付ナビに曜日を表示。[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §日付ナビ |
 | 2026-10-06 | Step4「まとめ」を「こころの深掘り」に置き換え（モック）。[10_STEP04_DEEP_DIVE_SPEC.md](./10_STEP04_DEEP_DIVE_SPEC.md) 決定 D1〜D12・§11.1〜11.2、[09_STEP04_BRAKE_EXPLORATION_SPEC.md](./09_STEP04_BRAKE_EXPLORATION_SPEC.md) §11.1 |
 | 2026-07-23 | [04_STRIPE_BILLING_SPEC.md](./04_STRIPE_BILLING_SPEC.md) を更新（Webhook 購読イベント必須・www URL・ログと配信の違い・Firebase Admin・トラブルシュート・完了画面フォールバック）。索引に 7a を追加 |
 | 2026-07-03 | 晩 Aiコーチプロンプト確定・`improvement` API 改修（`reflectionText` 50字以上・出力500字上限）。[04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §11.0 |

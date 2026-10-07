@@ -209,7 +209,9 @@
 | **表示条件** | テキスト入力欄・満足度（数値）にフォーカスしている間のみ。フォーカスが外れると消える |
 | **表示内容** | 記入中の日（`dateKey`。実日付の「今日」ではない）を `yyyy/mm/dd(曜)` で表示（例: `2026/10/05(月)`）。`formatDateKeySlashWeekdayJa`（`src/lib/journalWeek.ts`） |
 | **表示位置** | 画面右上（ヘッダー直下）に固定・小さく表示。スクロールやソフトキーボード表示中も見える |
-| **入り切り** | `/settings`「気づきノート：入力中の日付表示」。**既定は表示しない**。localStorage `startProgram.appSettings.v1` の `journalDatePopup`（端末ごと） |
+| **入り切り** | 設定画面「入力中の日付表示」。**既定は表示しない**。localStorage `manabiba:journal-date-popup`（`on`/`off`・端末ごと）。`useJournalDatePopupSetting` |
+
+日付ナビのラベルは曜日付き（例: `10月6日（火）`）。
 
 ---
 

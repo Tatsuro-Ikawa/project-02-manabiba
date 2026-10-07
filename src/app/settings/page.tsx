@@ -7,6 +7,7 @@ import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useJournalDatePopupSetting } from '@/hooks/useJournalDatePopupSetting';
 import { useStartProgramAppSettings } from '@/hooks/useStartProgramAppSettings';
 import { useStep03CandidateMax } from '@/hooks/useStep03CandidateMax';
 import { updateCoachShareDefaults, updateTrialAffirmationUiMetaFields, updateWeeklyAiReportWriteMode } from '@/lib/firestore';
@@ -65,7 +66,12 @@ export default function AppSettingsPage() {
   } = useStartProgramAppSettings();
   const [draftReasonMin, setDraftReasonMin] = useState(startSettings.step04ReasonMin);
   const [draftReasonMax, setDraftReasonMax] = useState(startSettings.step04ReasonMax);
-  const [draftJournalDatePopup, setDraftJournalDatePopup] = useState(startSettings.journalDatePopup);
+  const {
+    enabled: journalDatePopup,
+    setEnabled: setJournalDatePopup,
+    hydrated: datePopupHydrated,
+  } = useJournalDatePopupSetting();
+  const [draftJournalDatePopup, setDraftJournalDatePopup] = useState(false);
   const { user, userProfile, refreshUserProfile, loading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draft, setDraft] = useState<JournalDetailLevel>(level);
@@ -85,13 +91,11 @@ export default function AppSettingsPage() {
     if (!startSettingsHydrated) return;
     setDraftReasonMin(startSettings.step04ReasonMin);
     setDraftReasonMax(startSettings.step04ReasonMax);
-    setDraftJournalDatePopup(startSettings.journalDatePopup);
-  }, [
-    startSettingsHydrated,
-    startSettings.step04ReasonMin,
-    startSettings.step04ReasonMax,
-    startSettings.journalDatePopup,
-  ]);
+  }, [startSettingsHydrated, startSettings.step04ReasonMin, startSettings.step04ReasonMax]);
+
+  useEffect(() => {
+    if (datePopupHydrated) setDraftJournalDatePopup(journalDatePopup);
+  }, [datePopupHydrated, journalDatePopup]);
 
   useEffect(() => {
     if (journalHydrated) setDraft(level);
@@ -137,7 +141,7 @@ export default function AppSettingsPage() {
       const limits = normalizeStep04ReasonLimits(draftReasonMin, draftReasonMax);
       saveStartSettings({ step04ReasonMin: limits.min, step04ReasonMax: limits.max });
       if (showKizukiSettings) {
-        saveStartSettings({ journalDatePopup: draftJournalDatePopup });
+        setJournalDatePopup(draftJournalDatePopup);
         setDefaultLevel(draft);
         if (user) {
           await updateWeeklyAiReportWriteMode(user.uid, aiWriteMode);
@@ -171,6 +175,7 @@ export default function AppSettingsPage() {
     saveStartSettings,
     setCandidateMax,
     setDefaultLevel,
+    setJournalDatePopup,
     showAffirmationEditPreview,
     showKizukiSettings,
     user,
@@ -356,7 +361,7 @@ export default function AppSettingsPage() {
                           name="journal-date-popup"
                           value="on"
                           checked={draftJournalDatePopup}
-                          disabled={!startSettingsHydrated}
+                          disabled={!datePopupHydrated}
                           onChange={() => setDraftJournalDatePopup(true)}
                         />{' '}
                         表示する
@@ -367,7 +372,7 @@ export default function AppSettingsPage() {
                           name="journal-date-popup"
                           value="off"
                           checked={!draftJournalDatePopup}
-                          disabled={!startSettingsHydrated}
+                          disabled={!datePopupHydrated}
                           onChange={() => setDraftJournalDatePopup(false)}
                         />{' '}
                         表示しない（既定）

@@ -11,8 +11,8 @@ import {
   type Trial4wEveningExecution,
   type Trial4wDailyPlain,
 } from '@/lib/firestore';
-import { formatDateKeySlashWeekdayJa, getTodayDateKeyTokyo } from '@/lib/journalWeek';
-import { useStartProgramAppSettings } from '@/hooks/useStartProgramAppSettings';
+import { formatDateKeySlashWeekdayJa, getJsWeekdayInTokyo, getTodayDateKeyTokyo } from '@/lib/journalWeek';
+import { useJournalDatePopupSetting } from '@/hooks/useJournalDatePopupSetting';
 import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import {
@@ -48,10 +48,12 @@ const EVENING_EXECUTION_OPTIONS: readonly { value: Trial4wEveningExecution; labe
   { value: 'none', label: 'あまりできなかった' },
 ];
 
+const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
 function formatDateLabelJa(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map((x) => Number(x));
   if (!y || !m || !d) return dateKey;
-  return `${m}月${d}日`;
+  return `${m}月${d}日（${WEEKDAY_JA[getJsWeekdayInTokyo(dateKey)]}）`;
 }
 
 function isTextEntryTarget(el: EventTarget): boolean {
@@ -155,7 +157,7 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const { settings: appSettings } = useStartProgramAppSettings();
+  const { enabled: datePopupEnabled } = useJournalDatePopupSetting();
   const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const inputDisabled = saving || !canEdit;
@@ -506,7 +508,7 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
         onFocus={(e) => setTextFieldFocused(isTextEntryTarget(e.target))}
         onBlur={() => setTextFieldFocused(false)}
       >
-        {appSettings.journalDatePopup && textFieldFocused && canEdit ? (
+        {datePopupEnabled && textFieldFocused && canEdit ? (
           <div className="journal-date-popup" role="status" aria-label="記入中の日付">
             {formatDateKeySlashWeekdayJa(data.dateKey)}
           </div>
