@@ -7,6 +7,7 @@ import ProtoHeader from '@/components/proto/ProtoHeader';
 import LeftSidebar from '@/components/proto/LeftSidebar';
 import { useJournalDetailLevel } from '@/context/JournalDetailLevelContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useJournalDatePopupSetting } from '@/hooks/useJournalDatePopupSetting';
 import { updateCoachShareDefaults, updateTrialAffirmationUiMetaFields, updateWeeklyAiReportWriteMode } from '@/lib/firestore';
 import {
   JOURNAL_DETAIL_LEVEL_LABELS,
@@ -31,10 +32,20 @@ export default function TrialJournalSettingsPage() {
   const [affirmationShareDefaultOn, setAffirmationShareDefaultOn] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const {
+    enabled: journalDatePopup,
+    setEnabled: setJournalDatePopup,
+    hydrated: datePopupHydrated,
+  } = useJournalDatePopupSetting();
+  const [draftJournalDatePopup, setDraftJournalDatePopup] = useState(false);
 
   useEffect(() => {
     if (hydrated) setDraft(level);
   }, [hydrated, level]);
+
+  useEffect(() => {
+    if (datePopupHydrated) setDraftJournalDatePopup(journalDatePopup);
+  }, [datePopupHydrated, journalDatePopup]);
 
   useEffect(() => {
     setAiWriteMode(userProfile?.weeklyAiReportWriteMode ?? 'append');
@@ -74,6 +85,7 @@ export default function TrialJournalSettingsPage() {
     setSaving(true);
     try {
       setDefaultLevel(draft);
+      setJournalDatePopup(draftJournalDatePopup);
       if (user) {
         await updateWeeklyAiReportWriteMode(user.uid, aiWriteMode);
         await updateTrialAffirmationUiMetaFields(user.uid, {
@@ -96,9 +108,11 @@ export default function TrialJournalSettingsPage() {
     affirmationShareDefaultOn,
     aiWriteMode,
     draft,
+    draftJournalDatePopup,
     journalShareDefaultOn,
     refreshUserProfile,
     setDefaultLevel,
+    setJournalDatePopup,
     showAffirmationEditPreview,
     user,
   ]);
@@ -107,7 +121,7 @@ export default function TrialJournalSettingsPage() {
     <div className="action-sub-section" data-section="journal-settings-actions">
       <h3>設定の保存</h3>
       <p className="text-sm text-gray-600 mb-2">
-        このページのすべての項目（入力表示・アファメーション編集プレビュー・コーチ共有の初期値・Aiレポート反映方式）をまとめて保存します。
+        このページのすべての項目（入力表示・入力中の日付表示・アファメーション編集プレビュー・コーチ共有の初期値・Aiレポート反映方式）をまとめて保存します。
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <button
@@ -175,6 +189,38 @@ export default function TrialJournalSettingsPage() {
                       {JOURNAL_DETAIL_LEVEL_LABELS[k]}
                     </label>
                   ))}
+                </div>
+              </div>
+
+              <div className="action-sub-section" data-section="journal-date-popup">
+                <h3>入力中の日付表示</h3>
+                <p className="text-sm text-gray-600 mb-2">
+                  朝・晩の画面で入力欄に入力している間、記入している日付を画面右上に小さく表示します（例:
+                  2026/10/07(水)）。過去の日の記録を入力するときの確認用です。この端末のブラウザに保存されます。
+                </p>
+                <div className="radio-group" role="radiogroup" aria-label="入力中の日付表示">
+                  <label>
+                    <input
+                      type="radio"
+                      name="journal-date-popup"
+                      value="on"
+                      checked={draftJournalDatePopup}
+                      disabled={!datePopupHydrated}
+                      onChange={() => setDraftJournalDatePopup(true)}
+                    />{' '}
+                    表示する
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="journal-date-popup"
+                      value="off"
+                      checked={!draftJournalDatePopup}
+                      disabled={!datePopupHydrated}
+                      onChange={() => setDraftJournalDatePopup(false)}
+                    />{' '}
+                    表示しない（既定）
+                  </label>
                 </div>
               </div>
 

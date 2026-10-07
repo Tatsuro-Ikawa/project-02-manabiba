@@ -11,7 +11,8 @@ import {
   type Trial4wEveningExecution,
   type Trial4wDailyPlain,
 } from '@/lib/firestore';
-import { getTodayDateKeyTokyo } from '@/lib/journalWeek';
+import { formatDateKeySlashWeekdayJa, getJsWeekdayInTokyo, getTodayDateKeyTokyo } from '@/lib/journalWeek';
+import { useJournalDatePopupSetting } from '@/hooks/useJournalDatePopupSetting';
 import { buildJsonAuthHeaders } from '@/lib/clientAuthHeaders';
 import { messageFromApiErrorPayload } from '@/lib/apiErrorMessage';
 import {
@@ -47,10 +48,17 @@ const EVENING_EXECUTION_OPTIONS: readonly { value: Trial4wEveningExecution; labe
   { value: 'none', label: 'あまりできなかった' },
 ];
 
+const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
 function formatDateLabelJa(dateKey: string): string {
   const [y, m, d] = dateKey.split('-').map((x) => Number(x));
   if (!y || !m || !d) return dateKey;
-  return `${m}月${d}日`;
+  return `${m}月${d}日（${WEEKDAY_JA[getJsWeekdayInTokyo(dateKey)]}）`;
+}
+
+function isTextEntryTarget(el: EventTarget): boolean {
+  if (el instanceof HTMLTextAreaElement) return true;
+  return el instanceof HTMLInputElement && (el.type === 'text' || el.type === 'number');
 }
 
 function EveningQuestionField({
@@ -149,6 +157,8 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const { enabled: datePopupEnabled } = useJournalDatePopupSetting();
+  const [textFieldFocused, setTextFieldFocused] = useState(false);
 
   const inputDisabled = saving || !canEdit;
 
@@ -493,7 +503,16 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
 
   return (
     <div className="trial-tab-content">
-      <div className="morning-evening-container">
+      <div
+        className="morning-evening-container"
+        onFocus={(e) => setTextFieldFocused(isTextEntryTarget(e.target))}
+        onBlur={() => setTextFieldFocused(false)}
+      >
+        {datePopupEnabled && textFieldFocused && canEdit ? (
+          <div className="journal-date-popup" role="status" aria-label="記入中の日付">
+            {formatDateKeySlashWeekdayJa(data.dateKey)}
+          </div>
+        ) : null}
         <div className="trial-tab-heading-row trial-tab-heading-row--journal">
           <h2 id="morning-evening-section-title">朝・晩のアクション</h2>
           <JournalCoachShareHeader

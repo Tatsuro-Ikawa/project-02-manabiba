@@ -100,6 +100,7 @@
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-10-07 | 気づきノート朝・晩に「入力中の記入日ポップアップ」（設定画面で入り切り・既定オフ）を追加。日付ナビに曜日を表示。[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §日付ナビ |
 | 2026-07-23 | [04_STRIPE_BILLING_SPEC.md](./04_STRIPE_BILLING_SPEC.md) を更新（Webhook 購読イベント必須・www URL・ログと配信の違い・Firebase Admin・トラブルシュート・完了画面フォールバック）。索引に 7a を追加 |
 | 2026-07-03 | 晩 Aiコーチプロンプト確定・`improvement` API 改修（`reflectionText` 50字以上・出力500字上限）。[04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §11.0 |
 | 2026-06-24 | [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMPROVEMENT.md) §11.0（§4.z 改訂予定の AI 入力対照）追加。[03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md) §2.x 晩フィールド・§2.x-1 対照表を §4.z に合わせて更新 |
