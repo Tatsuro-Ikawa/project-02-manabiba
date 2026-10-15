@@ -9,6 +9,7 @@ import {
   updateLastLogin,
   checkUserPermission 
 } from '@/lib/firestore';
+import { isSubscriptionMirrorStale, resyncSubscriptionFromStripe } from '@/lib/client/resyncSubscription';
 import { AuthContextType, AuthState, UserProfile, FeatureAccess, UsageLimits, UserRole } from '@/types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -135,6 +136,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             userProfile,
             loading: false,
           });
+
+          if (isSubscriptionMirrorStale(userProfile)) {
+            void resyncSubscriptionFromStripe(user)
+              .then(async (changed) => {
+                if (!changed) return;
+                const refreshed = await getUserProfile(user.uid);
+                if (!refreshed) return;
+                setAuthState((prev) => (prev.user?.uid === user.uid ? { ...prev, userProfile: refreshed } : prev));
+              })
+              .catch((e) => console.error('サブスクリプション再同期エラー:', e));
+          }
         } catch (error) {
           console.error('ユーザープロファイル処理エラー:', error);
           setAuthState({

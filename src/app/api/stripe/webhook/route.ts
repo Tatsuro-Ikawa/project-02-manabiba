@@ -5,8 +5,8 @@ import { getFirebaseAdminApp } from '@/lib/firebaseAdmin';
 import { getStripeClient, getStripeWebhookSecret } from '@/lib/server/stripeClient';
 import {
   markSubscriptionExpired,
+  syncLatestSubscription,
   syncUserSubscriptionFromStripe,
-  syncUserSubscriptionFromStripeObject,
 } from '@/lib/server/stripeSubscriptionSync';
 import { isCheckoutPlan } from '@/lib/stripe/planPrices';
 
@@ -78,7 +78,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription): Promise<void
     console.warn('customer.subscription.updated: firebaseUid なし', sub.id);
     return;
   }
-  await syncUserSubscriptionFromStripeObject(uid, sub);
+  await syncLatestSubscription(uid, sub.id);
 }
 
 async function handleSubscriptionDeleted(sub: Stripe.Subscription): Promise<void> {
@@ -87,7 +87,7 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription): Promise<void
     console.warn('customer.subscription.deleted: firebaseUid なし', sub.id);
     return;
   }
-  await markSubscriptionExpired(uid);
+  await markSubscriptionExpired(uid, sub.id);
 }
 
 export async function POST(request: NextRequest) {
