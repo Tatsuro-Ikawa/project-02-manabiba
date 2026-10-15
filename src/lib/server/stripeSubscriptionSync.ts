@@ -1,6 +1,7 @@
 import type { SubscriptionPlan } from '@/types/auth';
 import type Stripe from 'stripe';
 import { getFirebaseAdminApp } from '@/lib/firebaseAdmin';
+import { getStripeClient } from '@/lib/server/stripeClient';
 import { featuresForPlan } from '@/lib/subscription/planDefaults';
 import type { CheckoutPlan } from '@/lib/stripe/planPrices';
 import { planFromPriceId } from '@/lib/stripe/planPrices';
@@ -94,7 +95,6 @@ export async function syncUserSubscriptionFromStripe(
     features: featuresForPlan(plan),
     stripeCustomerId,
     stripeSubscriptionId,
-    startDate: FieldValue.serverTimestamp(),
     usage: {
       pdcaEntries: typeof existingUsage.pdcaEntries === 'number' ? existingUsage.pdcaEntries : 0,
       aiComments: typeof existingUsage.aiComments === 'number' ? existingUsage.aiComments : 0,
@@ -102,6 +102,10 @@ export async function syncUserSubscriptionFromStripe(
       coachSessions: typeof existingUsage.coachSessions === 'number' ? existingUsage.coachSessions : 0,
     },
   };
+
+  if (existingSub?.startDate == null) {
+    subscriptionPayload.startDate = FieldValue.serverTimestamp();
+  }
 
   const downgradedFromPremium = previousPlan === 'premium' && plan === 'standard';
   if (downgradedFromPremium) {
@@ -162,8 +166,43 @@ export async function syncUserSubscriptionFromStripeObject(
   });
 }
 
-export async function markSubscriptionExpired(uid: string): Promise<void> {
+export type LatestSyncResult = 'synced' | 'expired' | 'skipped';
+
+/**
+ * Stripe から最新の Subscription を取得して反映する。
+ * Webhook のペイロードは配信順が前後し得るため、イベント時点の写しではなく常に最新状態を書く。
+ */
+export async function syncLatestSubscription(
+  uid: string,
+  subscriptionId: string,
+  opts: { expectedCustomerId?: string } = {}
+): Promise<LatestSyncResult> {
+  const subscription = await getStripeClient().subscriptions.retrieve(subscriptionId);
+  if (opts.expectedCustomerId) {
+    const customerId =
+      typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+    if (customerId !== opts.expectedCustomerId) return 'skipped';
+  }
+  if (subscription.status === 'canceled') {
+    return (await markSubscriptionExpired(uid, subscription.id)) ? 'expired' : 'skipped';
+  }
+  await syncUserSubscriptionFromStripeObject(uid, subscription);
+  return 'synced';
+}
+
+/**
+ * `expectedSubscriptionId` 指定時、ユーザーが既に別の Subscription に切り替えていれば何もしない（再申込後の旧契約の削除通知対策）。
+ * @returns 失効を書き込んだら true
+ */
+export async function markSubscriptionExpired(uid: string, expectedSubscriptionId?: string): Promise<boolean> {
   const db = getFirebaseAdminApp().firestore();
+  if (expectedSubscriptionId) {
+    const snap = await db.doc(`users/${uid}`).get();
+    const currentId = snap.data()?.subscription?.stripeSubscriptionId;
+    if (typeof currentId === 'string' && currentId && currentId !== expectedSubscriptionId) {
+      return false;
+    }
+  }
   const retentionEnds = new Date();
   retentionEnds.setDate(retentionEnds.getDate() + 90);
 
@@ -183,6 +222,7 @@ export async function markSubscriptionExpired(uid: string): Promise<void> {
     },
     { merge: true }
   );
+  return true;
 }
 
 export function isEligibleForStripeTrial(
