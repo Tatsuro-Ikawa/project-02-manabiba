@@ -59,6 +59,10 @@
 7e. **[Step3 満足度〜取組領域仕様](./08_STEP03_SATISFACTION_SPEC.md)**（採点→レーダー→取組領域。表で候補≤N（`/settings`・1〜8・既定4）・三点で1領域。理由・ブレーキはStep4。recharts）
 7f. **[Step4 こころのブレーキ探索（草案・AI前）](./09_STEP04_BRAKE_EXPLORATION_SPEC.md)**（理由→変えやすさ→Have/Do/Beタグ。AI動的質問は別紙。検討事項§9）
 7g. **[Step4 こころの深掘り（まとめ以降・草案）](./10_STEP04_DEEP_DIVE_SPEC.md)**（課題＋あり方 → 場面・行動 → 気持ち・こころの声・こころの抵抗 → こころの働き仮説 → 自分の言葉。AI 3回先読み・モーダル①〜③。検討事項§11）
+7h. **[Step5 前半 なりたい自分と現在の姿（草案）](./11_STEP05_DESIRED_STATE_SPEC.md)**（いま出す範囲は §11：満足度設定 → 目標を描く（持ち方）→ 持ち方をまとめる。自分らしさ以降となし方・あり方は次の開発。§8・§10 は 2026-10-13 の草案）
+7i. **[Step5 後半 いつまでに・どの程度・道のり（草案）](./12_STEP05_TIMELINE_SPEC.md)**（KGI・KPI の言葉の置き換え、段階で持つ習熟、評価の3軸と4分類、違い → 到達のしるし → いつまでに → 振れ幅 → 道のり。AI-5〜7。検討事項 D11〜D17）
+7j. **[計画と気づきノートの連携（草案）](./13_PLAN_JOURNAL_INTEGRATION_SPEC.md)**（PDCA の機能分担、計画データの正本（ID・版・日付）、気づきノートの追加項目、阻害の乗り越え、遅れの把握・挽回、段階的な導入。検討事項 D18〜D25）
+7k. **[スタートプログラムの保存と利用条件（草案）](./14_START_PROGRAM_SYNC_AND_ACCESS_SPEC.md)**（Firestore を正本にした端末間の共有、保存のタイミング・暗号化・食い違い、Step5 以降の 28 日無料とスタンダード申込。検討事項 D26〜D30）
 
 8. **[Phase B — API 内部仕様（決定）](./04_PHASE_B_API_INTERNAL_DECISIONS.md)**（B1〜B5・エラー形式・認証・rules 方針）
 
@@ -108,6 +112,12 @@
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-10-28 | Step5 を「満足度設定 → 目標を描く → 持ち方をまとめる」までに実装。実現時期は自由入力。まとめる文と時期がそろうと「私は、〔時期〕までに、」を表示。[11_STEP05_DESIRED_STATE_SPEC.md](./11_STEP05_DESIRED_STATE_SPEC.md) §11 |
+| 2026-10-15 | Step5 後半（違いを見る → 到達のしるし → いつまでに → 振れ幅 → 道のり）のモックを実装。ダミー AI-5〜7、「裕子さん（後半）」のダミー。[12_STEP05_TIMELINE_SPEC.md](./12_STEP05_TIMELINE_SPEC.md) §11 |
+| 2026-10-15 | [14_START_PROGRAM_SYNC_AND_ACCESS_SPEC.md](./14_START_PROGRAM_SYNC_AND_ACCESS_SPEC.md) の D26〜D30 を決定（申込なしのデータは最終ログインから 90 日で削除）。Step5 画面に利用条件（無料期間の案内・残り日数・期限後は見るだけ・申込確認）と保存状態のモックを実装 |
+| 2026-10-14 | スタートプログラムの保存と利用条件の仕様草案 [14_START_PROGRAM_SYNC_AND_ACCESS_SPEC.md](./14_START_PROGRAM_SYNC_AND_ACCESS_SPEC.md) を追加（Step0〜7 を Firestore で端末間共有、Step5 以降は 28 日無料のあとスタンダード申込）。12 の D17、13 の D19・D25 を決定 |
+| 2026-10-14 | Step5 後半の仕様草案 [12_STEP05_TIMELINE_SPEC.md](./12_STEP05_TIMELINE_SPEC.md) と、計画と気づきノートの連携の仕様草案 [13_PLAN_JOURNAL_INTEGRATION_SPEC.md](./13_PLAN_JOURNAL_INTEGRATION_SPEC.md) を追加 |
+| 2026-10-13 | Step5 前半（なりたい自分と現在の姿）の仕様を決定し、モックを実装（5フェーズ・ダミー AI 4回・裕子さん／康太さんのダミー）。[11_STEP05_DESIRED_STATE_SPEC.md](./11_STEP05_DESIRED_STATE_SPEC.md) §8・§10 |
 | 2026-10-07 | 気づきノート朝・晩に「入力中の記入日ポップアップ」（設定画面で入り切り・既定オフ）を追加。日付ナビに曜日を表示。[04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) §日付ナビ |
 | 2026-10-06 | Step4「まとめ」を「こころの深掘り」に置き換え（モック）。[10_STEP04_DEEP_DIVE_SPEC.md](./10_STEP04_DEEP_DIVE_SPEC.md) 決定 D1〜D12・§11.1〜11.2、[09_STEP04_BRAKE_EXPLORATION_SPEC.md](./09_STEP04_BRAKE_EXPLORATION_SPEC.md) §11.1 |
 | 2026-07-23 | [04_STRIPE_BILLING_SPEC.md](./04_STRIPE_BILLING_SPEC.md) を更新（Webhook 購読イベント必須・www URL・ログと配信の違い・Firebase Admin・トラブルシュート・完了画面フォールバック）。索引に 7a を追加 |

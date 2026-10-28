@@ -6,7 +6,7 @@ import {
   type MandalaDomainsState,
 } from '@/lib/startProgram/mandalaConstants';
 
-const STORAGE_KEY = 'startProgram.sevenSteps.step01';
+export const STORAGE_KEY = 'startProgram.sevenSteps.step01';
 
 export type MandalaLocalStore = {
   domains: MandalaDomainsState;

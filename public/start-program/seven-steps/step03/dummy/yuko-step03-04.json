@@ -38,6 +38,20 @@
           "have": ["have_skill"],
           "do": ["do_improve"],
           "be": ["be_self", "be_outcome"]
+        },
+        "deepDive": {
+          "scene": ["求人を見ている時", "応募しようと考えた時"],
+          "action": ["先延ばしにする", "情報収集ばかりしてしまう"],
+          "feeling": ["不安", "焦る"],
+          "voice": ["「私には無理かもしれない」"],
+          "protection": ["失敗して傷つくこと", "自分に力がないと感じること"],
+          "ratings": {
+            "失敗して傷つくこと": "strong",
+            "自分に力がないと感じること": "some",
+            "弱い自分を見せること": "weak"
+          },
+          "ownWords": "うまく対応できず、失敗することが怖い。失敗してみじめな姿をさらすことが恥ずかしい。",
+          "insightSaved": true
         }
       },
       {
@@ -57,6 +71,10 @@
           "have": ["have_resource", "have_support"],
           "do": ["do_relate", "do_plan"],
           "be": ["be_should"]
+        },
+        "deepDive": {
+          "scene": ["他の人の働き方を見た時", "家族の予定を考えている時"],
+          "action": ["周囲を優先して自分のことを後回しにする"]
         }
       },
       {

@@ -70,18 +70,17 @@ export default function Step04DeepDiveCard({ index, reason, dd, onExplore, onSav
   const seenWorkings = (strongOnes.length > 0 ? strongOnes : closeOnes).map((h) => h.title);
 
   return (
-    <article className="step04-dd-card" aria-label={`課題${index}`}>
-      <header className="step04-dd-card-head">
-        <span className="step04-reason-no">{index}</span>
-        <p className="step04-dd-card-reason">{reason.text}</p>
+    <section className="step04-layer-panel step04-dd-card" aria-label={`課題${index}`}>
+      <div className="step04-layer-reason step04-dd-card-head">
+        <p className="step04-card-text">{reason.text}</p>
         <div className="step04-dd-card-be">
           <span className="step04-dd-card-be-label">あり方</span>
           <PillList items={beTagLabels(reason)} />
         </div>
-      </header>
+      </div>
 
-      <section className="step04-dd-block">
-        <h4 className="step04-dd-block-title">深掘り①</h4>
+      <section className="step04-layer step04-dd-block">
+        <h4 className="step04-layer-name step04-dd-block-title">深掘り①</h4>
         <Row label="場面">
           <PillList items={picks(dd.entry.scene)} />
         </Row>
@@ -100,8 +99,8 @@ export default function Step04DeepDiveCard({ index, reason, dd, onExplore, onSav
         </div>
       </section>
 
-      <section className="step04-dd-block">
-        <h4 className="step04-dd-block-title">深掘り②</h4>
+      <section className="step04-layer step04-layer--do step04-dd-block">
+        <h4 className="step04-layer-name step04-dd-block-title">深掘り②</h4>
         <Row label="気持ち">
           <PillList items={picks(dd.inner.feeling)} />
         </Row>
@@ -123,8 +122,8 @@ export default function Step04DeepDiveCard({ index, reason, dd, onExplore, onSav
         </div>
       </section>
 
-      <section className="step04-dd-block">
-        <h4 className="step04-dd-block-title">こころの働き</h4>
+      <section className="step04-layer step04-layer--be step04-dd-block">
+        <h4 className="step04-layer-name step04-dd-block-title">こころの働き</h4>
         {workingDone ? (
           <>
             {closeOnes.map((h) => (
@@ -188,6 +187,6 @@ export default function Step04DeepDiveCard({ index, reason, dd, onExplore, onSav
           </div>
         </section>
       ) : null}
-    </article>
+    </section>
   );
 }

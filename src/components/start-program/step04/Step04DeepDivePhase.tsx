@@ -58,6 +58,7 @@ export default function Step04DeepDivePhase({ theme, patchDeepDive, onBackToLaye
   const targets = deepDiveTargets(theme);
   const actionable = actionableReasons(theme);
   const [open, setOpen] = useState<{ reasonId: string; stage: DeepDiveStage } | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const inflight = useRef(new Set<string>());
 
   const runAi = useCallback(
@@ -120,9 +121,11 @@ export default function Step04DeepDivePhase({ theme, patchDeepDive, onBackToLaye
     }
   }, [domainId, runAi, targets, theme.deepDive]);
 
+  const numberOf = (reasonId: string) => actionable.findIndex((r) => r.id === reasonId) + 1;
+  const selected = targets.find((r) => r.id === selectedId) ?? targets[0];
   const openReason = open ? targets.find((r) => r.id === open.reasonId) : undefined;
   const openDd = openReason ? theme.deepDive[openReason.id] ?? emptyDeepDiveEntry(openReason.id) : undefined;
-  const openIndex = openReason ? actionable.findIndex((r) => r.id === openReason.id) + 1 : 0;
+  const openIndex = openReason ? numberOf(openReason.id) : 0;
   const completedCount = targets.filter((r) => theme.deepDive[r.id]?.insightSavedAt != null).length;
 
   const retry = (reasonId: string, stage: DeepDiveStage) =>
@@ -150,29 +153,45 @@ export default function Step04DeepDivePhase({ theme, patchDeepDive, onBackToLaye
         整理した結果から、「あり方：ものごとの捉え方」についてさらに深掘りしてみましょう。
       </h2>
       <p className="seven-steps-worksheet-body seven-steps-worksheet-hint">
-        「あり方」を選んだ次の課題から、幾つかの質問に答えながら探っていきます。1つ以上の課題で「この気づきを保存する」まで進むと Step4 は完了です（残りの課題は任意です）。
+        「あり方」を選んだ次の課題から、幾つかの質問に答えながら探っていきます。1つ以上の課題で「この気づきを保存する」まで進むと次の Step5 に進めます（残りの課題は任意です）。
       </p>
-      {completedCount > 0 ? (
-        <p className="step04-dd-complete" role="status">
-          Step4 は完了しています（気づきを保存した課題 {completedCount} / {targets.length}）
-        </p>
-      ) : null}
 
-      <h3 className="step03-sat-section-label">自分から変えられそうな課題</h3>
-      <div className="step04-dd-cards">
-        {targets.map((reason) => (
-          <Step04DeepDiveCard
-            key={reason.id}
-            index={actionable.findIndex((r) => r.id === reason.id) + 1}
-            reason={reason}
-            dd={theme.deepDive[reason.id] ?? emptyDeepDiveEntry(reason.id)}
-            onExplore={(stage) => setOpen({ reasonId: reason.id, stage })}
-            onSaveInsight={() =>
-              patchDeepDive(domainId, reason.id, (dd) => ({ ...dd, insightSavedAt: Date.now() }))
-            }
-          />
-        ))}
+      <div className="step04-layer-tabs" role="tablist" aria-label="課題の切り替え">
+        {targets.map((r) => {
+          const saved = theme.deepDive[r.id]?.insightSavedAt != null;
+          return (
+            <button
+              key={r.id}
+              type="button"
+              role="tab"
+              aria-selected={r.id === selected?.id}
+              className={`step04-layer-tab${r.id === selected?.id ? ' is-active' : ''}${saved ? ' is-done' : ''}`}
+              title={r.text}
+              onClick={() => setSelectedId(r.id)}
+            >
+              課題{numberOf(r.id)}
+              {saved ? <span className="step02-phase-nav-check">✓</span> : null}
+            </button>
+          );
+        })}
       </div>
+      <p className="step04-count">
+        気づきを保存した課題 {completedCount} / {targets.length}
+        {completedCount > 0 ? <span className="step04-dd-count-next">（Step5 に進めます）</span> : null}
+      </p>
+
+      {selected ? (
+        <Step04DeepDiveCard
+          key={selected.id}
+          index={numberOf(selected.id)}
+          reason={selected}
+          dd={theme.deepDive[selected.id] ?? emptyDeepDiveEntry(selected.id)}
+          onExplore={(stage) => setOpen({ reasonId: selected.id, stage })}
+          onSaveInsight={() =>
+            patchDeepDive(domainId, selected.id, (dd) => ({ ...dd, insightSavedAt: Date.now() }))
+          }
+        />
+      ) : null}
 
       {open && openReason && openDd && open.stage === 'entry' ? (
         <Step04DeepDiveEntryModal

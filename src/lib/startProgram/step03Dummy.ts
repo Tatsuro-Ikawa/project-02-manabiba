@@ -1,4 +1,4 @@
-/** Step3・Step4（Ai 前）確認用ダミーデータの読み込み */
+/** Step3・Step4（こころの深掘りまで）確認用ダミーデータの読み込み */
 
 import { readStep03CandidateMax } from '@/lib/startProgram/appSettings';
 import {
@@ -28,6 +28,19 @@ import {
   type ReasonEntry,
   type Step04Store,
 } from '@/lib/startProgram/step04Constants';
+import { buildDummyHypotheses } from '@/lib/startProgram/step04DeepDiveAi';
+import {
+  baseEntryOptions,
+  baseInnerOptions,
+  buildDeepDiveContext,
+  emptyDeepDiveEntry,
+  entryInputKey,
+  innerInputKey,
+  workingInputKey,
+  type DeepDiveEntry,
+  type PickAnswer,
+  type WorkingRating,
+} from '@/lib/startProgram/step04DeepDiveConstants';
 
 export const STEP03_DUMMY_PERSONAS: { id: string; label: string; path: string }[] = [
   { id: 'yuko', label: '裕子さん', path: '/start-program/seven-steps/step03/dummy/yuko-step03-04.json' },
@@ -51,8 +64,23 @@ export type Step03DummyFile = {
       changeability: Changeability | null;
       tags?: Partial<Record<LayerKey, LayerTagId[]>>;
       otherText?: Partial<Record<LayerKey, string>>;
+      deepDive?: DummyDeepDive;
     }[];
   };
+};
+
+/** 回答がそろった段階までを保存済みとして復元する（場面・行動 → 気持ち〜抵抗 → 自分の言葉） */
+type DummyDeepDive = {
+  scene?: string[];
+  action?: string[];
+  feeling?: string[];
+  voice?: string[];
+  voiceOwnWords?: string;
+  protection?: string[];
+  /** キーは「こころの抵抗」の選択肢（仮説 ID） */
+  ratings?: Record<string, WorkingRating>;
+  ownWords?: string;
+  insightSaved?: boolean;
 };
 
 export type Step03DummyBundle = {
@@ -116,6 +144,49 @@ function buildStep03(src: Step03DummyFile['step03']): Step03SatisfactionStore {
   };
 }
 
+function toPick(values: string[] | undefined, options: string[]): PickAnswer {
+  const v = values ?? [];
+  return { selected: v.filter((x) => options.includes(x)), custom: v.filter((x) => !options.includes(x)) };
+}
+
+function readySlot<T>(data: T, inputKey: string) {
+  return { status: 'ready' as const, data, inputKey, refreshCount: 0, refreshedNotice: false };
+}
+
+function buildDeepDive(domainId: MandalaDomainId, reason: ReasonEntry, src: DummyDeepDive): DeepDiveEntry {
+  const ctx = buildDeepDiveContext(domainId, reason);
+  const now = Date.now();
+  const dd = emptyDeepDiveEntry(reason.id);
+  const entryOpts = baseEntryOptions(ctx);
+  dd.entry.options = readySlot(entryOpts, entryInputKey(ctx));
+  if (!src.scene?.length || !src.action?.length) return dd;
+  dd.entry = {
+    ...dd.entry,
+    scene: toPick(src.scene, entryOpts.scenes),
+    action: toPick(src.action, entryOpts.actions),
+    savedAt: now,
+  };
+
+  const innerOpts = baseInnerOptions();
+  dd.inner.options = readySlot(innerOpts, innerInputKey(ctx, dd));
+  const hasVoice = (src.voice?.length ?? 0) > 0 || Boolean(src.voiceOwnWords?.trim());
+  if (!src.feeling?.length || !hasVoice || !src.protection?.length) return dd;
+  dd.inner = {
+    ...dd.inner,
+    feeling: toPick(src.feeling, innerOpts.feelings),
+    voice: toPick(src.voice, innerOpts.voices),
+    voiceOwnWords: src.voiceOwnWords?.trim() ?? '',
+    protection: toPick(src.protection, innerOpts.protections),
+    savedAt: now,
+  };
+
+  dd.working.hypotheses = readySlot(buildDummyHypotheses(dd), workingInputKey(ctx, dd));
+  if (!src.ownWords?.trim()) return dd;
+  dd.working = { ...dd.working, ratings: src.ratings ?? {}, ownWords: src.ownWords.trim(), savedAt: now };
+  dd.insightSavedAt = src.insightSaved ? now : null;
+  return dd;
+}
+
 function buildStep04(src: Step03DummyFile['step04'], focusDomainId: MandalaDomainId | null): Step04Store {
   if (!focusDomainId) return { version: 1, activeDomainId: null, themeOrder: [], themes: {} };
   const reasons: ReasonEntry[] = src.reasons.map((r) => ({
@@ -126,12 +197,16 @@ function buildStep04(src: Step03DummyFile['step04'], focusDomainId: MandalaDomai
     tags: { ...emptyLayerTags(), ...r.tags },
     otherText: { ...emptyLayerOtherText(), ...r.otherText },
   }));
+  const deepDive: Record<string, DeepDiveEntry> = {};
+  src.reasons.forEach((r, i) => {
+    if (r.deepDive) deepDive[reasons[i].id] = buildDeepDive(focusDomainId, reasons[i], r.deepDive);
+  });
   return {
     version: 1,
     activeDomainId: focusDomainId,
     themeOrder: [focusDomainId],
     themes: {
-      [focusDomainId]: { domainId: focusDomainId, reasons, startedAt: Date.now(), completedAt: null, deepDive: {} },
+      [focusDomainId]: { domainId: focusDomainId, reasons, startedAt: Date.now(), completedAt: null, deepDive },
     },
   };
 }

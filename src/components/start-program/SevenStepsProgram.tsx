@@ -13,12 +13,13 @@ import Step01WorksheetPane from '@/components/start-program/step01/Step01Workshe
 import Step02WorksheetPane from '@/components/start-program/step02/Step02WorksheetPane';
 import Step03WorksheetPane from '@/components/start-program/step03/Step03WorksheetPane';
 import Step04WorksheetPane from '@/components/start-program/step04/Step04WorksheetPane';
+import Step05ExampleEntry from '@/components/start-program/step05/Step05ExampleEntry';
+import Step05WorksheetPane from '@/components/start-program/step05/Step05WorksheetPane';
 import {
   SEVEN_STEPS_PROGRAM_LABEL,
   clampStepIndex,
   defaultPaneForStep,
   getSevenStepsStep,
-  stepUrl,
   type StepPane,
 } from '@/lib/startProgram/sevenStepsConstants';
 
@@ -78,6 +79,9 @@ export default function SevenStepsProgram({
     if (safeIndex === 4) {
       return <Step04WorksheetPane />;
     }
+    if (safeIndex === 5) {
+      return <Step05WorksheetPane />;
+    }
     return (
       <p className="seven-steps-placeholder">
         Step{safeIndex} のワークシートは準備中です。
@@ -106,12 +110,16 @@ export default function SevenStepsProgram({
         <StepNavigator stepIndex={safeIndex} onNavigate={navigate} />
 
         <header className="seven-steps-step-header">
-          <StepPaneNavigator
-            stepIndex={safeIndex}
-            pane={safePane}
-            onNavigate={navigate}
-            className="seven-steps-pane-nav--header"
-          />
+          <h2 className="seven-steps-step-title">{step?.title}</h2>
+          <div className="seven-steps-step-header-actions">
+            {safeIndex === 5 && safePane === 'worksheet' ? <Step05ExampleEntry /> : null}
+            <StepPaneNavigator
+              stepIndex={safeIndex}
+              pane={safePane}
+              onNavigate={navigate}
+              className="seven-steps-pane-nav--header"
+            />
+          </div>
         </header>
 
         <div className="seven-steps-step-content">{renderPaneContent()}</div>

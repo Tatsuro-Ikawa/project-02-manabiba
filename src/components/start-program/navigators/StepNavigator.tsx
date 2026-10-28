@@ -17,7 +17,6 @@ type StepNavigatorProps = {
 /** Step 間ナビ（Step ピル + 左右矢印 + 現在タイトル） */
 export default function StepNavigator({ stepIndex, onNavigate }: StepNavigatorProps) {
   const safeIndex = clampStepIndex(stepIndex);
-  const step = getSevenStepsStep(safeIndex);
   const pillStripRef = useRef<HTMLDivElement>(null);
   const total = SEVEN_STEPS.length;
   const atFirst = safeIndex <= 0;
@@ -86,13 +85,6 @@ export default function StepNavigator({ stepIndex, onNavigate }: StepNavigatorPr
           </span>
         </button>
       </div>
-
-      <p className="seven-steps-step-nav-current" aria-live="polite">
-        <span className="seven-steps-step-nav-current-label">
-          Step{safeIndex} / {total - 1}
-        </span>
-        <span className="seven-steps-step-nav-current-title">{step?.title}</span>
-      </p>
     </nav>
   );
 }

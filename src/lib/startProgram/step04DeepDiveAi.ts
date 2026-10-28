@@ -76,6 +76,11 @@ export async function generateWorkingHypotheses(
   dd: DeepDiveEntry
 ): Promise<Hypothesis[]> {
   await wait();
+  return buildDummyHypotheses(dd);
+}
+
+/** ダミーの仮説（ダミーデータの読み込みでも同じ結果を使う） */
+export function buildDummyHypotheses(dd: DeepDiveEntry): Hypothesis[] {
   const chosen = picks(dd.inner.protection).filter((p) => p !== 'よく分からない');
   const keys = [...new Set([...chosen, ...DEFAULT_HYPOTHESIS_KEYS])].slice(0, Math.max(2, Math.min(3, chosen.length + 1)));
   const voices = [...picks(dd.inner.voice), dd.inner.voiceOwnWords.trim()].filter(Boolean);

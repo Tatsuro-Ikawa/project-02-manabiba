@@ -1,0 +1,86 @@
+{
+  "persona": {
+    "name": "康太さん",
+    "note": "取組領域は精神・内面（満足度3）。Step5 前半は「3方向で描く」の途中（あり方と目標の一文は未記入）。"
+  },
+  "step04Source": "/start-program/seven-steps/step03/dummy/kota-step03-04.json",
+  "refs": {
+    "self": {
+      "interest": [
+        "私は、自転車で風を感じる時間に興味がある。だから、休日に遠くまで走るのだ。"
+      ],
+      "values": [
+        "私は、家族と心から笑い合える時間を大切にしている。だから、休日は家族と向き合うのだ。",
+        "私は、誠実であることを大切にしている。だから、自分にも人にもうそをつかないのだ。"
+      ],
+      "strength": [
+        "私は、人の話を最後まで聴くことが得意だ。だから、部下の相談に乗るのだ。"
+      ]
+    },
+    "candidates": {
+      "have": [
+        "休日は仕事から離れ、心と体を休められている",
+        "平日にも、自分の気持ちを振り返る15分がある",
+        "本音を話せる相談相手が、社内にも社外にもいる",
+        "自転車で走れる体力と、気持ちの余裕がある"
+      ],
+      "do": [
+        "寝る前の10分、その日の気持ちをノートに書いている",
+        "困ったときは、早めに上司や同僚に相談している",
+        "部下に任せる仕事を決め、任せきっている",
+        "休日はメールを見ない時間を決めている",
+        "週に1回、自転車で走る時間を予定に入れている"
+      ],
+      "be": [
+        "評価は自分の一部であって、すべてではないと思えている",
+        "期待にすべて応えられなくても、自分の価値は変わらないと思える",
+        "弱さを見せることは、信頼を深めることだと思える",
+        "「完璧な上司」より「頼り合えるチーム」でいいと思える"
+      ]
+    },
+    "goals": [
+      "評価の声より自分の声を聴き、家族と笑い、風を切って走る私",
+      "「完璧」を手放して、頼り合えるチームと心からの休日を持っている私",
+      "自分の大切にしたいことを軸に、穏やかな気持ちで働き、暮らしている私"
+    ],
+    "gaps": {
+      "休日は仕事から離れ、心と体を休められている": "休日も評価のことが頭から離れず、休まる時間がない",
+      "寝る前の10分、その日の気持ちをノートに書いている": "気持ちを言葉にして整理する習慣が、まだない"
+    },
+    "markers": {
+      "have": [
+        { "role": "arrival", "label": "休日の休まり度", "kind": "scale10", "unit": "", "baseline": "3", "target": "7", "cadence": "weekly" }
+      ],
+      "do": [
+        { "role": "arrival", "label": "寝る前のふり返りノート（週あたり）", "kind": "count", "unit": "日", "baseline": "0", "target": "5", "cadence": "weekly" }
+      ],
+      "be": [
+        { "role": "arrival", "label": "評価に振り回されなかった度", "kind": "scale10", "unit": "", "baseline": "3", "target": "7", "cadence": "weekly" }
+      ]
+    },
+    "milestones": {
+      "settle": "寝る前のノートが週3日続き、休日にメールを見ない時間を作れている",
+      "expand": "評価が気になっても、ノートで気持ちを整理して切り替えられている",
+      "root": "休日にしっかり休まり、評価に振り回されずに働けている"
+    },
+    "brakes": {
+      "人から評価された時": { "stageKind": "expand", "note": "期末の評価面談の前後" },
+      "寝る前にその日を振り返った時": { "stageKind": "settle", "note": "ノートを書き始めた最初の週" }
+    }
+  },
+  "step05": {
+    "targetScore": 8,
+    "reviewDone": true,
+    "items": [
+      { "layer": "have", "sourceTagId": "have_vitality", "target": "休日は仕事から離れ、心と体を休められている" },
+      { "layer": "have", "sourceTagId": "have_resource", "target": "" },
+      { "layer": "do", "sourceTagId": "do_habit", "target": "寝る前の10分、その日の気持ちをノートに書いている" },
+      { "layer": "do", "sourceTagId": "do_relate", "target": "" },
+      { "layer": "do", "sourceTagId": "do_decide", "target": "" },
+      { "layer": "do", "sourceTagId": "do_plan", "target": "" },
+      { "layer": "be", "sourceTagId": "be_compare", "target": "" },
+      { "layer": "be", "sourceTagId": "be_outcome", "target": "" },
+      { "layer": "be", "sourceTagId": "be_should", "target": "" }
+    ]
+  }
+}
