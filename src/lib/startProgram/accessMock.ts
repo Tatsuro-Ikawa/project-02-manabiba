@@ -7,7 +7,7 @@ export const ACCESS_MOCK_STORAGE_KEY = 'startProgram.access.mock';
 export const ACCESS_MOCK_CHANGED_EVENT = 'startProgram.access.mock.changed';
 
 /** Step5 以降の無料日数（開始日を 1 日目として数える） */
-export const START_PROGRAM_FREE_DAYS = 28;
+export const START_PROGRAM_FREE_DAYS = 58;
 /** 残り日数の表示を始める日数 */
 export const START_PROGRAM_NOTICE_DAYS = 7;
 /** 申込しなかった人のデータを残す日数（最終ログインから） */

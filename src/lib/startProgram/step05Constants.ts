@@ -325,7 +325,7 @@ export function filledItems(theme: Step05Theme): Step05Item[] {
 
 export type Step05Progress = {
   reviewDone: boolean;
-  /** 持ち方の欄がすべて埋まっている。なし方・あり方は次のステップ */
+  /** 持ち方・なし方・あり方の欄がすべて埋まっている */
   layersFilled: boolean;
   layersReady: boolean;
   fitReady: boolean;
@@ -346,7 +346,7 @@ export function step05Progress(theme: Step05Theme | undefined, reasons: ReasonTa
       completed: false,
     };
   }
-  const slots = answerSlots(reasons, 'have');
+  const slots = answerSlots(reasons);
   const reviewDone = theme.targetScoreSavedAt != null;
   const layersFilled =
     slots.length > 0 && slots.every((slot) => (answerOf(theme, slot.reasonId, slot.tagId)?.target.trim() ?? '') !== '');

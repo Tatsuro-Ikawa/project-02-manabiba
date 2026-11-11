@@ -60,7 +60,7 @@
 | 番号      | 決めること              | 選択肢・メモ                                                                                                             | 参照                                                                                           |
 | ------- | ------------------ | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
 | **3-1** | **保存先パス**          | 設計案: `users/{uid}/coaching-program/28day-trial/{date}`（日付キー）。採用するか、別名・別構造にするか                                      | [03_FIRESTORE_DATABASE_STRUCTURE.md](./03_FIRESTORE_DATABASE_STRUCTURE.md)、[02_SYSTEM_ARCHITECTURE.md](./02_SYSTEM_ARCHITECTURE.md) §6.1 |
-| **3-2** | **1日分のスキーマ（朝・晩）**  | 要件の記録観点（朝: アファメーション宣言・イメージング 等、夜: 今日の行動・結果・感情・ブレーキ・反論・気づき・自分への一言）を、Firestore のどのフィールド名で持つか。プロトタイプの入力項目と 1:1 対応表を作る | REQUIREMENTS 2.8.3「28日間トライアルの記録観点」、プロトタイプ SCREEN-005                                         |
+| **3-2** | **1日分のスキーマ（朝・晩）**  | 要件の記録観点（朝: 行動宣言・イメージング 等、夜: 今日の行動・結果・感情・ブレーキ・反論・気づき・自分への一言）を、Firestore のどのフィールド名で持つか。プロトタイプの入力項目と 1:1 対応表を作る | REQUIREMENTS 2.8.3「28日間トライアルの記録観点」、プロトタイプ SCREEN-005                                         |
 | **3-3** | **アファメーション本文の保存先** | 7日間プログラム Step8（WS11）と共有するか／トライアル専用フィールドを 28day-trial の外（例: ユーザー直下 or 別サブコレクション）に持つか                                | REQUIREMENTS 2.8.3、COACHPROG-005                                                             |
 | **3-4** | **週・月タブのデータ**      | 週報・月報は「その期間の日次データの集約表示」のみか／別ドキュメントに集約結果を保存するか。集約はクライアント計算か、保存時に集約するか                                               | プロトタイプ SCREEN-006, 007、PDCA 集約との関係                                                           |
 | **3-5** | **PDCA との共有**      | 「28日間トライアルの記録は 2.5 PDCA とデータ構造を共有する可能性（要検討）」→ 共有するか、トライアル専用で持つか                                                    | REQUIREMENTS 2.8.3                                                                           |
@@ -155,7 +155,7 @@
 
 ### 朝（morning）
 
-- **アファメーションの宣言**: `morningAffirmationDeclaration: 'done'|'undone'|null`（画面は「完了」チェックのみ。未チェックは `undone`）
+- **行動宣言（実施）**: `morningAffirmationDeclaration: 'done'|null`（画面は「行動宣言を実施した」ボタン。未実施は `null`）。行動宣言タブ／朝タブのどちらかで押すと、同日の `morningActionDeclarationRead: true` も合わせて記録する
 - **今日の行動（統合欄）**: `morningTodayActionTextEncrypted: string|null`（目標・行動内容の分割欄と併存し得る）
 - **今日の行動 — 目標**: `morningActionGoalTextEncrypted: string|null`
 - **今日の行動 — 行動内容**: `morningActionContentTextEncrypted: string|null`
@@ -179,7 +179,7 @@
 - **他に残しておきたいこと**（旧ラベル: 今日の自分へのねぎらいの一言）: `eveningMessageToSelfTextEncrypted: string|null`
 - **今日の振り返りを踏まえた あすの行動内容（目標）**: `eveningTomorrowActionSeedTextEncrypted: string|null`
 - **明日の目標・行動内容・イメージング**: `eveningTomorrowGoalTextEncrypted` / `eveningTomorrowActionContentTextEncrypted` / `eveningTomorrowImagingDone`
-  - 保存時、翌日の朝の行動欄が未入力なら `eveningTomorrowActionSeedTextEncrypted` から自動コピー（上書きはしない）
+  - 「明日の行動に反映」ボタンで、翌日の朝の行動欄が未入力なら `eveningTomorrowActionSeedText` / `eveningTomorrowActionContentText` を同時にコピー（上書きはしない。保存時の自動コピーはしない）
 
 ### 週（weekly）
 
@@ -256,7 +256,8 @@
 
 | UI 項目 | Firestore フィールド（代表） | 簡易 | 普通 | 詳細 |
 |---------|------------------------------|:----:|:----:|:----:|
-| アファメーション宣言（実施） | `morningAffirmationDeclaration` | ● | ● | ● |
+| 行動宣言（実施） | `morningAffirmationDeclaration` | ● | ● | ● |
+| 行動宣言を読んだ（当日） | `morningActionDeclarationRead` | ● | ● | ● |
 | 今日の行動 — 補足 | — | — | ● | ● |
 | 今日の行動 — 行動目標 | `morningTodayActionText` 等 | ● | ● | ● |
 | 今日の行動 — 行動内容（どのように） | `morningActionContentText` | — | ● | ● |
@@ -385,7 +386,8 @@
 
 | UI 項目 | Firestore | 簡易 | 普通 | 詳細 |
 |---------|-----------|:----:|:----:|:----:|
-| アファメーション宣言（実施） | `morningAffirmationDeclaration` | ● | ● | ● |
+| 行動宣言（実施） | `morningAffirmationDeclaration` | ● | ● | ● |
+| 行動宣言を読んだ（当日） | `morningActionDeclarationRead` | ● | ● | ● |
 | 今日の行動 — 行動目標 | `morningTodayActionText` 等 | ● | ● | ● |
 | 今日の行動 — 行動内容 | `morningActionContentText` | — | ● | ● |
 | 今日の行動のイメージング | `morningImagingDone` | — | — | ● |
@@ -419,7 +421,7 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | 10 | Aiコーチからのコメント | `eveningAiSuggestionText` | ● | ● | ● | 生成結果の保存先。表示は読取専用テキスト＋保存フロー |
 | 11 | 他に残しておきたいこと | `eveningMessageToSelfText` | — | — | ● | |
 | | **◇明日の行動** | | | | | |
-| 12 | 明日の行動目標 | `eveningTomorrowActionSeedText` | ● | ● | ● | 保存時、翌朝「今日の行動」未入力ならコピー（現行維持） |
+| 12 | 明日の行動目標 | `eveningTomorrowActionSeedText` | ● | ● | ● | 「明日の行動に反映」で翌朝へ（空欄のみ・内容も同時） |
 | 13 | 明日の行動内容 | `eveningTomorrowActionContentText` | — | — | ● | モック表記に合わせる |
 | 14 | 明日の行動のイメージング（実施） | `eveningTomorrowImagingDone` | — | — | ● | |
 
@@ -446,7 +448,7 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | 対象 | 対応 |
 |------|------|
 | `buildWeeklyAiReportInputFromDailies` | **反映済み**（§11.0.3・【明日の行動】含む・空欄は `無し`） |
-| `computeMorningCompletionSymbol` | アファメーション `done` と行動目標テキストの **2 要素**で判定（イメージングは **対象外**）。**両要素とも未入力**（アファメーション `null` かつ行動目標が空）は **—**。`undone` は加点しない（下記「FAQ」） |
+| `computeMorningCompletionSymbol` | 行動宣言（アファメーション）`done` と行動目標テキストの **2 要素**で判定（イメージングは **対象外**）。**両要素とも未入力**（宣言 `null` かつ行動目標が空）は **—**。`undone` は加点しない（下記「FAQ」） |
 | `computeEveningExecutionSymbol` | `eveningExecution` の enum 維持のため **変更不要**（ラベルのみ変更） |
 
 ### 実装ファイル（晩改訂）
@@ -465,15 +467,15 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 
 **ならない（心配不要）**。週・月グリッド・ホームの朝記号は `computeMorningCompletionSymbol`（`src/lib/trialDailyWeekSymbols.ts`）で、次の **2 要素のうち何個満たしたか**で判定する（**イメージングは判別対象外**）。
 
-1. アファメーション **`done`** のみ 1 点（`null` も `undone` も **0 点**）
+1. 行動宣言 **`done`** のみ 1 点（`null` も `undone` も **0 点**）
 2. 今日の行動目標テキストあり 1 点（`morningTodayActionText` または `morningActionGoalText`）
 
-- **両要素とも未入力**（アファメーション `null` かつ行動目標が空）→ **—**（晩の未選択と同じ）
-- 合計 **0**（例: アファメーションが `undone` のみ）→ **△**
+- **両要素とも未入力**（行動宣言 `null` かつ行動目標が空）→ **—**（晩の未選択と同じ）
+- 合計 **0**（例: 行動宣言が `undone` のみ）→ **△**
 - 合計 **1** → **〇**
 - 合計 **2** → **◎**
 
-加点（◎／〇）の観点では `undone` も `null` も「`done` ではない」点は同じ。一方、記号表示では **両要素とも未入力（`null`＋空文字）は —**、アファメーションが **`undone` のみ**（行動目標なし）は **△** となる。
+加点（◎／〇）の観点では `undone` も `null` も「`done` ではない」点は同じ。一方、記号表示では **両要素とも未入力（`null`＋空文字）は —**、行動宣言が **`undone` のみ**（行動目標なし）は **△** となる。
 
 **正本**: 朝・晩記号の判定仕様は本書 **§4.z「週次・月次・ホーム連携」** および上記 FAQ。実装は `src/lib/trialDailyWeekSymbols.ts`（表示: ◎／〇／△）。
 

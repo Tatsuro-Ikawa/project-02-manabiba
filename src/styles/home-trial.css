@@ -2621,7 +2621,8 @@
   cursor: not-allowed;
 }
 
-.morning-evening-container .trial-action-btn.ai-action-btn-ready {
+.morning-evening-container .trial-action-btn.ai-action-btn-ready,
+.morning-evening-container .trial-action-btn.is-active {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: #fff;
@@ -3596,13 +3597,49 @@
 }
 
 .affirmation-profile-name {
-  font-size: var(--font-size-body-small);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--spacing-md);
+  display: none;
 }
 
-.affirmation-preview-main + .affirmation-profile-name {
-  margin-top: var(--spacing-md);
+.affirmation-done-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin: var(--spacing-md) 0 var(--spacing-lg);
+  text-align: center;
+}
+
+.affirmation-container .affirmation-done-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #f3f4f6;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.affirmation-container .affirmation-done-btn.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.affirmation-container .affirmation-done-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.affirmation-done-hint {
+  margin: 0;
+  max-width: 28rem;
+  font-size: var(--font-size-body-small);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
 .affirmation-section {
@@ -3862,12 +3899,22 @@
   cursor: not-allowed;
 }
 
-/* 1ボタン利用時（アファメーション宣言）も 60% 幅に揃える */
-.morning-evening-container .trial-form-block-l3 .form-row > .trial-segmented-toggle__btn {
+/* 1ボタン利用時（行動宣言の実施など）も中央揃え・60% 幅に揃える */
+.morning-evening-container .trial-form-block-l3 .form-row > .trial-segmented-toggle__btn,
+.morning-evening-container .trial-form-block-l3 .form-row > .trial-action-btn--declaration {
   display: block;
   width: min(60%, 420px);
   max-width: 420px;
   margin-inline: auto;
+}
+
+.morning-evening-container .trial-form-block-l3 .form-row--center {
+  display: flex;
+  justify-content: center;
+}
+
+.morning-evening-container .trial-declaration-hint {
+  text-align: center;
 }
 
 .morning-evening-container .satisfaction-input {
@@ -7908,7 +7955,9 @@ button.step04-theme-item.is-active {
 
 /* ===== Step5 前半：なりたい自分と現在の姿 ===== */
 .seven-steps-worksheet--step05 > div:not(.step04-context),
-.seven-steps-worksheet--step05 .step05-locked {
+.seven-steps-worksheet--step05 .step05-locked,
+.seven-steps-worksheet--step06 > div:not(.step04-context),
+.seven-steps-worksheet--step06 .step05-locked {
   max-width: 880px;
 }
 
@@ -9099,6 +9148,10 @@ button.step04-theme-item.is-active {
 
 .step05-fit-adjust-ai {
   margin: 0.25rem 0 0.5rem;
+}
+
+.step05-fit-adjust .mandala-modal-btn + .mandala-modal-btn {
+  margin-left: 0.45rem;
 }
 
 .step05-fit-affirm {

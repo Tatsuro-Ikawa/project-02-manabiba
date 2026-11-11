@@ -581,6 +581,8 @@ export type Trial4wDailyPlain = {
   dateKey: string;
   tz: 'Asia/Tokyo';
   morningAffirmationDeclaration: Trial4wMorningAffirmationDeclaration | null;
+  /** 当日の行動宣言を読んだか（朝の「実施」を有効にする。日次のみ） */
+  morningActionDeclarationRead: boolean | null;
   morningTodayActionText: string | null;
   morningActionGoalText: string | null;
   morningActionContentText: string | null;
@@ -619,6 +621,7 @@ export type Trial4wDailyEncrypted = {
   dateKey: string;
   tz: 'Asia/Tokyo';
   morningAffirmationDeclaration: Trial4wMorningAffirmationDeclaration | null;
+  morningActionDeclarationRead: boolean | null;
   morningTodayActionTextEncrypted: string | null;
   morningActionGoalTextEncrypted: string | null;
   morningActionContentTextEncrypted: string | null;
@@ -692,6 +695,7 @@ function emptyTrial4wDailyPlain(dk: string, sharedWithCoachDefault = false): Tri
     dateKey: dk,
     tz: 'Asia/Tokyo',
     morningAffirmationDeclaration: null,
+    morningActionDeclarationRead: null,
     morningTodayActionText: null,
     morningActionGoalText: null,
     morningActionContentText: null,
@@ -762,6 +766,8 @@ export async function getTrial4wDailyPlain(
     tz: 'Asia/Tokyo',
     morningAffirmationDeclaration:
       data.morningAffirmationDeclaration === 'done' ? 'done' : null,
+    morningActionDeclarationRead:
+      typeof data.morningActionDeclarationRead === 'boolean' ? data.morningActionDeclarationRead : null,
     morningTodayActionText,
     morningActionGoalText,
     morningActionContentText: await decryptOrNull(data.morningActionContentTextEncrypted),
@@ -859,6 +865,8 @@ export async function listJournalDailyPlainInRange(params: {
       tz: 'Asia/Tokyo',
       morningAffirmationDeclaration:
         raw.morningAffirmationDeclaration === 'done' ? 'done' : null,
+      morningActionDeclarationRead:
+        typeof raw.morningActionDeclarationRead === 'boolean' ? raw.morningActionDeclarationRead : null,
       morningTodayActionText,
       morningActionGoalText,
       morningActionContentText: await decryptOrNull(raw.morningActionContentTextEncrypted),
@@ -924,6 +932,12 @@ export async function saveTrial4wDailyPlain(params: {
 
   if ('morningAffirmationDeclaration' in params.patch) {
     payload.morningAffirmationDeclaration = params.patch.morningAffirmationDeclaration ?? null;
+  }
+  if ('morningActionDeclarationRead' in params.patch) {
+    payload.morningActionDeclarationRead =
+      typeof params.patch.morningActionDeclarationRead === 'boolean'
+        ? params.patch.morningActionDeclarationRead
+        : null;
   }
   if ('morningImagingDone' in params.patch) {
     payload.morningImagingDone =
@@ -1036,72 +1050,99 @@ export async function saveTrial4wDailyPlain(params: {
     (payload as any)[k] = t ? await encrypt(t, params.uid) : null;
   }
 
-  // 翌日の「今日の行動内容（目標）」へコピー（未入力のときのみ）
-  const seedGoal = normalizeText(params.patch.eveningTomorrowGoalText) ?? normalizeText(params.patch.eveningTomorrowActionSeedText);
-  const seedContent = normalizeText(params.patch.eveningTomorrowActionContentText);
-  if (seedGoal || seedContent) {
-    const nextKey = addDaysDateKey(params.dateKey, 1);
-    const nextRef = doc(db, 'users', params.uid, JOURNAL_DAILY_SUBCOLLECTION, nextKey);
-    await runTransaction(db, async (tx: Transaction) => {
-      const nextSnap = await tx.get(nextRef);
-      const nextData = nextSnap.exists() ? (nextSnap.data() as Trial4wDailyEncrypted) : null;
-      const already = typeof nextData?.morningTodayActionTextEncrypted === 'string' && nextData.morningTodayActionTextEncrypted;
-      const alreadyGoal = typeof nextData?.morningActionGoalTextEncrypted === 'string' && nextData.morningActionGoalTextEncrypted;
-      const alreadyContent =
-        typeof nextData?.morningActionContentTextEncrypted === 'string' && nextData.morningActionContentTextEncrypted;
-
-      const morningTodayActionTextEncrypted =
-        already || !seedGoal ? nextData?.morningTodayActionTextEncrypted ?? null : await encrypt(seedGoal, params.uid);
-      const morningActionGoalTextEncrypted =
-        alreadyGoal || !seedGoal ? nextData?.morningActionGoalTextEncrypted ?? null : await encrypt(seedGoal, params.uid);
-      const morningActionContentTextEncrypted =
-        alreadyContent || !seedContent
-          ? nextData?.morningActionContentTextEncrypted ?? null
-          : await encrypt(seedContent, params.uid);
-
-      if (!nextSnap.exists()) {
-        tx.set(nextRef, {
-          dateKey: nextKey,
-          tz: 'Asia/Tokyo',
-          morningTodayActionTextEncrypted,
-          morningActionGoalTextEncrypted,
-          morningActionContentTextEncrypted,
-          createdAt: now as FieldValue,
-          updatedAt: now as FieldValue,
-        } as any);
-      } else {
-        const nextPatch: Record<string, unknown> = { updatedAt: now as FieldValue };
-        if (!already && morningTodayActionTextEncrypted) {
-          nextPatch.morningTodayActionTextEncrypted = morningTodayActionTextEncrypted;
-        }
-        if (!alreadyGoal && morningActionGoalTextEncrypted) {
-          nextPatch.morningActionGoalTextEncrypted = morningActionGoalTextEncrypted;
-        }
-        if (!alreadyContent && morningActionContentTextEncrypted) {
-          nextPatch.morningActionContentTextEncrypted = morningActionContentTextEncrypted;
-        }
-        if (Object.keys(nextPatch).length > 1) {
-          tx.update(nextRef, nextPatch as any);
-        }
-      }
-      tx.set(ref, { ...payload, createdAt: now as FieldValue } as any, { merge: true });
-    });
-    try {
-      await syncCoachDailySummaryForDate(params.uid, params.dateKey);
-      const nextKey = addDaysDateKey(params.dateKey, 1);
-      await syncCoachDailySummaryForDate(params.uid, nextKey);
-    } catch (e) {
-      console.warn('coachDailySummary sync after daily save (tx) failed:', e);
-    }
-    return;
-  }
-
   await setDoc(ref, { ...payload, createdAt: now as FieldValue } as any, { merge: true });
   try {
     await syncCoachDailySummaryForDate(params.uid, params.dateKey);
   } catch (e) {
     console.warn('coachDailySummary sync after daily save failed:', e);
   }
+}
+
+export type ReflectCarryResult = {
+  appliedGoal: boolean;
+  appliedContent: boolean;
+  skippedEmptySource: boolean;
+};
+
+/**
+ * 晩の「明日の行動」→ 翌日朝の「今日の行動」（空欄のみ。上書きしない）。
+ * ボタン操作専用。保存時の自動コピーは行わない。
+ */
+export async function reflectTomorrowActionToNextMorning(params: {
+  uid: string;
+  fromDateKey: string;
+  goalText: string | null | undefined;
+  contentText: string | null | undefined;
+}): Promise<ReflectCarryResult> {
+  const seedGoal = normalizeText(params.goalText);
+  const seedContent = normalizeText(params.contentText);
+  if (!seedGoal && !seedContent) {
+    return { appliedGoal: false, appliedContent: false, skippedEmptySource: true };
+  }
+
+  const nextKey = addDaysDateKey(params.fromDateKey, 1);
+  const nextRef = doc(db, 'users', params.uid, JOURNAL_DAILY_SUBCOLLECTION, nextKey);
+  const now = serverTimestamp();
+  let appliedGoal = false;
+  let appliedContent = false;
+
+  await runTransaction(db, async (tx: Transaction) => {
+    const nextSnap = await tx.get(nextRef);
+    const nextData = nextSnap.exists() ? (nextSnap.data() as Trial4wDailyEncrypted) : null;
+    const already =
+      typeof nextData?.morningTodayActionTextEncrypted === 'string' && !!nextData.morningTodayActionTextEncrypted;
+    const alreadyGoal =
+      typeof nextData?.morningActionGoalTextEncrypted === 'string' && !!nextData.morningActionGoalTextEncrypted;
+    const alreadyContent =
+      typeof nextData?.morningActionContentTextEncrypted === 'string' && !!nextData.morningActionContentTextEncrypted;
+
+    const morningTodayActionTextEncrypted =
+      already || !seedGoal ? nextData?.morningTodayActionTextEncrypted ?? null : await encrypt(seedGoal, params.uid);
+    const morningActionGoalTextEncrypted =
+      alreadyGoal || !seedGoal ? nextData?.morningActionGoalTextEncrypted ?? null : await encrypt(seedGoal, params.uid);
+    const morningActionContentTextEncrypted =
+      alreadyContent || !seedContent
+        ? nextData?.morningActionContentTextEncrypted ?? null
+        : await encrypt(seedContent, params.uid);
+
+    appliedGoal = !!(seedGoal && (!already || !alreadyGoal));
+    appliedContent = !!(seedContent && !alreadyContent);
+
+    if (!nextSnap.exists()) {
+      tx.set(nextRef, {
+        dateKey: nextKey,
+        tz: 'Asia/Tokyo',
+        morningTodayActionTextEncrypted,
+        morningActionGoalTextEncrypted,
+        morningActionContentTextEncrypted,
+        createdAt: now as FieldValue,
+        updatedAt: now as FieldValue,
+      } as any);
+      return;
+    }
+
+    const nextPatch: Record<string, unknown> = { updatedAt: now as FieldValue };
+    if (!already && morningTodayActionTextEncrypted) {
+      nextPatch.morningTodayActionTextEncrypted = morningTodayActionTextEncrypted;
+    }
+    if (!alreadyGoal && morningActionGoalTextEncrypted) {
+      nextPatch.morningActionGoalTextEncrypted = morningActionGoalTextEncrypted;
+    }
+    if (!alreadyContent && morningActionContentTextEncrypted) {
+      nextPatch.morningActionContentTextEncrypted = morningActionContentTextEncrypted;
+    }
+    if (Object.keys(nextPatch).length > 1) {
+      tx.update(nextRef, nextPatch as any);
+    }
+  });
+
+  try {
+    await syncCoachDailySummaryForDate(params.uid, nextKey);
+  } catch (e) {
+    console.warn('coachDailySummary sync after tomorrow reflect failed:', e);
+  }
+
+  return { appliedGoal, appliedContent, skippedEmptySource: false };
 }
 
 // マネジメント日誌（学び帳）— 週次（SCREEN-006）
@@ -1431,23 +1472,28 @@ export async function backfillCoachDailySummaryForWeek(uid: string, weekStartKey
 }
 
 /**
- * フェーズ6: 「来週の行動目標」→ 翌週の「今週の行動目標」へ繰り越し（上書きしない）。
- * - target（翌週）の thisWeekActionGoalText が空ならセット
- * - すでに入力済みなら何もしない
+ * 「来週の行動」→ 翌週の「今週の行動」へ反映（空欄のみ。上書きしない）。
+ * ボタン操作専用。週ナビでは自動では動かさない。
  */
 export async function carryOverNextWeekGoalToNextThisWeek(params: {
   uid: string;
   targetWeekStartKey: string;
   nextWeekGoalText: string | null | undefined;
   nextWeekActionContentText?: string | null | undefined;
-}): Promise<void> {
+}): Promise<ReflectCarryResult> {
   const goal = normalizeText(params.nextWeekGoalText);
   const content = normalizeText(params.nextWeekActionContentText);
-  if (!goal && !content) return;
-  if (!params.targetWeekStartKey) return;
+  if (!goal && !content) {
+    return { appliedGoal: false, appliedContent: false, skippedEmptySource: true };
+  }
+  if (!params.targetWeekStartKey) {
+    return { appliedGoal: false, appliedContent: false, skippedEmptySource: true };
+  }
 
   const ref = doc(db, 'users', params.uid, JOURNAL_WEEKLY_SUBCOLLECTION, params.targetWeekStartKey);
   const now = serverTimestamp();
+  let appliedGoal = false;
+  let appliedContent = false;
 
   await runTransaction(db, async (tx: Transaction) => {
     const snap = await tx.get(ref);
@@ -1464,13 +1510,15 @@ export async function carryOverNextWeekGoalToNextThisWeek(params: {
         createdAt: now as FieldValue,
         updatedAt: now as FieldValue,
       };
-      if (goal) patch.thisWeekActionGoalTextEncrypted = await encrypt(goal, params.uid);
-      if (content) patch.thisWeekActionContentTextEncrypted = await encrypt(content, params.uid);
-      tx.set(
-        ref,
-        patch as Record<string, unknown>,
-        { merge: true }
-      );
+      if (goal) {
+        patch.thisWeekActionGoalTextEncrypted = await encrypt(goal, params.uid);
+        appliedGoal = true;
+      }
+      if (content) {
+        patch.thisWeekActionContentTextEncrypted = await encrypt(content, params.uid);
+        appliedContent = true;
+      }
+      tx.set(ref, patch as Record<string, unknown>, { merge: true });
       return;
     }
 
@@ -1478,17 +1526,18 @@ export async function carryOverNextWeekGoalToNextThisWeek(params: {
       tz: 'Asia/Tokyo',
       updatedAt: now as FieldValue,
     };
-    let changed = false;
     if (!alreadyGoal && goal) {
       update.thisWeekActionGoalTextEncrypted = await encrypt(goal, params.uid);
-      changed = true;
+      appliedGoal = true;
     }
     if (!alreadyContent && content) {
       update.thisWeekActionContentTextEncrypted = await encrypt(content, params.uid);
-      changed = true;
+      appliedContent = true;
     }
-    if (changed) tx.set(ref, update as Record<string, unknown>, { merge: true });
+    if (appliedGoal || appliedContent) tx.set(ref, update as Record<string, unknown>, { merge: true });
   });
+
+  return { appliedGoal, appliedContent, skippedEmptySource: false };
 }
 
 // マネジメント日誌（学び帳）— 月次（SCREEN-007）
@@ -1564,6 +1613,75 @@ export type JournalMonthlyEncrypted = {
   createdAt?: Timestamp | FieldValue;
   updatedAt?: Timestamp | FieldValue;
 };
+
+/**
+ * 「来月の行動」→ 翌月の「今月の行動」へ反映（空欄のみ。上書きしない）。
+ */
+export async function carryOverNextMonthGoalToNextThisMonth(params: {
+  uid: string;
+  targetMonthKey: string;
+  nextMonthGoalText: string | null | undefined;
+  nextMonthActionContentText?: string | null | undefined;
+}): Promise<ReflectCarryResult> {
+  const goal = normalizeText(params.nextMonthGoalText);
+  const content = normalizeText(params.nextMonthActionContentText);
+  if (!goal && !content) {
+    return { appliedGoal: false, appliedContent: false, skippedEmptySource: true };
+  }
+  if (!params.targetMonthKey) {
+    return { appliedGoal: false, appliedContent: false, skippedEmptySource: true };
+  }
+
+  const ref = doc(db, 'users', params.uid, JOURNAL_MONTHLY_SUBCOLLECTION, params.targetMonthKey);
+  const now = serverTimestamp();
+  let appliedGoal = false;
+  let appliedContent = false;
+
+  await runTransaction(db, async (tx: Transaction) => {
+    const snap = await tx.get(ref);
+    const existing = snap.exists() ? (snap.data() as Partial<JournalMonthlyEncrypted>) : null;
+    const alreadyGoal =
+      typeof existing?.thisMonthActionGoalTextEncrypted === 'string' && !!existing.thisMonthActionGoalTextEncrypted;
+    const alreadyContent =
+      typeof existing?.thisMonthActionContentTextEncrypted === 'string' &&
+      !!existing.thisMonthActionContentTextEncrypted;
+
+    if (!snap.exists()) {
+      const patch: Partial<JournalMonthlyEncrypted> = {
+        monthKey: params.targetMonthKey,
+        tz: 'Asia/Tokyo',
+        createdAt: now as FieldValue,
+        updatedAt: now as FieldValue,
+      };
+      if (goal) {
+        patch.thisMonthActionGoalTextEncrypted = await encrypt(goal, params.uid);
+        appliedGoal = true;
+      }
+      if (content) {
+        patch.thisMonthActionContentTextEncrypted = await encrypt(content, params.uid);
+        appliedContent = true;
+      }
+      tx.set(ref, patch as Record<string, unknown>, { merge: true });
+      return;
+    }
+
+    const update: Partial<JournalMonthlyEncrypted> = {
+      tz: 'Asia/Tokyo',
+      updatedAt: now as FieldValue,
+    };
+    if (!alreadyGoal && goal) {
+      update.thisMonthActionGoalTextEncrypted = await encrypt(goal, params.uid);
+      appliedGoal = true;
+    }
+    if (!alreadyContent && content) {
+      update.thisMonthActionContentTextEncrypted = await encrypt(content, params.uid);
+      appliedContent = true;
+    }
+    if (appliedGoal || appliedContent) tx.set(ref, update as Record<string, unknown>, { merge: true });
+  });
+
+  return { appliedGoal, appliedContent, skippedEmptySource: false };
+}
 
 export function journalMonthlyPlainEmpty(
   monthKey: string,

@@ -7,6 +7,7 @@ import { AutosizeTextarea } from '@/components/trial/AutosizeTextarea';
 import {
   addDaysDateKey,
   getTrial4wDailyPlain,
+  reflectTomorrowActionToNextMorning,
   saveTrial4wDailyPlain,
   type Trial4wEveningExecution,
   type Trial4wDailyPlain,
@@ -203,6 +204,7 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
           dateKey: dk,
           tz: 'Asia/Tokyo',
           morningAffirmationDeclaration: null,
+          morningActionDeclarationRead: null,
           morningTodayActionText: null,
           morningActionGoalText: null,
           morningActionContentText: null,
@@ -276,6 +278,43 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
     },
     [canEdit, user, data, contentUid, load]
   );
+
+  const reflectTomorrow = useCallback(async () => {
+    if (!canEdit || !user || !data || !contentUid) return;
+    setSaving(true);
+    setMsg(null);
+    try {
+      // 反映前に当日の明日欄を保存してから翌日へ写す
+      await saveTrial4wDailyPlain({
+        uid: contentUid,
+        dateKey: data.dateKey,
+        patch: {
+          sharedWithCoach: !!data.sharedWithCoach,
+          eveningTomorrowActionSeedText: data.eveningTomorrowActionSeedText,
+          eveningTomorrowActionContentText: data.eveningTomorrowActionContentText,
+        },
+      });
+      const result = await reflectTomorrowActionToNextMorning({
+        uid: contentUid,
+        fromDateKey: data.dateKey,
+        goalText: data.eveningTomorrowActionSeedText,
+        contentText: data.eveningTomorrowActionContentText,
+      });
+      if (result.skippedEmptySource) {
+        setMsg('反映する内容がありません。明日の行動目標か行動内容を入力してください。');
+      } else if (!result.appliedGoal && !result.appliedContent) {
+        setMsg('翌日の朝はすでに入力があるため、空欄のみの方針で反映しませんでした。');
+      } else {
+        setMsg('翌日の朝の行動に反映しました（空欄のみ）。');
+      }
+      setTimeout(() => setMsg(null), 3500);
+    } catch (e) {
+      console.error(e);
+      setMsg(e instanceof Error ? e.message : '反映に失敗しました。');
+    } finally {
+      setSaving(false);
+    }
+  }, [canEdit, user, data, contentUid]);
 
   const gotoDate = useCallback(
     (nextKey: string) => {
@@ -565,25 +604,31 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
 
           <h4 className="trial-form-heading-l2">
             <span className="trial-heading-mark" aria-hidden="true">◇</span>
-            アファメーション宣言
+            行動宣言
           </h4>
           <div className="trial-form-block-l3">
-            <div className="form-row">
+            <div className="form-row form-row--center">
               <button
                 type="button"
-                className={`trial-segmented-toggle__btn${data.morningAffirmationDeclaration === 'done' ? ' trial-segmented-toggle__btn--active' : ''}`}
+                className={`trial-action-btn trial-action-btn--declaration${data.morningAffirmationDeclaration === 'done' ? ' is-active' : ''}`}
                 disabled={inputDisabled}
                 aria-pressed={data.morningAffirmationDeclaration === 'done'}
                 onClick={() =>
                   void savePatch({
+                    morningActionDeclarationRead: true,
                     morningAffirmationDeclaration:
                       data.morningAffirmationDeclaration === 'done' ? null : 'done',
                   })
                 }
               >
-                実施
+                {data.morningAffirmationDeclaration === 'done'
+                  ? '行動宣言を実施した（済）'
+                  : '行動宣言を実施した'}
               </button>
             </div>
+            <p className="text-xs text-gray-600 mt-1 trial-declaration-hint">
+              行動宣言タブで宣言を読んだあと、こちらでも同じ記録ができます。もう一度押すと未実施に戻せます。
+            </p>
           </div>
 
           <h4 className="trial-form-heading-l2">
@@ -874,15 +919,12 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
               label="明日の行動目標"
               value={data.eveningTomorrowActionSeedText ?? ''}
               saving={inputDisabled}
-              placeholder="入力してください（保存すると翌日の朝「今日の行動内容（目標）」に反映されます）"
+              placeholder="入力してください"
               onChange={(v) =>
                 setData((prev) => (prev ? { ...prev, eveningTomorrowActionSeedText: v } : prev))
               }
               onBlur={() => void savePatch({ eveningTomorrowActionSeedText: data.eveningTomorrowActionSeedText })}
             />
-            <p className="text-xs text-gray-600">
-              保存時、翌日の「今日の行動内容（目標）」が未入力なら自動でコピーします。
-            </p>
             {journalShowEveningTomorrowActionContent(level) ? (
               <EveningQuestionField
                 label="明日の行動内容"
@@ -896,6 +938,19 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
                 }
               />
             ) : null}
+            <div className="form-row" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+              <button
+                type="button"
+                className="trial-segmented-toggle__btn"
+                disabled={inputDisabled}
+                onClick={() => void reflectTomorrow()}
+              >
+                明日の行動に反映
+              </button>
+              <p className="text-xs text-gray-600" style={{ margin: '0.35rem 0 0' }}>
+                翌日の朝の「行動目標」「行動内容」へ同時に写します（すでに入力がある欄は上書きしません）。
+              </p>
+            </div>
             {journalShowEveningTomorrowImaging(level) ? (
               <div className="form-row">
                 <span className="trial-l3-label">明日の行動のイメージング（実施）</span>

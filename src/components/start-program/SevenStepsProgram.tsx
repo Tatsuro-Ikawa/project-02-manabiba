@@ -15,6 +15,7 @@ import Step03WorksheetPane from '@/components/start-program/step03/Step03Workshe
 import Step04WorksheetPane from '@/components/start-program/step04/Step04WorksheetPane';
 import Step05ExampleEntry from '@/components/start-program/step05/Step05ExampleEntry';
 import Step05WorksheetPane from '@/components/start-program/step05/Step05WorksheetPane';
+import Step06WorksheetPane from '@/components/start-program/step06/Step06WorksheetPane';
 import {
   SEVEN_STEPS_PROGRAM_LABEL,
   clampStepIndex,
@@ -81,6 +82,9 @@ export default function SevenStepsProgram({
     }
     if (safeIndex === 5) {
       return <Step05WorksheetPane />;
+    }
+    if (safeIndex === 6) {
+      return <Step06WorksheetPane />;
     }
     return (
       <p className="seven-steps-placeholder">

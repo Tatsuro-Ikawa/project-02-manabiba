@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  carryOverNextMonthGoalToNextThisMonth,
   getJournalMonthlyPlain,
   getJournalWeeklyPlain,
   journalMonthlyPlainEmpty,
@@ -321,6 +322,43 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
     },
     [user, data, canEdit, contentUid]
   );
+
+  const reflectNextMonthAction = useCallback(async () => {
+    if (!canEdit || !user || !data || !contentUid) return;
+    const nextMonthKey = shiftMonthKey(data.monthKey, 1);
+    setSaving(true);
+    setMsg(null);
+    try {
+      await saveJournalMonthlyPlain({
+        uid: contentUid,
+        monthKey: data.monthKey,
+        patch: {
+          sharedWithCoach: !!data.sharedWithCoach,
+          nextMonthGoalText: data.nextMonthGoalText,
+          nextMonthActionContentText: data.nextMonthActionContentText,
+        },
+      });
+      const result = await carryOverNextMonthGoalToNextThisMonth({
+        uid: contentUid,
+        targetMonthKey: nextMonthKey,
+        nextMonthGoalText: data.nextMonthGoalText,
+        nextMonthActionContentText: data.nextMonthActionContentText,
+      });
+      if (result.skippedEmptySource) {
+        setMsg('反映する内容がありません。来月の行動目標か行動内容を入力してください。');
+      } else if (!result.appliedGoal && !result.appliedContent) {
+        setMsg('翌月はすでに入力があるため、空欄のみの方針で反映しませんでした。');
+      } else {
+        setMsg('翌月の「今月の行動」に反映しました（空欄のみ）。');
+      }
+      setTimeout(() => setMsg(null), 3500);
+    } catch (e) {
+      console.error(e);
+      setMsg(e instanceof Error ? e.message : '反映に失敗しました。');
+    } finally {
+      setSaving(false);
+    }
+  }, [canEdit, user, data, contentUid]);
 
   const gotoDaily = useCallback(
     (dateKey: string) => {
@@ -955,6 +993,19 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
                 placeholder="来月の行動内容を具体的に記載してください。"
               />
             ) : null}
+            <div className="form-row" style={{ marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="trial-action-btn"
+                disabled={!canEdit || saving}
+                onClick={() => void reflectNextMonthAction()}
+              >
+                来月の行動に反映
+              </button>
+              <p className="text-xs text-gray-600" style={{ margin: '0.35rem 0 0' }}>
+                翌月の「今月の行動」の目標・行動内容へ同時に写します（すでに入力がある欄は上書きしません）。
+              </p>
+            </div>
           </div>
         ) : null}
 

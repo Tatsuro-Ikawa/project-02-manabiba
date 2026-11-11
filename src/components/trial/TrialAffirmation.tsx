@@ -23,6 +23,8 @@ import {
   saveAffirmationDraft,
   validateAffirmationMarkdownBody,
   updateAffirmationTitle,
+  getTrial4wDailyPlain,
+  saveTrial4wDailyPlain,
   updateTrialAffirmationUiMetaFields,
 } from '@/lib/firestore';
 import type { TrialAffirmationSubmenu } from '@/types/auth';
@@ -30,6 +32,7 @@ import { hasCoachCommentsFeature } from '@/lib/subscription/planDefaults';
 import { AffirmationMarkdownView } from '@/components/common/AffirmationMarkdownView';
 import { useViewMode } from '@/context/ViewModeContext';
 import { getAffirmationCoachShareState, getCoachClientAssignment, setAffirmationSharedWithCoach } from '@/lib/coachAffirmationShare';
+import { getTodayDateKeyTokyo } from '@/lib/journalWeek';
 
 type SlotValues = Record<string, string>;
 
@@ -142,6 +145,10 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
   const [historyModalEntry, setHistoryModalEntry] = useState<AffirmationHistoryEntryDecrypted | null>(
     null
   );
+  /** 本日分の「行動宣言を実施した」（journal_daily の当日分と同期） */
+  const [declarationDoneToday, setDeclarationDoneToday] = useState(false);
+  const [declarationStatusReady, setDeclarationStatusReady] = useState(false);
+  const [declarationDoneSaving, setDeclarationDoneSaving] = useState(false);
 
   const [lastSelectedAffirmationId, setLastSelectedAffirmationId] = useState<string | null>(null);
   /** クライアントのみ: 発行済みテーマのコーチ共有スイッチ（Firestore `sharedWithCoach` と同期） */
@@ -228,6 +235,72 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
       setActiveSubmenu(null);
     }
   }, [isCoachView, coachClientUid, activeSubmenu]);
+
+  const refreshDeclarationStatusToday = useCallback(async () => {
+    if (!contentUid || isCoachView) {
+      setDeclarationDoneToday(false);
+      setDeclarationStatusReady(true);
+      return;
+    }
+    setDeclarationStatusReady(false);
+    try {
+      const daily = await getTrial4wDailyPlain(contentUid, getTodayDateKeyTokyo());
+      setDeclarationDoneToday(daily.morningAffirmationDeclaration === 'done');
+    } catch {
+      setDeclarationDoneToday(false);
+    } finally {
+      setDeclarationStatusReady(true);
+    }
+  }, [contentUid, isCoachView]);
+
+  useEffect(() => {
+    void refreshDeclarationStatusToday();
+  }, [refreshDeclarationStatusToday]);
+
+  /** 当日の朝・晩タブで実施／解除したあと、このタブに戻っても状態がずれないようにする */
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshDeclarationStatusToday();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [refreshDeclarationStatusToday]);
+
+  const toggleActionDeclarationDone = useCallback(async () => {
+    if (!user || isCoachView || !contentUid || declarationDoneSaving) return;
+    setDeclarationDoneSaving(true);
+    setError(null);
+    const nextDone = !declarationDoneToday;
+    try {
+      const todayKey = getTodayDateKeyTokyo();
+      await saveTrial4wDailyPlain({
+        uid: contentUid,
+        dateKey: todayKey,
+        patch: {
+          morningActionDeclarationRead: true,
+          morningAffirmationDeclaration: nextDone ? 'done' : null,
+        },
+      });
+      setDeclarationDoneToday(nextDone);
+      setSuccessMessage(
+        nextDone
+          ? '本日分として「行動宣言を実施した」を記録しました。'
+          : '本日分の実施記録を取り消しました。'
+      );
+      setTimeout(() => setSuccessMessage(null), 3500);
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : '実施の記録に失敗しました。');
+      await refreshDeclarationStatusToday();
+    } finally {
+      setDeclarationDoneSaving(false);
+    }
+  }, [user, isCoachView, contentUid, declarationDoneSaving, declarationDoneToday, refreshDeclarationStatusToday]);
 
   const previewText = useMemo(() => buildPreview(profile, slots), [profile, slots]);
 
@@ -1895,7 +1968,27 @@ export default function TrialAffirmation({ coachClientUid = null }: TrialAffirma
               </div>
             )}
 
-            <div className="affirmation-profile-name">プロファイル名: {profile.name}</div>
+            {previewMainVisible && !isCoachView ? (
+              <div className="affirmation-done-action">
+                <button
+                  type="button"
+                  className={`trial-action-btn affirmation-done-btn${declarationDoneToday ? ' is-active' : ''}`}
+                  disabled={declarationDoneSaving || !declarationStatusReady}
+                  aria-pressed={declarationDoneToday}
+                  onClick={() => void toggleActionDeclarationDone()}
+                >
+                  {!declarationStatusReady
+                    ? '確認中…'
+                    : declarationDoneToday
+                      ? '行動宣言を実施した（本日済）'
+                      : '行動宣言を実施した'}
+                </button>
+                <p className="affirmation-done-hint">
+                  宣言を読み終えたら押してください。本日の行動宣言として記録します（日ごとに必要です）。
+                  {declarationDoneToday ? ' もう一度押すと未実施に戻せます。' : ''}
+                </p>
+              </div>
+            ) : null}
 
             {showEditPanel && (
               <div className="affirmation-placeholder-panel" role="status">

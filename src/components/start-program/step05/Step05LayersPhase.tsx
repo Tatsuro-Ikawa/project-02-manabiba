@@ -199,10 +199,10 @@ export default function Step05LayersPhase({ ctx, theme, onChange, onNext, ready 
   return (
     <div className="step05-draw">
       <h2 className="seven-steps-worksheet-heading">
-        満足度が {theme.targetScore} になったあなたの「持ち方」を描いてみましょう
+        満足度が {theme.targetScore} になったあなたの「持ち方」「なし方」「あり方」を描いてみましょう
       </h2>
       <p className="seven-steps-worksheet-body">
-        Step4 で深掘りした「持ち方」で必要と捉えた内容をもとに、目標とする満足度のイメージを描いていきます。
+        Step4 で深掘りした「持ち方」「なし方」「あり方」で必要と捉えた内容をもとに、目標とする満足度のイメージを描いていきます。
         <strong className="step05-draw-em">設定エリア</strong>
         のカードを押すと「望む姿」設定画面が表示されますので、課題ごとにイメージを固めていきましょう。
       </p>
@@ -234,7 +234,7 @@ export default function Step05LayersPhase({ ctx, theme, onChange, onNext, ready 
 
           <section className="step05-draw-settings" aria-label="設定エリア">
             <h3 className="step05-draw-settings-title">設定エリア</h3>
-            {STEP05_LAYERS.filter((layer) => layer.key === 'have').map((layer) => {
+            {STEP05_LAYERS.map((layer) => {
               const slots = answerSlots(ctx.reasons, layer.key);
               const filled = slots.filter((slot) => (answerOf(theme, slot.reasonId, slot.tagId)?.target.trim() ?? '') !== '');
               const done = slots.length > 0 && filled.length === slots.length;
@@ -272,8 +272,9 @@ export default function Step05LayersPhase({ ctx, theme, onChange, onNext, ready 
         <button type="button" className="mandala-modal-btn mandala-modal-btn--primary" disabled={!ready} onClick={onNext}>
           持ち方をまとめる
         </button>
-        {!ready ? <p className="step03-phase-actions-hint">持ち方の欄をすべて書いてください</p> : null}
-        <p className="seven-steps-worksheet-hint">なし方・あり方は、次のステップで扱います。</p>
+        {!ready ? (
+          <p className="step03-phase-actions-hint">持ち方・なし方・あり方の欄をすべて書いてください</p>
+        ) : null}
       </div>
 
       {openLayer ? (

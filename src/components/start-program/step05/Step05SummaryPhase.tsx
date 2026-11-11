@@ -143,7 +143,7 @@ export default function Step05SummaryPhase({ ctx, theme, goalsAi, onChange }: St
 
       </section>
 
-      <p className="step05-summary-next">なし方・あり方は、次のステップでまとめます。</p>
+      <p className="step05-summary-next">なし方・あり方は、Step6 で自分らしさと照らします。</p>
 
       {editing ? (
         <LayerModal

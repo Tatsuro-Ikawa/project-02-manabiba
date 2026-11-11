@@ -475,34 +475,48 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
     setWeekStartKey(shiftWeekStartDateKey(base, -1));
   }, [getBaseWeekStartKey]);
 
-  const gotoNextWeek = useCallback(async () => {
-    if (!data) return;
+  const gotoNextWeek = useCallback(() => {
+    const base = getBaseWeekStartKey();
+    setWeekStartKey(shiftWeekStartDateKey(base, 1));
+  }, [getBaseWeekStartKey]);
+
+  const reflectNextWeekAction = useCallback(async () => {
+    if (!canEdit || !user || !data || !contentUid) return;
     const base = getBaseWeekStartKey();
     const nextKey = shiftWeekStartDateKey(base, 1);
-    if (isCoachView) {
-      setWeekStartKey(nextKey);
-      return;
-    }
-    if (!user) return;
-
-    // 来週目標があれば、翌週の「今週目標」に上書きなしでコピー
     setSaving(true);
+    setMsg(null);
     try {
-      await carryOverNextWeekGoalToNextThisWeek({
-        uid: user.uid,
+      await saveJournalWeeklyPlain({
+        uid: contentUid,
+        weekStartKey: data.weekStartKey,
+        patch: {
+          sharedWithCoach: !!data.sharedWithCoach,
+          nextWeekGoalText: data.nextWeekGoalText,
+          nextWeekActionContentText: data.nextWeekActionContentText,
+        },
+      });
+      const result = await carryOverNextWeekGoalToNextThisWeek({
+        uid: contentUid,
         targetWeekStartKey: nextKey,
         nextWeekGoalText: data.nextWeekGoalText,
         nextWeekActionContentText: data.nextWeekActionContentText,
       });
-      setWeekStartKey(nextKey);
+      if (result.skippedEmptySource) {
+        setMsg('反映する内容がありません。来週の行動目標か行動内容を入力してください。');
+      } else if (!result.appliedGoal && !result.appliedContent) {
+        setMsg('翌週はすでに入力があるため、空欄のみの方針で反映しませんでした。');
+      } else {
+        setMsg('翌週の「今週の行動」に反映しました（空欄のみ）。');
+      }
+      setTimeout(() => setMsg(null), 3500);
     } catch (e) {
       console.error(e);
-      setMsg(e instanceof Error ? e.message : '週の切り替えに失敗しました。');
+      setMsg(e instanceof Error ? e.message : '反映に失敗しました。');
+    } finally {
       setSaving(false);
-      return;
     }
-    setSaving(false);
-  }, [user, data, getBaseWeekStartKey, isCoachView]);
+  }, [canEdit, user, data, contentUid, getBaseWeekStartKey]);
 
   const gotoDaily = useCallback(
     (dateKey: string) => {
@@ -959,21 +973,34 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
             <WeeklyTextRow
               label="・目標"
               value={data.nextWeekGoalText ?? ''}
-              disabled={saving}
+              disabled={saving || !canEdit}
               onChange={(v) => setData((prev) => (prev ? { ...prev, nextWeekGoalText: v } : prev))}
               onBlur={() => void savePatch({ nextWeekGoalText: data.nextWeekGoalText })}
-              placeholder="入力してください（次週へ進むとき、今週の行動へ繰り越されます）"
+              placeholder="入力してください"
             />
             {journalShowWeeklyNextWeekActionContent(level) ? (
               <WeeklyTextRow
                 label="・行動内容（具体的に）"
                 value={data.nextWeekActionContentText ?? ''}
-                disabled={saving}
+                disabled={saving || !canEdit}
                 onChange={(v) => setData((prev) => (prev ? { ...prev, nextWeekActionContentText: v } : prev))}
                 onBlur={() => void savePatch({ nextWeekActionContentText: data.nextWeekActionContentText })}
-                placeholder="入力してください（次週へ進むとき、今週の行動へ繰り越されます）"
+                placeholder="入力してください"
               />
             ) : null}
+            <div className="form-row" style={{ marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                className="trial-action-btn"
+                disabled={saving || !canEdit}
+                onClick={() => void reflectNextWeekAction()}
+              >
+                来週の行動に反映
+              </button>
+              <p className="text-xs text-gray-600" style={{ margin: '0.35rem 0 0' }}>
+                翌週の「今週の行動」の目標・行動内容へ同時に写します（すでに入力がある欄は上書きしません）。
+              </p>
+            </div>
           </div>
 
           {!coachCommentsEnabled && user ? (

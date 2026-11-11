@@ -1,6 +1,7 @@
 import type { Trial4wDailyPlain } from '@/lib/firestore';
 
 /** 週次グリッド「朝」の記号（TrialWeekly / ホームプレビュー / 月次で共通）
+ * 要素: 行動宣言（morningAffirmationDeclaration）の実施 + 行動目標テキスト。
  * 達成度: ◎（2要素）→ 〇（1要素）→ △（0要素・ただし入力あり）。未入力は —。
  */
 export function computeMorningCompletionSymbol(

@@ -97,7 +97,8 @@
 |------------|------------|------|
 | dateKey | string | `YYYY-MM-DD` |
 | tz | string | 固定 `Asia/Tokyo` |
-| morningAffirmationDeclaration | string \| null | `'done'` のみ実施 ON。**未チェックは `null`**（§4.z）。既存の `'undone'` は読取時に未実施（`null` 相当）として扱う |
+| morningAffirmationDeclaration | string \| null | 朝「行動宣言」の実施。`'done'` のみ ON。**未チェックは `null`**（§4.z）。既存の `'undone'` は読取時に未実施（`null` 相当）として扱う。「行動宣言を実施した」ボタンで記録 |
+| morningActionDeclarationRead | bool \| null | 「行動宣言を実施した」押下時に同日 true を記録（日次） |
 | morningTodayActionTextEncrypted | string \| null | 朝「今日の行動」の統合欄（下位の目標・内容欄と併存し得る。実装の正本は `src/lib/firestore.ts` の `Trial4wDaily*`） |
 | morningActionGoalTextEncrypted | string \| null | 今日の行動 — 目標 |
 | morningActionContentTextEncrypted | string \| null | 今日の行動 — 行動内容 |
@@ -122,7 +123,7 @@
 | eveningAiSuggestionTextEncrypted | string \| null | Vertex 生成の「Aiコーチからのコメント」（§4.z 項目10。ユーザーが保存したテキストのみ永続化） |
 | eveningAiSuggestionRunCount | number \| null | 上記コメントの生成実行回数（同日 UI 上限 **3 回**・平文数値） |
 | eveningMessageToSelfTextEncrypted | string \| null | 「他に残しておきたいこと」（§4.z 項目11。**詳細のみ**） |
-| eveningTomorrowActionSeedTextEncrypted | string \| null | 「明日の行動目標」（§4.z 項目12）→ 翌日の朝入力にコピー（未入力時のみ） |
+| eveningTomorrowActionSeedTextEncrypted | string \| null | 「明日の行動目標」（§4.z 項目12）。「明日の行動に反映」で翌日朝へ（未入力時のみ・内容も同時） |
 | eveningTomorrowGoalTextEncrypted | string \| null | **UI 非表示**（§4.z）。画面の目標は `eveningTomorrowActionSeedText` を正とする |
 | eveningTomorrowActionContentTextEncrypted | string \| null | 「明日の行動内容」（§4.z 項目13。**詳細のみ**） |
 | eveningTomorrowImagingDone | bool \| null | 「明日の行動のイメージング（実施）」（§4.z 項目14。**詳細のみ**） |
