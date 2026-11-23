@@ -41,7 +41,6 @@ import {
   fitInputKey,
   goalsInputKey,
   parseStep05Phase,
-  formatHaveSummary,
   step05Progress,
   type Step05Phase,
   type Step05Theme,
@@ -411,9 +410,6 @@ export default function Step05WorksheetPane() {
           ) : null}
           <SaveStatusBadge status={saveStatus} />
         </div>
-        {phase === 'summary' && formatHaveSummary(theme.goal) ? (
-          <p className="step05-context-goal">{formatHaveSummary(theme.goal)}</p>
-        ) : null}
       </div>
 
       <fieldset className="sp-readonly-scope" disabled={readOnly} aria-label={readOnly ? '見るだけ' : undefined}>
@@ -443,16 +439,7 @@ export default function Step05WorksheetPane() {
         ) : null}
 
         {phase === 'summary' && unlocked.summary ? (
-          <Step05SummaryPhase
-            ctx={ctx}
-            theme={theme}
-            goalsAi={controls(
-              'goals',
-              runGoals,
-              theme.ai.goals.inputKey != null && theme.ai.goals.inputKey !== goalsKey
-            )}
-            onChange={patch}
-          />
+          <Step05SummaryPhase ctx={ctx} theme={theme} onChange={patch} />
         ) : null}
 
         {phase === 'fit' && unlocked.fit ? (

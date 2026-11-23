@@ -613,6 +613,8 @@ export type Trial4wDailyPlain = {
   eveningTomorrowGoalText: string | null;
   eveningTomorrowActionContentText: string | null;
   eveningTomorrowImagingDone: boolean | null;
+  /** 「明日の行動に反映」が成功した時刻（ms）。再読込後も反映済み表示に使う */
+  eveningTomorrowReflectedAt: number | null;
   /** 当該日の朝・晩本文を担当コーチがライブ閲覧できるか（デフォルト false。週次共有とは独立） */
   sharedWithCoach?: boolean;
 };
@@ -651,6 +653,7 @@ export type Trial4wDailyEncrypted = {
   eveningTomorrowGoalTextEncrypted: string | null;
   eveningTomorrowActionContentTextEncrypted: string | null;
   eveningTomorrowImagingDone: boolean | null;
+  eveningTomorrowReflectedAt: number | null;
   sharedWithCoach?: boolean;
 
   createdAt?: Timestamp | FieldValue;
@@ -724,6 +727,7 @@ function emptyTrial4wDailyPlain(dk: string, sharedWithCoachDefault = false): Tri
     eveningTomorrowGoalText: null,
     eveningTomorrowActionContentText: null,
     eveningTomorrowImagingDone: null,
+    eveningTomorrowReflectedAt: null,
     sharedWithCoach: sharedWithCoachDefault === true,
   };
 }
@@ -812,6 +816,10 @@ export async function getTrial4wDailyPlain(
     eveningTomorrowActionContentText: await decryptOrNull(data.eveningTomorrowActionContentTextEncrypted),
     eveningTomorrowImagingDone:
       typeof data.eveningTomorrowImagingDone === 'boolean' ? data.eveningTomorrowImagingDone : null,
+    eveningTomorrowReflectedAt:
+      typeof data.eveningTomorrowReflectedAt === 'number' && Number.isFinite(data.eveningTomorrowReflectedAt)
+        ? data.eveningTomorrowReflectedAt
+        : null,
     sharedWithCoach: data.sharedWithCoach === true,
   };
 }
@@ -910,6 +918,10 @@ export async function listJournalDailyPlainInRange(params: {
       eveningTomorrowActionContentText: await decryptOrNull(raw.eveningTomorrowActionContentTextEncrypted),
       eveningTomorrowImagingDone:
         typeof raw.eveningTomorrowImagingDone === 'boolean' ? raw.eveningTomorrowImagingDone : null,
+      eveningTomorrowReflectedAt:
+        typeof raw.eveningTomorrowReflectedAt === 'number' && Number.isFinite(raw.eveningTomorrowReflectedAt)
+          ? raw.eveningTomorrowReflectedAt
+          : null,
       sharedWithCoach: raw.sharedWithCoach === true,
     };
   }
@@ -967,6 +979,11 @@ export async function saveTrial4wDailyPlain(params: {
       typeof params.patch.eveningTomorrowImagingDone === 'boolean'
         ? params.patch.eveningTomorrowImagingDone
         : null;
+  }
+  if ('eveningTomorrowReflectedAt' in params.patch) {
+    const n = params.patch.eveningTomorrowReflectedAt;
+    payload.eveningTomorrowReflectedAt =
+      typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
   }
   if ('sharedWithCoach' in params.patch) {
     payload.sharedWithCoach = !!params.patch.sharedWithCoach;
@@ -1176,6 +1193,8 @@ export type JournalWeeklyPlain = {
   nextWeekGoalText: string | null;
   /** 来週の行動：行動内容（具体的に） */
   nextWeekActionContentText: string | null;
+  /** 「来週の行動に反映」が成功した時刻（ms） */
+  nextWeekReflectedAt: number | null;
   /** 他に残しておきたいこと（旧: 今週の自分へのねぎらいの言葉） */
   weeklySelfPraiseText: string | null;
   /** 週次 AI レポート作成の当日実行回数 */
@@ -1219,6 +1238,7 @@ export type JournalWeeklyEncrypted = {
   aiImprovementSuggestionTextEncrypted: string | null;
   nextWeekGoalTextEncrypted: string | null;
   nextWeekActionContentTextEncrypted: string | null;
+  nextWeekReflectedAt: number | null;
   weeklySelfPraiseTextEncrypted: string | null;
   weeklyAiReportRunCount: number | null;
   weeklyAiReportRunDateKey: string | null;
@@ -1255,6 +1275,7 @@ export function journalWeeklyPlainEmpty(
     aiImprovementSuggestionText: null,
     nextWeekGoalText: null,
     nextWeekActionContentText: null,
+    nextWeekReflectedAt: null,
     weeklySelfPraiseText: null,
     weeklyAiReportRunCount: null,
     weeklyAiReportRunDateKey: null,
@@ -1299,6 +1320,10 @@ export async function getJournalWeeklyPlain(
     aiImprovementSuggestionText: await decryptOrNull(data.aiImprovementSuggestionTextEncrypted),
     nextWeekGoalText: await decryptOrNull(data.nextWeekGoalTextEncrypted),
     nextWeekActionContentText: await decryptOrNull(data.nextWeekActionContentTextEncrypted),
+    nextWeekReflectedAt:
+      typeof data.nextWeekReflectedAt === 'number' && Number.isFinite(data.nextWeekReflectedAt)
+        ? data.nextWeekReflectedAt
+        : null,
     weeklySelfPraiseText: await decryptOrNull(data.weeklySelfPraiseTextEncrypted),
     weeklyAiReportRunCount:
       typeof data.weeklyAiReportRunCount === 'number'
@@ -1382,6 +1407,11 @@ export async function saveJournalWeeklyPlain(params: {
   }
   if ('nextWeekActionContentText' in params.patch) {
     encPairs.push(['nextWeekActionContentTextEncrypted', normalizeText(params.patch.nextWeekActionContentText)]);
+  }
+  if ('nextWeekReflectedAt' in params.patch) {
+    const n = params.patch.nextWeekReflectedAt;
+    payload.nextWeekReflectedAt =
+      typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
   }
   if ('weeklySelfPraiseText' in params.patch) {
     encPairs.push(['weeklySelfPraiseTextEncrypted', normalizeText(params.patch.weeklySelfPraiseText)]);
@@ -1571,6 +1601,8 @@ export type JournalMonthlyPlain = {
   nextMonthGoalText: string | null;
   /** 来月の行動 — 行動内容（具体的に） */
   nextMonthActionContentText: string | null;
+  /** 「来月の行動に反映」が成功した時刻（ms） */
+  nextMonthReflectedAt: number | null;
   /** 特記事項（その他自由欄） */
   monthlySpecialNotesText: string | null;
   /** 月次 AI レポート作成の当日成功実行回数 */
@@ -1599,6 +1631,7 @@ export type JournalMonthlyEncrypted = {
   aiImprovementSuggestionTextEncrypted: string | null;
   nextMonthGoalTextEncrypted: string | null;
   nextMonthActionContentTextEncrypted: string | null;
+  nextMonthReflectedAt: number | null;
   monthlySpecialNotesTextEncrypted: string | null;
   monthlyAiReportRunCount: number | null;
   monthlyAiReportRunDateKey: string | null;
@@ -1702,6 +1735,7 @@ export function journalMonthlyPlainEmpty(
     aiImprovementSuggestionText: null,
     nextMonthGoalText: null,
     nextMonthActionContentText: null,
+    nextMonthReflectedAt: null,
     monthlySpecialNotesText: null,
     monthlyAiReportRunCount: null,
     monthlyAiReportRunDateKey: null,
@@ -1779,6 +1813,10 @@ export async function getJournalMonthlyPlain(
     aiImprovementSuggestionText,
     nextMonthGoalText,
     nextMonthActionContentText,
+    nextMonthReflectedAt:
+      typeof data.nextMonthReflectedAt === 'number' && Number.isFinite(data.nextMonthReflectedAt)
+        ? data.nextMonthReflectedAt
+        : null,
     monthlySpecialNotesText,
     monthlyAiReportRunCount:
       typeof data.monthlyAiReportRunCount === 'number'
@@ -1854,6 +1892,11 @@ export async function saveJournalMonthlyPlain(params: {
   }
   if ('nextMonthActionContentText' in params.patch) {
     encPairs.push(['nextMonthActionContentTextEncrypted', normalizeText(params.patch.nextMonthActionContentText)]);
+  }
+  if ('nextMonthReflectedAt' in params.patch) {
+    const n = params.patch.nextMonthReflectedAt;
+    payload.nextMonthReflectedAt =
+      typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null;
   }
   if ('monthlySpecialNotesText' in params.patch) {
     encPairs.push(['monthlySpecialNotesTextEncrypted', normalizeText(params.patch.monthlySpecialNotesText)]);

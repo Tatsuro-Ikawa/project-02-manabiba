@@ -164,7 +164,7 @@
 ### 晩（evening）
 
 - **今日の行動内容（目標）の実行**: `eveningExecution: 'done'|'partial'|'none'|null`
-- **具体的な行動内容**: `eveningSpecificActionsTextEncrypted: string|null`（execution が done/partial のとき表示）
+- **具体的な行動内容／振り返り**: `eveningSpecificActionsTextEncrypted: string|null`（**詳細のみ**。`eveningExecution` が `done`/`partial`/`none` のいずれかで表示。ラベルは done/partial＝「どのように行動できましたか？」、none＝「あまりできなかった振り返りは？」）
 - **行動の成果への振り返り**: `eveningResultTextEncrypted: string|null`
 - **行動の実行状況の補足**: `eveningResultExecutionTextEncrypted: string|null`
 - **目標に対する進捗・結果**: `eveningResultGoalProgressTextEncrypted: string|null`
@@ -180,6 +180,7 @@
 - **今日の振り返りを踏まえた あすの行動内容（目標）**: `eveningTomorrowActionSeedTextEncrypted: string|null`
 - **明日の目標・行動内容・イメージング**: `eveningTomorrowGoalTextEncrypted` / `eveningTomorrowActionContentTextEncrypted` / `eveningTomorrowImagingDone`
   - 「明日の行動に反映」ボタンで、翌日の朝の行動欄が未入力なら `eveningTomorrowActionSeedText` / `eveningTomorrowActionContentText` を同時にコピー（上書きはしない。保存時の自動コピーはしない）
+  - 反映成功時は `eveningTomorrowReflectedAt`（平文・ms）を記録し、ボタンを「反映済み」表示。明日の目標／内容を編集すると解除。既に翌朝へ入力があり写せなかった場合は「反映済み」にしない
 
 ### 週（weekly）
 
@@ -408,7 +409,7 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 |----|----------|---------------------|:----:|:----:|:----:|------|
 | | **◇行動** | | | | | |
 | 1 | 行動目標に対してどのくらい実施できましたか？ | `eveningExecution` | ● | ● | ● | 値は `done`/`partial`/`none` 維持。表示ラベル: およそできた／まあまあできた／あまりできなかった |
-| 1.a | どのように行動できましたか？ | `eveningSpecificActionsText` | — | — | ● | **詳細のみ**。`eveningExecution` が `done` または `partial` のとき表示（現行と同型） |
+| 1.a | どのように行動できましたか？／あまりできなかった振り返りは？ | `eveningSpecificActionsText` | — | — | ● | **詳細のみ**。`eveningExecution` が `done`/`partial`/`none` のいずれかで表示。`none` のとき後者のラベル |
 | 2 | 行動の満足度を10点のうちどのくらいでしたか？ | `eveningSatisfaction` | ● | ● | ● | 0〜10 |
 | | **◇気づき** | | | | | |
 | 3 | 今日印象に残ったできごとは何でしたか？ | `eveningResultExecutionText` | ● | ● | ● | 旧 `eveningResultText` は UI 非表示。読取時フォールバックは現行維持可 |
@@ -421,8 +422,8 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | 10 | Aiコーチからのコメント | `eveningAiSuggestionText` | ● | ● | ● | 生成結果の保存先。表示は読取専用テキスト＋保存フロー |
 | 11 | 他に残しておきたいこと | `eveningMessageToSelfText` | — | — | ● | |
 | | **◇明日の行動** | | | | | |
-| 12 | 明日の行動目標 | `eveningTomorrowActionSeedText` | ● | ● | ● | 「明日の行動に反映」で翌朝へ（空欄のみ・内容も同時） |
-| 13 | 明日の行動内容 | `eveningTomorrowActionContentText` | — | — | ● | モック表記に合わせる |
+| 12 | 明日の行動目標 | `eveningTomorrowActionSeedText` | ● | ● | ● | 「明日の行動に反映」で翌朝へ（空欄のみ・内容も同時）。成功時は「反映済み」表示（`eveningTomorrowReflectedAt`） |
+| 13 | 明日の行動内容 | `eveningTomorrowActionContentText` | — | — | ● | モック表記に合わせる。編集すると反映済み表示を解除 |
 | 14 | 明日の行動のイメージング（実施） | `eveningTomorrowImagingDone` | — | — | ● | |
 
 ### UI 非表示（フィールドは削除しない）
@@ -462,6 +463,10 @@ UI 見出しは **疑問形・丁寧語**で統一（モック準拠）。欄ラ
 | 週次 AI 入力 | `src/lib/weeklyAiReportInputFromDailies.ts`（**朝・晩 UI 改訂後に実施**） |
 
 **実装状況（2026-07-03）**: 朝・晩 UI（§4.z）、`journalDetailLevel.ts`（晩）、AI API・入力連結、週次 Aiレポート入力・朝記号（イメージング除外）は反映済み。
+
+**追記（2026-11-23）**:
+- 晩 1.a は `eveningExecution` が `none` のときも表示（ラベル「あまりできなかった振り返りは？」）。保存欄は従来どおり `eveningSpecificActionsText`。
+- 「明日／来週／来月の行動に反映」成功後は「反映済み」表示（`eveningTomorrowReflectedAt` / `nextWeekReflectedAt` / `nextMonthReflectedAt`）。元の欄を編集すると解除。空欄のみコピーの方針は変更なし。
 
 ### FAQ: `morningAffirmationDeclaration` を `null` にすると週表示が △ にならないか
 

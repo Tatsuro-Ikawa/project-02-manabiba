@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { LayerModal, type AiControls } from '@/components/start-program/step05/Step05LayersPhase';
+import { LayerModal } from '@/components/start-program/step05/Step05LayerModal';
+import type { AiControls } from '@/components/start-program/step05/Step05LayersPhase';
 import { SelfList } from '@/components/start-program/step05/Step05Parts';
 import {
   FIT_QUESTIONS,

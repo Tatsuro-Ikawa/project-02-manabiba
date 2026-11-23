@@ -20,6 +20,9 @@ import {
   type FitKey,
   type FitRating,
   type LayerCandidates,
+  type Step05AcceleratorRef,
+  type Step05DoAction,
+  type Step05HavePlan,
   type Step05Item,
   type Step05Store,
   type Step05Theme,
@@ -100,6 +103,47 @@ function normalizeItem(raw: unknown): Step05Item | null {
     target: clip(o.target, STEP05_TARGET_MAX_CHARS),
     current: clip(o.current, STEP05_CURRENT_MAX_CHARS),
   };
+}
+
+function normalizeAccelerator(raw: unknown): Step05AcceleratorRef | null {
+  const o = obj(raw);
+  if (!FIT_KEYS.includes(o.key as FitKey) || typeof o.text !== 'string' || !o.text.trim()) return null;
+  return { key: o.key as FitKey, text: clip(o.text, STEP05_TARGET_MAX_CHARS) };
+}
+
+function normalizeDoAction(raw: unknown): Step05DoAction | null {
+  const o = obj(raw);
+  if (typeof o.id !== 'string' || typeof o.text !== 'string') return null;
+  const text = clip(o.text, STEP05_TARGET_MAX_CHARS);
+  if (!text) return null;
+  return { id: o.id, text };
+}
+
+function normalizeHavePlan(raw: unknown): Step05HavePlan {
+  const o = obj(raw);
+  const actions = (Array.isArray(o.actions) ? o.actions : [])
+    .map(normalizeDoAction)
+    .filter((a): a is Step05DoAction => a != null);
+  const actionIds = new Set(actions.map((a) => a.id));
+  const acceleratorsByAction: Record<string, Step05AcceleratorRef[]> = {};
+  for (const [id, list] of Object.entries(obj(o.acceleratorsByAction))) {
+    if (!actionIds.has(id) || !Array.isArray(list)) continue;
+    const refs = list.map(normalizeAccelerator).filter((a): a is Step05AcceleratorRef => a != null);
+    if (refs.length) acceleratorsByAction[id] = refs;
+  }
+  const start =
+    typeof o.startActionId === 'string' && actionIds.has(o.startActionId) ? o.startActionId : null;
+  return { actions, startActionId: start, acceleratorsByAction };
+}
+
+function normalizeHavePlans(raw: unknown, itemIds: Set<string>): Record<string, Step05HavePlan> {
+  const out: Record<string, Step05HavePlan> = {};
+  for (const [id, plan] of Object.entries(obj(raw))) {
+    if (!itemIds.has(id)) continue;
+    const normalized = normalizeHavePlan(plan);
+    if (normalized.actions.length > 0 || normalized.startActionId) out[id] = normalized;
+  }
+  return out;
 }
 
 const MARKER_KIND_IDS = MARKER_KINDS.map((k) => k.id);
@@ -238,11 +282,19 @@ function normalizeTheme(domainId: MandalaDomainId, raw: unknown): Step05Theme {
     if (FIT_RATINGS.some((r) => r.id === fitRaw[k])) fit[k] = fitRaw[k] as FitRating;
   }
   const ai = obj(o.ai);
+  const items = (Array.isArray(o.items) ? o.items : [])
+    .map(normalizeItem)
+    .filter((i): i is Step05Item => i != null);
+  const itemIds = new Set(items.map((i) => i.id));
+  const selectedHaveId =
+    typeof o.selectedHaveId === 'string' && itemIds.has(o.selectedHaveId) ? o.selectedHaveId : null;
   return {
     domainId,
     targetScore: TARGET_SCORES.includes(o.targetScore as TargetScore) ? (o.targetScore as TargetScore) : 8,
     targetScoreSavedAt: savedAt(o.targetScoreSavedAt),
-    items: (Array.isArray(o.items) ? o.items : []).map(normalizeItem).filter((i): i is Step05Item => i != null),
+    items,
+    selectedHaveId,
+    havePlans: normalizeHavePlans(o.havePlans, itemIds),
     goal: {
       statement: clip(obj(o.goal).statement, STEP05_GOAL_MAX_CHARS),
       expressionPeriod: clip(obj(o.goal).expressionPeriod, STEP05_PERIOD_MAX_CHARS),
@@ -316,6 +368,8 @@ export function newStep05Theme(domainId: MandalaDomainId, items: Step05Item[]): 
     targetScore: 8,
     targetScoreSavedAt: null,
     items,
+    selectedHaveId: null,
+    havePlans: {},
     goal: { statement: '', expressionPeriod: '' },
     fit: emptyFit(),
     boardConfirmedAt: null,

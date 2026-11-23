@@ -47,7 +47,11 @@ export function buildWeeklyAiReportInputFromDailies(
     lines.push(
       `- 行動目標に対してどのくらい実施できましたか？: ${eveningExecutionLabel(d?.eveningExecution ?? null)}`
     );
-    lines.push(`- どのように行動できましたか？: ${nz(d?.eveningSpecificActionsText)}`);
+    lines.push(
+      `- ${
+        d?.eveningExecution === 'none' ? 'あまりできなかった振り返りは？' : 'どのように行動できましたか？'
+      }: ${nz(d?.eveningSpecificActionsText)}`
+    );
     lines.push(
       `- 行動の満足度を10点のうちどのくらいでしたか？: ${
         d && typeof d.eveningSatisfaction === 'number' && !Number.isNaN(d.eveningSatisfaction)

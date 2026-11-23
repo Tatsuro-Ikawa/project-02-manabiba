@@ -6,22 +6,14 @@ import { STEP03_SATISFACTION_STORAGE_KEY } from '@/lib/startProgram/step03Consta
 import { loadStep03DummyBundle } from '@/lib/startProgram/step03Dummy';
 import type { LayerKey, LayerTagId } from '@/lib/startProgram/step04Constants';
 import { STEP04_STORAGE_KEY } from '@/lib/startProgram/step04Constants';
-import {
-  baseLayerCandidates,
-  buildCurrentDrafts,
-  buildFitAdvice,
-} from '@/lib/startProgram/step05Ai';
+import { baseLayerCandidates } from '@/lib/startProgram/step05Ai';
 import {
   STEP05_DUMMY_REFS_KEY,
   STEP05_STORAGE_KEY,
-  currentsInputKey,
   emptyFit,
   filledItems,
-  fitInputKey,
-  answerSlots,
   newItem,
   toHaveContent,
-  step05Progress,
   type FitKey,
   type FitRating,
   type Step05DummyRefs,
@@ -148,32 +140,22 @@ export async function loadStep05Dummy(path: string, withPlan = false): Promise<s
   const src = file.step05;
   const now = Date.now();
   const theme = newStep05Theme(domainId, []);
-  const slots = answerSlots(ctx.reasons);
-  const used = new Set<string>();
-  theme.items = src.items.flatMap((item) => {
-    if (!item.sourceTagId || !item.layer) return [];
-    const slot = slots.find(
-      (candidate) =>
-        candidate.layer === item.layer &&
-        candidate.tagId === item.sourceTagId &&
-        !used.has(`${candidate.reasonId}:${candidate.tagId}`)
-    );
-    if (!slot) return [];
-    used.add(`${slot.reasonId}:${slot.tagId}`);
-    return [{ ...newItem(slot.layer, slot.tagId, item.target ?? '', slot.reasonId), current: item.current ?? '' }];
+  // 5-2: 持ち方は課題に順に割り当て（Step4 タグに縛らない）
+  const haveSrc = src.items.filter((item) => item.layer === 'have' && item.sourceTagId && item.target);
+  theme.items = haveSrc.map((item, index) => {
+    const reason = ctx.reasons[index % Math.max(ctx.reasons.length, 1)];
+    return {
+      ...newItem('have', item.sourceTagId as LayerTagId, item.target ?? '', reason?.id ?? null),
+      current: item.current ?? '',
+    };
   });
+  if (theme.items[0]) theme.selectedHaveId = theme.items[0].id;
   theme.targetScore = src.targetScore;
   theme.targetScoreSavedAt = src.reviewDone ? now : null;
   theme.goal = { statement: toHaveContent(src.goal ?? ''), expressionPeriod: '' };
   theme.fit = { ...emptyFit(), ...src.fit };
   theme.ai.candidates = readySlot(baseLayerCandidates(ctx), candidatesInputKey(ctx, theme.targetScore));
-
-  const progress = step05Progress(theme, ctx.reasons);
-  if (progress.layersReady) {
-    theme.ai.fit = readySlot(buildFitAdvice(ctx, theme), fitInputKey(theme));
-    theme.ai.currents = readySlot(buildCurrentDrafts(ctx, theme), currentsInputKey(theme));
-  }
-  theme.boardConfirmedAt = (src.boardConfirmed || withPlan) && progress.currentReady ? now : null;
+  theme.boardConfirmedAt = null;
   if (withPlan && file.plan && theme.boardConfirmedAt != null) applyDummyPlan(theme, ctx, file.plan, now);
 
   const step05: Step05Store = { version: 1, themes: { [domainId]: theme } };

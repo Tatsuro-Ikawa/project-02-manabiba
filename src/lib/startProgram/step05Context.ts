@@ -27,8 +27,6 @@ import {
 import { picks } from '@/lib/startProgram/step04DeepDiveConstants';
 import {
   STEP05_DUMMY_REFS_KEY,
-  answerSlots,
-  newItem,
   type FitKey,
   type Step05DummyRefs,
   type Step05Item,
@@ -167,9 +165,9 @@ export function buildStep05Context(
   };
 }
 
-/** 課題 × Step4 で選んだタグごとに、目標の欄を1つ作る */
-export function seedItems(ctx: Step05Context): Step05Item[] {
-  return answerSlots(ctx.reasons).map((slot) => newItem(slot.layer, slot.tagId, '', slot.reasonId));
+/** 5-2 はモーダルで持ち方を追加するため、初期は空 */
+export function seedItems(_ctx: Step05Context): Step05Item[] {
+  return [];
 }
 
 export function entryLabel(ctx: Step05Context, layer: LayerKey, tagId: LayerTagId | null): string | null {

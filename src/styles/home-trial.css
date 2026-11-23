@@ -2600,6 +2600,12 @@
   cursor: not-allowed;
 }
 
+.trial-monthly-container .trial-action-btn.ai-action-btn-done {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
 /* 朝・晩: Aiコーチからのコメントボタン */
 .morning-evening-container .trial-action-btn {
   display: inline-flex;
@@ -8881,6 +8887,223 @@ button.step04-theme-item.is-active {
   margin: 0.4rem 0 0;
   font-size: 0.82rem;
   color: #5c665e;
+}
+
+/* 5-2 持ち方カード */
+.step05-have-cards {
+  list-style: none;
+}
+
+.step05-have-card-btn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #cfe0cc;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.step05-have-card-btn:hover,
+.step05-have-card-btn:focus-visible {
+  border-color: #7fa888;
+}
+
+.step05-have-card-btn.is-done {
+  border-color: #9fbf9a;
+  background: #f7fbf6;
+}
+
+.step05-have-card-cta {
+  color: #2a5a38;
+  font-weight: 700;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.step05-have-card-lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.step05-have-card-lines li::before {
+  content: '・';
+}
+
+.mandala-modal.step05-have-modal,
+.mandala-modal.step05-do-modal {
+  width: min(40rem, 96vw);
+  max-height: min(90vh, 48rem);
+}
+
+.step05-have-modal-header {
+  align-items: flex-start;
+}
+
+.step05-have-modal-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.step05-have-modal-heading .mandala-modal-title {
+  flex: 1 1 12rem;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.step05-have-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.step05-have-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.step05-have-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.step05-have-option-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  cursor: pointer;
+}
+
+.step05-have-option-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.step05-have-option-hint {
+  font-size: 0.8rem;
+  color: #5c665e;
+  line-height: 1.5;
+}
+
+.step05-have-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* 5-3 あり方・なし方 */
+.step05-link-section {
+  margin: 0 0 1.1rem;
+  padding: 0.85rem 0.9rem 1rem;
+  border: 1px solid #e3ebe0;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.step05-link-title {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #2f4a3c;
+}
+
+.step05-link-list {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.step05-link-list--do {
+  padding: 0.55rem;
+  border-radius: 10px;
+  background: #f3f6f2;
+}
+
+.step05-link-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  line-height: 1.5;
+  font-size: 0.88rem;
+}
+
+.step05-link-option.is-selected {
+  border-color: #9fbf9a;
+  background: #f7fbf6;
+}
+
+.step05-link-option input {
+  margin-top: 0.2rem;
+  flex: 0 0 auto;
+}
+
+.step05-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.step05-link-accels {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.step05-link-accel-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.step05-link-accel-group legend {
+  padding: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #3d5344;
+}
+
+.step05-link-guide {
+  margin-top: 0.4rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  background: #f3f6f2;
+}
+
+.step05-link-guide-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
 }
 
 @media (max-width: 720px) {

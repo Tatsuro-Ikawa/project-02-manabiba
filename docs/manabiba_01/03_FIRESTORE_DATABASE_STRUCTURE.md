@@ -104,7 +104,7 @@
 | morningActionContentTextEncrypted | string \| null | 今日の行動 — 行動内容 |
 | morningImagingDone | bool \| null | 「今日の行動のイメージング」完了（**詳細のみ**表示・§4.z） |
 | eveningExecution | string \| null | `'done' \| 'partial' \| 'none'`。UI ラベル（§4.z）: およそできた／まあまあできた／あまりできなかった |
-| eveningSpecificActionsTextEncrypted | string \| null | 「どのように行動できましたか？」（**詳細のみ**。`eveningExecution` が done/partial のとき表示） |
+| eveningSpecificActionsTextEncrypted | string \| null | 行動の振り返り文（**詳細のみ**。`eveningExecution` が done/partial/none で表示。ラベル: done/partial＝「どのように行動できましたか？」、none＝「あまりできなかった振り返りは？」） |
 | eveningResultTextEncrypted | string \| null | **UI 非表示**（§4.z）。読取時フォールバック用に保持 |
 | eveningResultExecutionTextEncrypted | string \| null | 「今日印象に残ったできごとは何でしたか？」（§4.z 項目3） |
 | eveningResultGoalProgressTextEncrypted | string \| null | **UI 非表示**（§4.z）。スキーマ上は削除しない |
@@ -127,6 +127,7 @@
 | eveningTomorrowGoalTextEncrypted | string \| null | **UI 非表示**（§4.z）。画面の目標は `eveningTomorrowActionSeedText` を正とする |
 | eveningTomorrowActionContentTextEncrypted | string \| null | 「明日の行動内容」（§4.z 項目13。**詳細のみ**） |
 | eveningTomorrowImagingDone | bool \| null | 「明日の行動のイメージング（実施）」（§4.z 項目14。**詳細のみ**） |
+| eveningTomorrowReflectedAt | number \| null | 「明日の行動に反映」成功時刻（ms・平文）。UI の「反映済み」表示用。明日の欄を編集すると `null` |
 | createdAt, updatedAt | Timestamp | 監査用 |
 
 **晩タブ UI・表示レベルの正本**: [04_TRIAL_28_IMPLEMENTATION_DECISIONS.md](./04_TRIAL_28_IMPLEMENTATION_DECISIONS.md) **§4.z**。上記のうち **UI 非表示**とあるフィールドはスキーマからは削除せず、読取互換のみ維持する。
@@ -140,7 +141,7 @@
 | — | （朝）今日の行動目標 | `morningActionGoalText` 等 | `actionReferenceText`（参照） | ● |
 | — | （朝）行動内容 | `morningActionContentText` | `actionReferenceText`（参照） | ● |
 | 1 | 行動目標に対してどのくらい実施できましたか？ | `eveningExecution` | 含めない | ● |
-| 1.a | どのように行動できましたか？ | `eveningSpecificActionsText` | 含めない | ●（値あり時） |
+| 1.a | どのように行動できましたか？／あまりできなかった振り返りは？ | `eveningSpecificActionsText` | 含めない | ●（値あり時。`none` は後者ラベル） |
 | 2 | 行動の満足度を10点のうちどのくらいでしたか？ | `eveningSatisfaction` | `actionReferenceText`（参照） | ● |
 | 3 | 今日印象に残ったできごとは何でしたか？ | `eveningResultExecutionText` | **`reflectionText`** | ● |
 | 4 | その時、どんな気持ちになりましたか？ | `eveningEmotionThoughtText` | **`reflectionText`** | ● |
@@ -179,6 +180,7 @@
 | aiImprovementSuggestionTextEncrypted | string \| null | `aiImprovementSuggestionText` | 来週への改善点ブロック内 → Ai改善提案 |
 | nextWeekGoalTextEncrypted | string \| null | `nextWeekGoalText` | 来週の行動 → 目標 |
 | nextWeekActionContentTextEncrypted | string \| null | `nextWeekActionContentText` | 来週の行動 → 行動内容 |
+| nextWeekReflectedAt | number \| null | `nextWeekReflectedAt` | 「来週の行動に反映」成功時刻（ms・平文）。「反映済み」表示用 |
 | weeklySelfPraiseTextEncrypted | string \| null | `weeklySelfPraiseText` | **他に残しておきたいこと**（詳細のみ。UI 上は「来週の行動」の直前） |
 | sharedWithCoach | bool \| null | `sharedWithCoach` | 見出し右上「コーチと共有」。ON で担当コーチが週次本文＋サマリを read 可 |
 | coachDailySummaryByDate | map \| null | `coachDailySummaryByDate` | コーチ向け日次サマリ（記号・満足度のみ。`dateKey` → 各記号フィールド）。§2.x-2-2 |
@@ -252,6 +254,7 @@ Vertex の詳細は [04_VERTEX_AI_TRIAL_IMPROVEMENT.md](./04_VERTEX_AI_TRIAL_IMP
 | aiImprovementSuggestionTextEncrypted | string \| null | Ai改善提案 |
 | nextMonthGoalTextEncrypted | string \| null | 来月の行動 — 目標 |
 | nextMonthActionContentTextEncrypted | string \| null | 来月の行動 — 行動内容 |
+| nextMonthReflectedAt | number \| null | 「来月の行動に反映」成功時刻（ms・平文）。「反映済み」表示用 |
 | monthlySpecialNotesTextEncrypted | string \| null | 特記事項（その他自由欄） |
 | monthlyAiReportRunCount / monthlyAiReportRunDateKey | number / string \| null | 月次 Ai レポート作成の JST 当日成功回数 |
 | monthlyAiImprovementRunCount / monthlyAiImprovementRunDateKey | number / string \| null | 月次 Ai 改善提案の JST 当日成功回数 |

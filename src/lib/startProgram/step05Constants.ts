@@ -32,8 +32,8 @@ export type Step05Half = 'first' | 'second';
 /** 今回の Step5 で使うプロセス。自分らしさ以降と詳細計画は次の開発 */
 export const STEP05_NAV_PHASES: { id: Step05FirstPhase; label: string }[] = [
   { id: 'review', label: '満足度設定' },
-  { id: 'layers', label: '目標を描く' },
-  { id: 'summary', label: '持ち方をまとめる' },
+  { id: 'layers', label: '持ち方を設定' },
+  { id: 'summary', label: 'あり方・なし方を設定' },
 ];
 
 export const STEP05_FIRST_PHASES: { id: Step05FirstPhase; label: string }[] = [
@@ -159,12 +159,33 @@ export type Step05Item = {
   layer: LayerKey;
   /** 課題ごとの目標。未設定の古い項目はまとめの対象にしない */
   reasonId: string | null;
-  /** Step4 のタグから作った入口なら、そのタグ ID */
+  /** 持ち方カテゴリ（have_*）など。5-2 では Step4 選択に縛らず選べる */
   sourceTagId: LayerTagId | null;
   /** 目標の状態 */
   target: string;
   /** 今の自分 */
   current: string;
+};
+
+/** 5-3：こころのアクセル（Step2 の文）への参照 */
+export type Step05AcceleratorRef = {
+  key: FitKey;
+  text: string;
+};
+
+/** 5-3：なし方（行動） */
+export type Step05DoAction = {
+  id: string;
+  text: string;
+};
+
+/** 持ち方1件に紐づくなし方・アクセル（選択を変えても保持） */
+export type Step05HavePlan = {
+  actions: Step05DoAction[];
+  /** 最初に始められそうななし方 */
+  startActionId: string | null;
+  /** なし方 ID → 紐づけたアクセル（複数可） */
+  acceleratorsByAction: Record<string, Step05AcceleratorRef[]>;
 };
 
 export type LayerCandidates = Record<LayerKey, string[]>;
@@ -194,6 +215,11 @@ export type Step05Theme = {
   /** ① 完了 */
   targetScoreSavedAt: number | null;
   items: Step05Item[];
+  /** 5-3：いちばん実現しやすい持ち方（item id） */
+  selectedHaveId: string | null;
+  /** 持ち方ごとのなし方・アクセル。持ち方の選択を変えても保持する */
+  havePlans: Record<string, Step05HavePlan>;
+  /** Step6 冒頭のまとめ用に残す（今回の 5-3 では編集しない） */
   goal: { statement: string; expressionPeriod: string };
   fit: Record<FitKey, FitRating | null>;
   /** 前半完了 */
@@ -268,6 +294,13 @@ export function createStep05ItemId(): string {
   return `i-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+export function createStep05ActionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `a-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function newItem(
   layer: LayerKey,
   sourceTagId: LayerTagId | null = null,
@@ -275,6 +308,69 @@ export function newItem(
   reasonId: string | null = null
 ): Step05Item {
   return { id: createStep05ItemId(), layer, reasonId, sourceTagId, target, current: '' };
+}
+
+export function emptyHavePlan(): Step05HavePlan {
+  return { actions: [], startActionId: null, acceleratorsByAction: {} };
+}
+
+export function havePlanOf(theme: Step05Theme, haveId: string): Step05HavePlan {
+  return theme.havePlans[haveId] ?? emptyHavePlan();
+}
+
+/** 5-2 で書いた持ち方（文言あり） */
+export function haveItems(theme: Step05Theme): Step05Item[] {
+  return theme.items.filter((i) => i.layer === 'have' && i.target.trim() && i.reasonId);
+}
+
+export function haveItemsOfReason(theme: Step05Theme, reasonId: string): Step05Item[] {
+  return haveItems(theme).filter((i) => i.reasonId === reasonId);
+}
+
+/** 課題ごとに持ち方のエントリを置き換える（空のカテゴリは落とす。同一カテゴリは id を再利用） */
+export function replaceHaveEntries(
+  theme: Step05Theme,
+  reasonId: string,
+  entries: { tagId: LayerTagId; text: string }[]
+): Step05Theme {
+  const existing = theme.items.filter((i) => i.layer === 'have' && i.reasonId === reasonId);
+  const kept = theme.items.filter((i) => !(i.layer === 'have' && i.reasonId === reasonId));
+  const used = new Set<string>();
+  const nextHave: Step05Item[] = [];
+  for (const entry of entries) {
+    const text = entry.text.trim();
+    if (!text) continue;
+    const reuse = existing.find((i) => i.sourceTagId === entry.tagId && !used.has(i.id));
+    if (reuse) {
+      used.add(reuse.id);
+      nextHave.push({ ...reuse, target: text, sourceTagId: entry.tagId });
+    } else {
+      nextHave.push(newItem('have', entry.tagId, text, reasonId));
+    }
+  }
+  const nextItems = [...kept, ...nextHave];
+  const nextIds = new Set(nextItems.map((i) => i.id));
+  const havePlans = { ...theme.havePlans };
+  for (const id of Object.keys(havePlans)) {
+    if (!nextIds.has(id)) delete havePlans[id];
+  }
+  const selectedHaveId =
+    theme.selectedHaveId && nextIds.has(theme.selectedHaveId) ? theme.selectedHaveId : null;
+  return { ...theme, items: nextItems, havePlans, selectedHaveId };
+}
+
+export function reasonHaveDone(theme: Step05Theme, reasonId: string): boolean {
+  return haveItemsOfReason(theme, reasonId).length > 0;
+}
+
+/** 5-3：選択中の持ち方に、開始なし方とアクセルが紐づいている */
+export function haveLinkReady(theme: Step05Theme): boolean {
+  const haveId = theme.selectedHaveId;
+  if (!haveId || !haveItems(theme).some((i) => i.id === haveId)) return false;
+  const plan = havePlanOf(theme, haveId);
+  if (!plan.startActionId || plan.actions.every((a) => a.id !== plan.startActionId)) return false;
+  const acc = plan.acceleratorsByAction[plan.startActionId] ?? [];
+  return acc.some((a) => a.text.trim());
 }
 
 export type AnswerSlot = {
@@ -325,8 +421,9 @@ export function filledItems(theme: Step05Theme): Step05Item[] {
 
 export type Step05Progress = {
   reviewDone: boolean;
-  /** 持ち方・なし方・あり方の欄がすべて埋まっている */
+  /** 5-2：各課題に持ち方が1件以上ある */
   layersFilled: boolean;
+  /** 5-3：持ち方1・開始なし方1・アクセル1つ以上が紐づいている */
   layersReady: boolean;
   fitReady: boolean;
   hasWeakFit: boolean;
@@ -346,12 +443,9 @@ export function step05Progress(theme: Step05Theme | undefined, reasons: ReasonTa
       completed: false,
     };
   }
-  const slots = answerSlots(reasons);
   const reviewDone = theme.targetScoreSavedAt != null;
-  const layersFilled =
-    slots.length > 0 && slots.every((slot) => (answerOf(theme, slot.reasonId, slot.tagId)?.target.trim() ?? '') !== '');
-  const layersReady =
-    reviewDone && layersFilled && theme.goal.statement.trim().length > 0 && theme.goal.expressionPeriod.trim().length > 0;
+  const layersFilled = reasons.length > 0 && reasons.every((reason) => reasonHaveDone(theme, reason.id));
+  const layersReady = reviewDone && layersFilled && haveLinkReady(theme);
   const fitValues = Object.values(theme.fit);
   const fitReady = layersReady && fitValues.every((v) => v != null);
   const filled = filledItems(theme);

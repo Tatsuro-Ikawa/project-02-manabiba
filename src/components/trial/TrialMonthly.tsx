@@ -349,6 +349,13 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
       } else if (!result.appliedGoal && !result.appliedContent) {
         setMsg('翌月はすでに入力があるため、空欄のみの方針で反映しませんでした。');
       } else {
+        const reflectedAt = Date.now();
+        await saveJournalMonthlyPlain({
+          uid: contentUid,
+          monthKey: data.monthKey,
+          patch: { sharedWithCoach: !!data.sharedWithCoach, nextMonthReflectedAt: reflectedAt },
+        });
+        setData((prev) => (prev ? { ...prev, nextMonthReflectedAt: reflectedAt } : prev));
         setMsg('翌月の「今月の行動」に反映しました（空欄のみ）。');
       }
       setTimeout(() => setMsg(null), 3500);
@@ -979,8 +986,15 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
               label="・目標"
               value={data.nextMonthGoalText ?? ''}
               disabled={!canEdit || saving}
-              onChange={(v) => setData((prev) => (prev ? { ...prev, nextMonthGoalText: v } : prev))}
-              onBlur={() => void savePatch({ nextMonthGoalText: data.nextMonthGoalText })}
+              onChange={(v) =>
+                setData((prev) => (prev ? { ...prev, nextMonthGoalText: v, nextMonthReflectedAt: null } : prev))
+              }
+              onBlur={() =>
+                void savePatch({
+                  nextMonthGoalText: data.nextMonthGoalText,
+                  ...(data.nextMonthReflectedAt == null ? { nextMonthReflectedAt: null } : {}),
+                })
+              }
               placeholder="来月の目標を記載してください。"
             />
             {journalShowMonthlyNextMonthActionContent(level) ? (
@@ -988,22 +1002,33 @@ export default function TrialMonthly({ coachClientUid = null }: TrialMonthlyProp
                 label="・行動内容（具体的に）"
                 value={data.nextMonthActionContentText ?? ''}
                 disabled={!canEdit || saving}
-                onChange={(v) => setData((prev) => (prev ? { ...prev, nextMonthActionContentText: v } : prev))}
-                onBlur={() => void savePatch({ nextMonthActionContentText: data.nextMonthActionContentText })}
+                onChange={(v) =>
+                  setData((prev) =>
+                    prev ? { ...prev, nextMonthActionContentText: v, nextMonthReflectedAt: null } : prev
+                  )
+                }
+                onBlur={() =>
+                  void savePatch({
+                    nextMonthActionContentText: data.nextMonthActionContentText,
+                    ...(data.nextMonthReflectedAt == null ? { nextMonthReflectedAt: null } : {}),
+                  })
+                }
                 placeholder="来月の行動内容を具体的に記載してください。"
               />
             ) : null}
             <div className="form-row" style={{ marginTop: '0.5rem' }}>
               <button
                 type="button"
-                className="trial-action-btn"
+                className={`trial-action-btn${data.nextMonthReflectedAt != null ? ' ai-action-btn-done' : ''}`}
                 disabled={!canEdit || saving}
+                aria-pressed={data.nextMonthReflectedAt != null}
                 onClick={() => void reflectNextMonthAction()}
               >
-                来月の行動に反映
+                {data.nextMonthReflectedAt != null ? '反映済み' : '来月の行動に反映'}
               </button>
               <p className="text-xs text-gray-600" style={{ margin: '0.35rem 0 0' }}>
                 翌月の「今月の行動」の目標・行動内容へ同時に写します（すでに入力がある欄は上書きしません）。
+                来月の欄を直すと、また反映できます。
               </p>
             </div>
           </div>

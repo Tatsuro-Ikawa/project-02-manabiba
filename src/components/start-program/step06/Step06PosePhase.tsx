@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { LayerModal } from '@/components/start-program/step05/Step05LayersPhase';
+import { LayerModal } from '@/components/start-program/step05/Step05LayerModal';
 import {
   STEP05_LAYERS,
   answerOf,

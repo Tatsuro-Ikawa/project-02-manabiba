@@ -507,6 +507,13 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
       } else if (!result.appliedGoal && !result.appliedContent) {
         setMsg('翌週はすでに入力があるため、空欄のみの方針で反映しませんでした。');
       } else {
+        const reflectedAt = Date.now();
+        await saveJournalWeeklyPlain({
+          uid: contentUid,
+          weekStartKey: data.weekStartKey,
+          patch: { sharedWithCoach: !!data.sharedWithCoach, nextWeekReflectedAt: reflectedAt },
+        });
+        setData((prev) => (prev ? { ...prev, nextWeekReflectedAt: reflectedAt } : prev));
         setMsg('翌週の「今週の行動」に反映しました（空欄のみ）。');
       }
       setTimeout(() => setMsg(null), 3500);
@@ -974,8 +981,15 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
               label="・目標"
               value={data.nextWeekGoalText ?? ''}
               disabled={saving || !canEdit}
-              onChange={(v) => setData((prev) => (prev ? { ...prev, nextWeekGoalText: v } : prev))}
-              onBlur={() => void savePatch({ nextWeekGoalText: data.nextWeekGoalText })}
+              onChange={(v) =>
+                setData((prev) => (prev ? { ...prev, nextWeekGoalText: v, nextWeekReflectedAt: null } : prev))
+              }
+              onBlur={() =>
+                void savePatch({
+                  nextWeekGoalText: data.nextWeekGoalText,
+                  ...(data.nextWeekReflectedAt == null ? { nextWeekReflectedAt: null } : {}),
+                })
+              }
               placeholder="入力してください"
             />
             {journalShowWeeklyNextWeekActionContent(level) ? (
@@ -983,22 +997,33 @@ export default function TrialWeekly({ coachClientUid = null }: TrialWeeklyProps)
                 label="・行動内容（具体的に）"
                 value={data.nextWeekActionContentText ?? ''}
                 disabled={saving || !canEdit}
-                onChange={(v) => setData((prev) => (prev ? { ...prev, nextWeekActionContentText: v } : prev))}
-                onBlur={() => void savePatch({ nextWeekActionContentText: data.nextWeekActionContentText })}
+                onChange={(v) =>
+                  setData((prev) =>
+                    prev ? { ...prev, nextWeekActionContentText: v, nextWeekReflectedAt: null } : prev
+                  )
+                }
+                onBlur={() =>
+                  void savePatch({
+                    nextWeekActionContentText: data.nextWeekActionContentText,
+                    ...(data.nextWeekReflectedAt == null ? { nextWeekReflectedAt: null } : {}),
+                  })
+                }
                 placeholder="入力してください"
               />
             ) : null}
             <div className="form-row" style={{ marginTop: '0.5rem' }}>
               <button
                 type="button"
-                className="trial-action-btn"
+                className={`trial-action-btn${data.nextWeekReflectedAt != null ? ' ai-action-btn-done' : ''}`}
                 disabled={saving || !canEdit}
+                aria-pressed={data.nextWeekReflectedAt != null}
                 onClick={() => void reflectNextWeekAction()}
               >
-                来週の行動に反映
+                {data.nextWeekReflectedAt != null ? '反映済み' : '来週の行動に反映'}
               </button>
               <p className="text-xs text-gray-600" style={{ margin: '0.35rem 0 0' }}>
                 翌週の「今週の行動」の目標・行動内容へ同時に写します（すでに入力がある欄は上書きしません）。
+                来週の欄を直すと、また反映できます。
               </p>
             </div>
           </div>

@@ -233,6 +233,7 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
           eveningTomorrowGoalText: null,
           eveningTomorrowActionContentText: null,
           eveningTomorrowImagingDone: null,
+          eveningTomorrowReflectedAt: null,
           sharedWithCoach: shareDefault,
         });
       } else {
@@ -305,6 +306,13 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
       } else if (!result.appliedGoal && !result.appliedContent) {
         setMsg('翌日の朝はすでに入力があるため、空欄のみの方針で反映しませんでした。');
       } else {
+        const reflectedAt = Date.now();
+        await saveTrial4wDailyPlain({
+          uid: contentUid,
+          dateKey: data.dateKey,
+          patch: { sharedWithCoach: !!data.sharedWithCoach, eveningTomorrowReflectedAt: reflectedAt },
+        });
+        setData((prev) => (prev ? { ...prev, eveningTomorrowReflectedAt: reflectedAt } : prev));
         setMsg('翌日の朝の行動に反映しました（空欄のみ）。');
       }
       setTimeout(() => setMsg(null), 3500);
@@ -725,18 +733,21 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
                 onPick={(v) => void savePatch({ eveningExecution: v })}
               />
             </div>
-            {journalShowEveningSpecificActions(level) &&
-              (data.eveningExecution === 'done' || data.eveningExecution === 'partial') && (
-                <EveningQuestionField
-                  label="どのように行動できましたか？"
-                  value={data.eveningSpecificActionsText ?? ''}
-                  saving={inputDisabled}
-                  onChange={(v) =>
-                    setData((prev) => (prev ? { ...prev, eveningSpecificActionsText: v } : prev))
-                  }
-                  onBlur={() => void savePatch({ eveningSpecificActionsText: data.eveningSpecificActionsText })}
-                />
-              )}
+            {journalShowEveningSpecificActions(level) && data.eveningExecution != null ? (
+              <EveningQuestionField
+                label={
+                  data.eveningExecution === 'none'
+                    ? 'あまりできなかった振り返りは？'
+                    : 'どのように行動できましたか？'
+                }
+                value={data.eveningSpecificActionsText ?? ''}
+                saving={inputDisabled}
+                onChange={(v) =>
+                  setData((prev) => (prev ? { ...prev, eveningSpecificActionsText: v } : prev))
+                }
+                onBlur={() => void savePatch({ eveningSpecificActionsText: data.eveningSpecificActionsText })}
+              />
+            ) : null}
             <div className="form-row">
               <span className="trial-l3-label">行動の満足度を10点のうちどのくらいでしたか？</span>
               <div className="satisfaction-input satisfaction-input--compact">
@@ -921,9 +932,18 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
               saving={inputDisabled}
               placeholder="入力してください"
               onChange={(v) =>
-                setData((prev) => (prev ? { ...prev, eveningTomorrowActionSeedText: v } : prev))
+                setData((prev) =>
+                  prev
+                    ? { ...prev, eveningTomorrowActionSeedText: v, eveningTomorrowReflectedAt: null }
+                    : prev
+                )
               }
-              onBlur={() => void savePatch({ eveningTomorrowActionSeedText: data.eveningTomorrowActionSeedText })}
+              onBlur={() =>
+                void savePatch({
+                  eveningTomorrowActionSeedText: data.eveningTomorrowActionSeedText,
+                  ...(data.eveningTomorrowReflectedAt == null ? { eveningTomorrowReflectedAt: null } : {}),
+                })
+              }
             />
             {journalShowEveningTomorrowActionContent(level) ? (
               <EveningQuestionField
@@ -931,24 +951,35 @@ export default function TrialMorningEvening({ coachClientUid = null }: { coachCl
                 value={data.eveningTomorrowActionContentText ?? ''}
                 saving={inputDisabled}
                 onChange={(v) =>
-                  setData((prev) => (prev ? { ...prev, eveningTomorrowActionContentText: v } : prev))
+                  setData((prev) =>
+                    prev
+                      ? { ...prev, eveningTomorrowActionContentText: v, eveningTomorrowReflectedAt: null }
+                      : prev
+                  )
                 }
                 onBlur={() =>
-                  void savePatch({ eveningTomorrowActionContentText: data.eveningTomorrowActionContentText })
+                  void savePatch({
+                    eveningTomorrowActionContentText: data.eveningTomorrowActionContentText,
+                    ...(data.eveningTomorrowReflectedAt == null ? { eveningTomorrowReflectedAt: null } : {}),
+                  })
                 }
               />
             ) : null}
             <div className="form-row" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
               <button
                 type="button"
-                className="trial-segmented-toggle__btn"
+                className={`trial-segmented-toggle__btn${
+                  data.eveningTomorrowReflectedAt != null ? ' trial-segmented-toggle__btn--active' : ''
+                }`}
                 disabled={inputDisabled}
+                aria-pressed={data.eveningTomorrowReflectedAt != null}
                 onClick={() => void reflectTomorrow()}
               >
-                明日の行動に反映
+                {data.eveningTomorrowReflectedAt != null ? '反映済み' : '明日の行動に反映'}
               </button>
               <p className="text-xs text-gray-600" style={{ margin: '0.35rem 0 0' }}>
                 翌日の朝の「行動目標」「行動内容」へ同時に写します（すでに入力がある欄は上書きしません）。
+                明日の欄を直すと、また反映できます。
               </p>
             </div>
             {journalShowEveningTomorrowImaging(level) ? (
